@@ -22,17 +22,9 @@ export function SidebarButton({
         isOpen ? "w-full px-4" : "w-8 px-2"
       )}
     >
-      <div className="shrink-0">
-        {children}
-      </div>
-      <span 
-        className={cn(
-          "whitespace-nowrap transition-all duration-300 overflow-hidden",
-          isOpen ? "opacity-100 max-w-full" : "opacity-0 max-w-0"
-        )}
-      >
-        {text}
-      </span>
+      <div className="shrink-0">{children}</div>
+      {isOpen && <span className="whitespace-nowrap">{text}</span>}
+      
     </Button>
   );
 }

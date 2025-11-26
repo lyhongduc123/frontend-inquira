@@ -2,19 +2,29 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
-import { ArrowUp, Plus } from "lucide-react";
+import { ArrowUp, Plus, RotateCcw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
-export function ChatInput({ onSend, isDisabled }: { onSend: (msg: string) => void; isDisabled?: boolean }) {
+interface ChatInputProps {
+  onSend: (msg: string) => void;
+  isDisabled?: boolean;
+  showRetry?: boolean;
+  onRetry?: () => void;
+}
+
+export function ChatInput({
+  onSend,
+  isDisabled,
+  showRetry = false,
+  onRetry,
+}: ChatInputProps) {
   const [msg, setMsg] = useState("");
-  const [isExpanded, setIsExpanded] = useState(false);
   const [originalHeight, setOriginalHeight] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -22,7 +32,6 @@ export function ChatInput({ onSend, isDisabled }: { onSend: (msg: string) => voi
     if (!msg.trim() || isDisabled) return;
     onSend(msg);
     setMsg("");
-    setIsExpanded(false);
   }
 
   function handleInput() {
@@ -31,8 +40,6 @@ export function ChatInput({ onSend, isDisabled }: { onSend: (msg: string) => voi
 
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
-
-    setIsExpanded(el.scrollHeight > (originalHeight || 60));
   }
 
   useEffect(() => {
@@ -44,9 +51,23 @@ export function ChatInput({ onSend, isDisabled }: { onSend: (msg: string) => voi
 
   return (
     <div className="p-4">
+      {showRetry && (
+        <div className="mb-3 flex items-center justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRetry}
+            disabled={isDisabled}
+            className="gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Retry
+          </Button>
+        </div>
+      )}
       <InputGroup>
         <InputGroupTextarea
-          placeholder="Ask me anything..."
+          placeholder="What would you like to know?"
           value={msg}
           ref={textareaRef}
           disabled={isDisabled}
