@@ -10,6 +10,7 @@ import type { Element } from "hast";
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  sources?: Array<{ paper_id?: string; url?: string; title?: string }>;
 }
 
 type ComponentProps = React.HTMLAttributes<HTMLElement> & {
@@ -19,7 +20,14 @@ type ComponentProps = React.HTMLAttributes<HTMLElement> & {
   children?: React.ReactNode;
 };
 
-export function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
+export function MarkdownRenderer(props: MarkdownRendererProps) {
+  const { content, className = "", sources } = props;
+  // Helper to find source by id
+  function getSourceById(id: string) {
+    if (!Array.isArray(sources)) return undefined;
+    return sources.find((src: any) => src.paper_id === id);
+  }
+
   const components: Components = {
     code({ inline, className, children, ...props }: ComponentProps) {
       return inline ? (
@@ -39,12 +47,35 @@ export function MarkdownRenderer({ content, className = "" }: MarkdownRendererPr
         </pre>
       );
     },
-    a({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+    a({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+      // Detect citation link: [1](id)
+      if (href && /^[a-f0-9]{8,}$/.test(href)) {
+        const source = getSourceById(href);
+        if (source) {
+          return (
+            <a
+              href={"#ref-" + source.paper_id}
+              className="text-primary font-semibold hover:underline cursor-pointer"
+              title={source.url || source.title}
+              onClick={e => {
+                e.preventDefault();
+                const el = document.getElementById("ref-" + source.paper_id);
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                if (source.url) window.open(source.url, "_blank");
+              }}
+            >
+              {children}
+            </a>
+          );
+        }
+      }
+      // Default link
       return (
         <a
           className="text-primary hover:underline"
           target="_blank"
           rel="noopener noreferrer"
+          href={href}
           {...props}
         >
           {children}

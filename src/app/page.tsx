@@ -13,6 +13,11 @@ import { cn } from "@/lib/utils";
 import { conversationsApi } from "@/lib/conversations-api";
 
 export default function ChatPage() {
+  const [progressSteps, setProgressSteps] = useState<string[]>([]);
+  const [progressSubtopics, setProgressSubtopics] = useState<
+    [string, string][]
+  >([]);
+  const [progressThoughts, setProgressThoughts] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -27,42 +32,110 @@ export default function ChatPage() {
     setIsError(false);
     setLastFailedQuery(null);
 
-    setMessages((prev) => [...prev, { role: "user", text: query }]);
+    // If there is already a user message, start a new chat (reset messages)
+    setMessages((prev) => {
+      const hasUserMessage = prev.some((msg) => msg.role === "user");
+      if (hasUserMessage) {
+        return [{ role: "user", text: query } as Message];
+      }
+      return [...prev, { role: "user", text: query } as Message];
+    });
     setIsStreaming(true);
 
-    const aiMsg: Message = { role: "assistant", text: "", sources: [] };
-    setMessages((prev) => [...prev, aiMsg]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        text: "",
+      } as Message,
+    ]);
 
     try {
-      await streamAnswer("/api", query, {
-        onConversation: (conversationId) => {
-          console.log("Conversation ID:", conversationId);
-          setCurrentConversationId(conversationId);
-        },
-        onSources: (sources) => {
-          aiMsg.sources = sources;
-          setMessages((prev) => [...prev.slice(0, -1), { ...aiMsg }]);
-          console.log("Received sources:", sources);
-        },
-        onChunk: (chunk) => {
-          aiMsg.text += chunk;
-          setMessages((prev) => [...prev.slice(0, -1), { ...aiMsg }]);
-        },
-        onDone: () => {
-          console.log("Stream completed");
-        },
-        onError: (error) => {
-          console.error("Stream error:", error);
-          aiMsg.text = "Error: Failed to get response from server.";
-          setMessages((prev) => [...prev.slice(0, -1), { ...aiMsg }]);
-          setIsError(true);
-          setLastFailedQuery(query);
-        },
-      }, currentConversationId || undefined);
+      await streamAnswer(
+        "/api",
+        { query, conversation_id: currentConversationId || undefined },
+        {
+          onConversation: (conversationId) => {
+            console.log("Conversation ID:", conversationId);
+            setCurrentConversationId(conversationId);
+          },
+          onSources: (sources) => {
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              return [...prev.slice(0, -1), { ...last, sources }];
+            });
+            console.log("Received sources:", sources);
+          },
+          onChunk: (chunk) => {
+            console.log("Received chunk:", chunk);
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...last,
+                  streamBuffer: (last.streamBuffer ?? "") + chunk,
+                },
+              ];
+            });
+          },
+          onEvent: (type, data) => {
+            if (type === "step" && typeof data === "string") {
+              setProgressSteps((prev) => [...prev, data]);
+            }
+            if (type === "thought" && typeof data === "string") {
+              setProgressThoughts((prev) => [...prev, data]);
+            }
+            if (type === "subtopics" && Array.isArray(data)) {
+              setProgressSubtopics(
+                data.filter(
+                  (item) =>
+                    Array.isArray(item) &&
+                    item.length === 2 &&
+                    item.every((v) => typeof v === "string")
+                )
+              );
+            }
+          },
+          onDone: () => {
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...last,
+                  text: last.streamBuffer ?? "",
+                  streamBuffer: undefined,
+                  done: true,
+                },
+              ];
+            });
+          },
+          onError: (error) => {
+            console.error("Stream error:", error);
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              return [
+                ...prev.slice(0, -1),
+                { ...last, text: "Error: Failed to get response from server." },
+              ];
+            });
+            setIsError(true);
+            setLastFailedQuery(query);
+          },
+        }
+      );
     } catch (error) {
       console.error("Streaming error:", error);
-      aiMsg.text = "Error: Failed to get response from server.";
-      setMessages((prev) => [...prev.slice(0, -1), { ...aiMsg }]);
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        return [
+          ...prev.slice(0, -1),
+          { ...last, text: "Error: Failed to get response from server." },
+        ];
+      });
       setIsError(true);
       setLastFailedQuery(query);
     } finally {
@@ -72,7 +145,6 @@ export default function ChatPage() {
 
   function handleRetry() {
     if (lastFailedQuery) {
-      // Remove the last two messages (user query and error response)
       setMessages((prev) => prev.slice(0, -2));
       handleSend(lastFailedQuery);
     }
@@ -85,15 +157,16 @@ export default function ChatPage() {
       setIsLoadingMessages(true);
       setCurrentConversationId(conversationId);
 
-      // Fetch conversation details with messages
       const conversation = await conversationsApi.get(conversationId);
-
-      // Convert backend messages to frontend Message format
       const loadedMessages: Message[] = conversation.messages.map((msg) => ({
+        id: msg.id,
         role: msg.role as "user" | "assistant",
         text: msg.content,
-        sources: [], // Sources are not stored, only shown during streaming
+        done: true,
+        streamBuffer: undefined,
+        sources: [...(msg.sources || [])],
       }));
+      console.log("Loaded conversation messages:", loadedMessages);
 
       setMessages(loadedMessages);
       setIsError(false);
@@ -111,6 +184,15 @@ export default function ChatPage() {
     setMessages([]);
     setIsError(false);
     setLastFailedQuery(null);
+    setProgressSteps([]);
+    setProgressSubtopics([]);
+    setProgressThoughts([]);
+  }
+
+  async function handleDeleteConversation(conversationId: string) {
+    if (conversationId === currentConversationId) {
+      handleNewChat();
+    }
   }
 
   return (
@@ -122,6 +204,7 @@ export default function ChatPage() {
           onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           onSelectConversation={handleSelectConversation}
           onNewChat={handleNewChat}
+          onDelete={handleDeleteConversation}
           currentConversationId={currentConversationId || undefined}
         />
         <div className="flex flex-col flex-1 h-full relative">
@@ -171,7 +254,12 @@ export default function ChatPage() {
             // Normal layout for active conversation
             <>
               <div className="flex-1 overflow-y-auto">
-                <ChatMessages messages={messages} />
+                <ChatMessages
+                  messages={messages}
+                  progressSteps={progressSteps}
+                  progressSubtopics={progressSubtopics}
+                  progressThoughts={progressThoughts}
+                />
               </div>
               <div className="border-t bg-background shrink-0">
                 <div className="max-w-3xl mx-auto px-4">

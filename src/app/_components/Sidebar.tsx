@@ -6,9 +6,10 @@ import { MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { SidebarButton } from "./SidebarButton";
 import { ModeToggle } from "./ThemeButton";
-import { conversationsApi, type Conversation } from "@/lib/conversations-api";
+import { conversationsApi } from "@/lib/conversations-api";
 import { ConversationCard } from "./ConversationCard";
 import { motion, AnimatePresence } from "framer-motion";
+import { Conversation } from "@/types/conversation.type";
 
 interface LeftSidebarProps {
   className?: string;
@@ -16,6 +17,7 @@ interface LeftSidebarProps {
   onToggle?: () => void;
   onNewChat?: () => void;
   onSelectConversation?: (conversationId: string) => void;
+  onDelete?: (conversationId: string) => void;
   currentConversationId?: string;
 }
 
@@ -24,6 +26,7 @@ export function LeftSidebar({
   isOpen,
   onNewChat,
   onSelectConversation,
+  onDelete,
   currentConversationId,
 }: LeftSidebarProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -58,6 +61,7 @@ export function LeftSidebar({
     setConversations((prev) =>
       prev.filter((conv) => conv.id !== conversationId)
     );
+    onDelete?.(conversationId);
   };
 
   return (
@@ -84,7 +88,7 @@ export function LeftSidebar({
           </SidebarButton>
         </div>
 
-        <ScrollArea className="flex-1 px-4">
+        <ScrollArea className="flex-1 px-4 overflow-auto">
           {isOpen && (
             <div className="space-y-2">
               {loading ? (

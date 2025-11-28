@@ -7,14 +7,16 @@ import { ReferencesList } from "./ReferencesList";
 
 interface AssistantResponseProps {
   text: string;
+  done?: boolean;
+  streamBuffer?: string;
   sources?: PaperSource[];
   showDivider?: boolean;
 }
 
-export function AssistantResponse({ text, sources, showDivider = false }: AssistantResponseProps) {
+export function AssistantResponse({ text, done, streamBuffer, sources, showDivider = false }: AssistantResponseProps) {
   return (
     <>
-      <AnswerContent text={text} />
+      <AnswerContent text={text} done={done} streamBuffer={streamBuffer} />
       
       {sources && sources.length > 0 && (
         <ReferencesList sources={sources} />

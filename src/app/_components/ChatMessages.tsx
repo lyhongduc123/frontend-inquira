@@ -13,9 +13,18 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Brand } from "@/components/global/brand";
+import { QuestionProgress } from "@/components/QuestionProgress";
 
-export function ChatMessages({ messages }: { messages: Message[] }) {
+interface ChatMessagesProps {
+  messages: Message[];
+  progressSteps?: string[];
+  progressSubtopics?: [string, string][];
+  progressThoughts?: string[];
+}
+
+export function ChatMessages({ messages, progressSteps = [], progressSubtopics = [], progressThoughts = [] }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -58,11 +67,16 @@ export function ChatMessages({ messages }: { messages: Message[] }) {
             return (
               <div key={i} className="w-full space-y-4">
                 {isUserMessage ? (
-                  <QuestionHeading text={m.text} />
+                  <>
+                    <QuestionHeading text={m.text} />
+                    <QuestionProgress steps={progressSteps} subtopics={progressSubtopics} thoughts={progressThoughts} />
+                  </>
                 ) : (
                   <AssistantResponse
                     text={m.text}
-                    sources={m.sources}
+                    done={m.done}
+                    streamBuffer={m.streamBuffer}
+                    sources={Array.isArray(m.sources) ? m.sources : []}
                     showDivider={showDivider}
                   />
                 )}
