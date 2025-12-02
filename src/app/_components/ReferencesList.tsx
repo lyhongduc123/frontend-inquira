@@ -23,17 +23,10 @@ export function ReferencesList({ sources }: ReferencesListProps) {
   }
 
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="w-full"
-    >
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
       <div className="mt-4 w-full">
         <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full justify-between p-3 h-auto"
-          >
+          <Button variant="ghost" className="w-fit justify-between p-3 h-auto cursor-pointer">
             <span className="text-sm font-semibold text-muted-foreground">
               References ({sources.length})
             </span>
@@ -50,7 +43,7 @@ export function ReferencesList({ sources }: ReferencesListProps) {
                 year={source.year}
                 venue={source.venue}
                 abstract={source.abstract}
-                url={source.url || ""}
+                url={source.pdf_url || ""}
                 citation_count={source.citation_count}
               />
             ))}

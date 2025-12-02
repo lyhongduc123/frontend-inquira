@@ -1,10 +1,10 @@
 import { PaperSource } from "./paper.type";
 
 export interface Message {
-  id: number;
+  id?: number;
   role: "user" | "assistant";
   text: string;
-  streamBuffer?: string; 
-  done?: boolean;
   sources?: PaperSource[];
+  done?: boolean;
+  streamBuffer?: string;
 }

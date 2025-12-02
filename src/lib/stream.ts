@@ -9,7 +9,7 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void;
 }
 
-export async function streamAnswer(
+export async function streamEvent(
   url: string,
   payload: Record<string, unknown>,
   callbacks: StreamCallbacks
@@ -30,36 +30,57 @@ export async function streamAnswer(
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No response body");
 
-  let buffer = "";
   const decoder = new TextDecoder();
+  let buffer = "";
 
   const dispatch = (event: string, rawData: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let data: any = rawData;
+    let data: unknown = rawData;
 
-    // JSON? parse safely
     try {
       data = JSON.parse(rawData);
-    } catch {}
-
-    callbacks.onEvent?.(event, data);
+    } catch {
+      // Keep data as raw string if not JSON
+    }
 
     switch (event) {
       case "conversation":
-        callbacks.onConversation?.(data.conversation_id);
+        callbacks.onConversation?.((data as any)?.conversation_id);
         break;
       case "sources":
-        callbacks.onSources?.(data);
+        callbacks.onSources?.(data as PaperSource[]);
         break;
       case "chunk":
         callbacks.onChunk?.(typeof data === "string" ? data : rawData);
         break;
+      case "event":
+        callbacks.onEvent?.(event, data);
+        break;
       case "done":
         callbacks.onDone?.();
         break;
-      default:
-        console.warn("Unknown event type:", event);
-        break;
+    }
+  };
+
+  const processSSEMessage = (msg: string) => {
+    const lines = msg.split("\n");
+    let event = "chunk";
+    const dataLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith("event:")) {
+        event = line.slice("event:".length).trim();
+      } else if (line.startsWith("data:")) {
+        const content = line.slice("data:".length + 1);
+        dataLines.push(content);
+      } else {
+        dataLines.push("\n");
+        dataLines.push(line);
+      }
+    }
+
+    const data = dataLines.join("");
+    if (data || event !== "chunk") {
+      dispatch(event, data);
     }
   };
 
@@ -68,33 +89,28 @@ export async function streamAnswer(
       const { value, done } = await reader.read();
       if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
+      // Decode chunk properly without losing data
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
 
-      // SSE messages split by blank lines
-      const messages = buffer.split("\n\n");
-      buffer = messages.pop() || "";
-
-      for (const msg of messages) {
-        if (!msg.trim()) continue;
-
-        const lines = msg.split("\n");
-        let event = "message";
-        // eslint-disable-next-line prefer-const
-        let dataLines: string[] = [];
-
-        for (const line of lines) {
-          if (line.startsWith("event:")) event = line.slice(6).trim();
-          if (line.startsWith("data:"))
-            dataLines.push(line.slice(5).trimStart());
+      // Process complete SSE messages (delimited by double newline)
+      let idx;
+      while ((idx = buffer.indexOf("\n\n")) !== -1) {
+        const msg = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        if (msg.trim()) {
+          processSSEMessage(msg);
         }
-
-        dispatch(event, dataLines.join("\n"));
       }
+    }
+
+    // Process any remaining data in buffer
+    if (buffer.trim()) {
+      processSSEMessage(buffer);
     }
   } catch (err) {
     const e = err instanceof Error ? err : new Error(String(err));
     callbacks.onError?.(e);
-    throw e;
   } finally {
     reader.releaseLock();
   }

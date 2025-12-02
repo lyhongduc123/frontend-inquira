@@ -4,6 +4,7 @@
 /* Custom markdown styles */
 .markdown-content {
   color: var(--foreground);
+  line-height: 1.6;
 }
 
 .markdown-content code {
@@ -18,4 +19,42 @@
 .markdown-content pre code {
   background-color: transparent;
   padding: 0;
+}
+
+/* List styles */
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.markdown-content li {
+  margin: 0.25em 0;
+  line-height: 1.6;
+}
+
+.markdown-content ul {
+  list-style-type: disc;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+}
+
+.markdown-content ul ul {
+  list-style-type: circle;
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+.markdown-content ul ul ul {
+  list-style-type: square;
+}
+
+.markdown-content li > p {
+  margin: 0;
+}
+
+.markdown-content li + li {
+  margin-top: 0.25em;
 }

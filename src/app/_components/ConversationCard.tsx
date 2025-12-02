@@ -7,7 +7,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Conversation, conversationsApi } from "@/lib/conversations-api";
+import { conversationsApi } from "@/lib/conversations-api";
+import { Conversation } from "@/types/conversation.type";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EllipsisVerticalIcon } from "lucide-react";

@@ -1,11 +1,11 @@
-import { streamAnswer } from "./stream";
+import { streamEvent } from "./stream";
 
 export async function streamText(
   url: string,
   query: string,
   onToken: (text: string) => void
 ) {
-  return streamAnswer(
+  return streamEvent(
     url,
     { query },
     {

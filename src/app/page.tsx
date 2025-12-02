@@ -1,199 +1,60 @@
 "use client";
 
-import { useState } from "react";
-import { ChatMessages } from "./_components/ChatMessages";
+import { MessageArea } from "./_components/MessageArea";
 import { ChatInput } from "./_components/ChatInput";
-import { LeftSidebar } from "./_components/Sidebar";
-import { streamAnswer } from "@/lib/stream";
-import { Message } from "@/types/message.type";
+import { LeftSidebar } from "./_components/LeftSidebar";
 import { Header } from "@/components/global/header";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { conversationsApi } from "@/lib/conversations-api";
+import { useChat } from "@/hooks/use-chat";
+import { useConversation } from "@/hooks/use-conversation";
+import { useProgressTracking } from "@/hooks/use-progress-tracking";
+import { useConversationStore } from "@/store/conversation-store";
+import { Message } from "@/types/message.type";
 
 export default function ChatPage() {
-  const [progressSteps, setProgressSteps] = useState<string[]>([]);
-  const [progressSubtopics, setProgressSubtopics] = useState<
-    [string, string][]
-  >([]);
-  const [progressThoughts, setProgressThoughts] = useState<string[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [isError, setIsError] = useState(false);
-  const [lastFailedQuery, setLastFailedQuery] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [currentConversationId, setCurrentConversationId] = useState<
-    string | null
-  >(null);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const isSidebarOpen = useConversationStore((state) => state.isSidebarOpen);
+  const toggleSidebar = useConversationStore((state) => state.toggleSidebar);
+  const refreshTrigger = useConversationStore((state) => state.refreshTrigger);
 
-  async function handleSend(query: string) {
-    setIsError(false);
-    setLastFailedQuery(null);
+  const {
+    currentConversationId,
+    isLoadingMessages,
+    loadConversation,
+    resetConversation,
+    deleteConversation,
+  } = useConversation();
 
-    // If there is already a user message, start a new chat (reset messages)
-    setMessages((prev) => {
-      const hasUserMessage = prev.some((msg) => msg.role === "user");
-      if (hasUserMessage) {
-        return [{ role: "user", text: query } as Message];
-      }
-      return [...prev, { role: "user", text: query } as Message];
-    });
-    setIsStreaming(true);
+  const { messages, isStreaming, sendMessage, clearMessages } = useChat({
+    onConversationCreated: (conversationId: string) => {
+      useConversationStore.getState().setCurrentConversationId(conversationId);
+      useConversationStore.getState().incrementRefreshTrigger();
+    },
+  });
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        text: "",
-      } as Message,
-    ]);
+  const { progress, resetProgress } = useProgressTracking();
 
-    try {
-      await streamAnswer(
-        "/api",
-        { query, conversation_id: currentConversationId || undefined },
-        {
-          onConversation: (conversationId) => {
-            console.log("Conversation ID:", conversationId);
-            setCurrentConversationId(conversationId);
-          },
-          onSources: (sources) => {
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
-              return [...prev.slice(0, -1), { ...last, sources }];
-            });
-            console.log("Received sources:", sources);
-          },
-          onChunk: (chunk) => {
-            console.log("Received chunk:", chunk);
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
+  const handleSend = async (query: string) => {
+    await sendMessage(query, currentConversationId);
+  };
 
-              return [
-                ...prev.slice(0, -1),
-                {
-                  ...last,
-                  streamBuffer: (last.streamBuffer ?? "") + chunk,
-                },
-              ];
-            });
-          },
-          onEvent: (type, data) => {
-            if (type === "step" && typeof data === "string") {
-              setProgressSteps((prev) => [...prev, data]);
-            }
-            if (type === "thought" && typeof data === "string") {
-              setProgressThoughts((prev) => [...prev, data]);
-            }
-            if (type === "subtopics" && Array.isArray(data)) {
-              setProgressSubtopics(
-                data.filter(
-                  (item) =>
-                    Array.isArray(item) &&
-                    item.length === 2 &&
-                    item.every((v) => typeof v === "string")
-                )
-              );
-            }
-          },
-          onDone: () => {
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
+  const handleSelectConversation = async (conversationId: string) => {
+    await loadConversation(conversationId);
+  };
 
-              return [
-                ...prev.slice(0, -1),
-                {
-                  ...last,
-                  text: last.streamBuffer ?? "",
-                  streamBuffer: undefined,
-                  done: true,
-                },
-              ];
-            });
-          },
-          onError: (error) => {
-            console.error("Stream error:", error);
-            setMessages((prev) => {
-              const last = prev[prev.length - 1];
-              return [
-                ...prev.slice(0, -1),
-                { ...last, text: "Error: Failed to get response from server." },
-              ];
-            });
-            setIsError(true);
-            setLastFailedQuery(query);
-          },
-        }
-      );
-    } catch (error) {
-      console.error("Streaming error:", error);
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        return [
-          ...prev.slice(0, -1),
-          { ...last, text: "Error: Failed to get response from server." },
-        ];
-      });
-      setIsError(true);
-      setLastFailedQuery(query);
-    } finally {
-      setIsStreaming(false);
+  const handleNewConversation = () => {
+    resetConversation();
+    clearMessages();
+    resetProgress();
+  };
+
+  const handleDeleteConversation = async (conversationId: string) => {
+    const shouldReset = await deleteConversation(conversationId);
+    if (shouldReset) {
+      handleNewConversation();
     }
-  }
-
-  function handleRetry() {
-    if (lastFailedQuery) {
-      setMessages((prev) => prev.slice(0, -2));
-      handleSend(lastFailedQuery);
-    }
-  }
-
-  async function handleSelectConversation(conversationId: string) {
-    if (conversationId === currentConversationId) return;
-
-    try {
-      setIsLoadingMessages(true);
-      setCurrentConversationId(conversationId);
-
-      const conversation = await conversationsApi.get(conversationId);
-      const loadedMessages: Message[] = conversation.messages.map((msg) => ({
-        id: msg.id,
-        role: msg.role as "user" | "assistant",
-        text: msg.content,
-        done: true,
-        streamBuffer: undefined,
-        sources: [...(msg.sources || [])],
-      }));
-      console.log("Loaded conversation messages:", loadedMessages);
-
-      setMessages(loadedMessages);
-      setIsError(false);
-      setLastFailedQuery(null);
-    } catch (error) {
-      console.error("Failed to load conversation messages:", error);
-      setMessages([]);
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }
-
-  function handleNewChat() {
-    setCurrentConversationId(null);
-    setMessages([]);
-    setIsError(false);
-    setLastFailedQuery(null);
-    setProgressSteps([]);
-    setProgressSubtopics([]);
-    setProgressThoughts([]);
-  }
-
-  async function handleDeleteConversation(conversationId: string) {
-    if (conversationId === currentConversationId) {
-      handleNewChat();
-    }
-  }
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -201,17 +62,18 @@ export default function ChatPage() {
       <div className="flex flex-row flex-1 overflow-hidden">
         <LeftSidebar
           isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+          onToggle={toggleSidebar}
           onSelectConversation={handleSelectConversation}
-          onNewChat={handleNewChat}
-          onDelete={handleDeleteConversation}
+          onNewConversation={handleNewConversation}
+          onDeleteConversation={handleDeleteConversation}
           currentConversationId={currentConversationId || undefined}
+          refreshTrigger={refreshTrigger}
         />
         <div className="flex flex-col flex-1 h-full relative">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            onClick={toggleSidebar}
             className="absolute left-4 top-4 z-10 min-h-8 min-w-8 h-8 w-8 rounded-full border border-border bg-background shadow-md hover:bg-muted"
           >
             <Sidebar
@@ -222,59 +84,84 @@ export default function ChatPage() {
             />
           </Button>
           {isLoadingMessages ? (
-            // Loading state when fetching messages
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center space-y-2">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-sm text-muted-foreground">
-                  Loading messages...
-                </p>
-              </div>
-            </div>
+            <LoadingState />
           ) : messages.length === 0 ? (
-            // Centered layout for new conversation
-            <div className="flex-1 flex flex-col items-center justify-center px-4">
-              <div className="w-full max-w-3xl space-y-6">
-                <div className="text-center space-y-2 mb-8">
-                  <h1 className="text-4xl font-bold">Welcome to Exegent</h1>
-                  <p className="text-muted-foreground">
-                    Your AI-powered research assistant. Ask questions and get
-                    evidence-based answers with citations.
-                  </p>
-                </div>
-                <ChatInput
-                  onSend={handleSend}
-                  isDisabled={isStreaming}
-                  showRetry={isError && lastFailedQuery !== null}
-                  onRetry={handleRetry}
-                />
-              </div>
-            </div>
+            <EmptyState onSend={handleSend} isDisabled={isStreaming} />
           ) : (
-            // Normal layout for active conversation
-            <>
-              <div className="flex-1 overflow-y-auto">
-                <ChatMessages
-                  messages={messages}
-                  progressSteps={progressSteps}
-                  progressSubtopics={progressSubtopics}
-                  progressThoughts={progressThoughts}
-                />
-              </div>
-              <div className="border-t bg-background shrink-0">
-                <div className="max-w-3xl mx-auto px-4">
-                  <ChatInput
-                    onSend={handleSend}
-                    isDisabled={isStreaming}
-                    showRetry={isError && lastFailedQuery !== null}
-                    onRetry={handleRetry}
-                  />
-                </div>
-              </div>
-            </>
+            <ChatView
+              messages={messages}
+              progress={progress}
+              onSend={handleSend}
+              isStreaming={isStreaming}
+            />
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="text-center space-y-2">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="text-sm text-muted-foreground">Loading messages...</p>
+      </div>
+    </div>
+  );
+}
+
+interface EmptyStateProps {
+  onSend: (query: string) => void;
+  isDisabled: boolean;
+}
+
+function EmptyState({ onSend, isDisabled }: EmptyStateProps) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center px-4">
+      <div className="w-full max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="text-center space-y-3">
+          <h1 className="text-4xl font-bold bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Welcome to Exegent
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Your AI-powered research assistant. Ask questions and get
+            evidence-based answers with citations.
+          </p>
+        </div>
+        <ChatInput onSend={onSend} isDisabled={isDisabled} isAtBottom={false} />
+      </div>
+    </div>
+  );
+}
+
+interface ChatViewProps {
+  messages: Message[];
+  progress: {
+    steps: string[];
+    subtopics: [string, string][];
+    thoughts: string[];
+  };
+  onSend: (query: string) => void;
+  isStreaming: boolean;
+}
+
+function ChatView({ messages, progress, onSend, isStreaming }: ChatViewProps) {
+  return (
+    <>
+      <div className="flex-1 overflow-y-auto relative">
+        <MessageArea
+          messages={messages}
+          progressSteps={progress.steps}
+          progressSubtopics={progress.subtopics}
+          progressThoughts={progress.thoughts}
+        />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-background via-background/80 to-transparent" />
+      </div>
+      <div className="relative bg-transparent shrink-0 z-10">
+        <ChatInput onSend={onSend} isDisabled={isStreaming} isAtBottom={true} />
+      </div>
+    </>
   );
 }
