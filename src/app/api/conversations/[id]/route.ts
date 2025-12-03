@@ -11,11 +11,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'Authorization': request.headers.get('Authorization') || '',
+    };
 
     const response = await fetch(`${BACKEND_URL}/api/v1/conversations/${id}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -47,12 +49,14 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'Authorization': request.headers.get('Authorization') || '',
+    };
 
     const response = await fetch(`${BACKEND_URL}/api/v1/conversations/${id}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(body),
     });
 

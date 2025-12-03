@@ -2,11 +2,16 @@ export async function POST(req: Request) {
   const { query } = await req.json();
   
   const apiUrl = process.env.API_URL || 'http://localhost:8000';
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    "Authorization": req.headers.get("Authorization") || "",
+  };
   
   try {
     const res = await fetch(`${apiUrl}/api/v1/chat/stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ query, stream: true }),
     });
 

@@ -3,9 +3,10 @@
 import React from "react";
 import { Streamdown } from "streamdown";
 import { PaperSource } from "@/types/paper.type";
-import rehypeRaw from "rehype-raw";
 import { Citation } from "./Citation";
 import { convertCitationsToElements } from "@/lib/markdown-utils";
+import { BundledTheme } from "shiki";
+import { useTheme } from "next-themes";
 
 interface StreamdownRenderProps {
   message: string;
@@ -18,6 +19,13 @@ export function StreamdownRender({
   sources,
   isStatic = false,
 }: StreamdownRenderProps) {
+  // const { theme } = useTheme();
+
+  // const shiki = React.useMemo(() => {
+  //   const themes: [BundledTheme, BundledTheme] = ["github-light", "dracula"];
+  //   return themes;
+  // }, []);
+
   const getSourceById = (id: string): PaperSource | undefined => {
     if (!Array.isArray(sources)) return undefined;
     return sources.find((src) => src.paper_id === id);
@@ -40,16 +48,16 @@ export function StreamdownRender({
   };
 
   return (
-    <div className="markdown-content">
-      <Streamdown
-        mode={isStatic ? "static" : "streaming"}
-        rehypePlugins={[rehypeRaw]}
-        components={{
-          citation: CitationComponent,
-        }}
-      >
-        {processedMessage}
-      </Streamdown>
-    </div>
+    // <div className="markdown-content">
+    <Streamdown
+      mode={isStatic ? "static" : "streaming"}
+      shikiTheme={["github-light", "github-dark"]}
+      components={{
+        citation: CitationComponent,
+      }}
+    >
+      {processedMessage}
+    </Streamdown>
+    // </div>
   );
 }

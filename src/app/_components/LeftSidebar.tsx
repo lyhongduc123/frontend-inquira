@@ -30,7 +30,6 @@ export function LeftSidebar({
   onSelectConversation,
   onDeleteConversation: onDelete,
   currentConversationId,
-  refreshTrigger,
 }: LeftSidebarProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);

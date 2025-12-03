@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { MessageArea } from "./_components/MessageArea";
 import { ChatInput } from "./_components/ChatInput";
 import { LeftSidebar } from "./_components/LeftSidebar";
@@ -11,12 +12,21 @@ import { useChat } from "@/hooks/use-chat";
 import { useConversation } from "@/hooks/use-conversation";
 import { useProgressTracking } from "@/hooks/use-progress-tracking";
 import { useConversationStore } from "@/store/conversation-store";
+import { useAuthStore } from "@/store/auth-store";
 import { Message } from "@/types/message.type";
 
 export default function ChatPage() {
   const isSidebarOpen = useConversationStore((state) => state.isSidebarOpen);
   const toggleSidebar = useConversationStore((state) => state.toggleSidebar);
   const refreshTrigger = useConversationStore((state) => state.refreshTrigger);
+
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthLoading = useAuthStore((state) => state.isLoading);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const {
     currentConversationId,
@@ -60,29 +70,33 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen">
       <Header />
       <div className="flex flex-row flex-1 overflow-hidden">
-        <LeftSidebar
-          isOpen={isSidebarOpen}
-          onToggle={toggleSidebar}
-          onSelectConversation={handleSelectConversation}
-          onNewConversation={handleNewConversation}
-          onDeleteConversation={handleDeleteConversation}
-          currentConversationId={currentConversationId || undefined}
-          refreshTrigger={refreshTrigger}
-        />
+        {!isAuthLoading && isAuthenticated && (
+          <LeftSidebar
+            isOpen={isSidebarOpen}
+            onToggle={toggleSidebar}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+            onDeleteConversation={handleDeleteConversation}
+            currentConversationId={currentConversationId || undefined}
+            refreshTrigger={refreshTrigger}
+          />
+        )}
         <div className="flex flex-col flex-1 h-full relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="absolute left-4 top-4 z-10 min-h-8 min-w-8 h-8 w-8 rounded-full border border-border bg-background shadow-md hover:bg-muted"
-          >
-            <Sidebar
-              className={cn(
-                "h-4 w-4 transition-transform duration-300",
-                isSidebarOpen ? "" : "rotate-180"
-              )}
-            />
-          </Button>
+          {!isAuthLoading && isAuthenticated && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="absolute left-4 top-4 z-10 min-h-8 min-w-8 h-8 w-8 rounded-full border border-border bg-background shadow-md hover:bg-muted"
+            >
+              <Sidebar
+                className={cn(
+                  "h-4 w-4 transition-transform duration-300",
+                  isSidebarOpen ? "" : "rotate-180"
+                )}
+              />
+            </Button>
+          )}
           {isLoadingMessages ? (
             <LoadingState />
           ) : messages.length === 0 ? (
@@ -150,7 +164,7 @@ interface ChatViewProps {
 function ChatView({ messages, progress, onSend, isStreaming }: ChatViewProps) {
   return (
     <>
-      <div className="flex-1 overflow-y-auto relative">
+      <div className="flex-1 overflow-y-hidden relative">
         <MessageArea
           messages={messages}
           progressSteps={progress.steps}

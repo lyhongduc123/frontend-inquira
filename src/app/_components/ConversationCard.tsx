@@ -64,7 +64,7 @@ export function ConversationCard({
       onClick={onClick}
     >
       <div className="flex-1 min-w-0 select-none">
-        <p className="text-sm font-medium truncate text-foreground overflow-ellipsis">
+        <p className="text-sm font-medium text-foreground line-clamp-1">
           {conversation.title || "New Conversation"}
         </p>
         <p className="text-xs text-muted-foreground">
