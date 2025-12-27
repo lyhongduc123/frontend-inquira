@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { SidebarButton } from "./LeftSidebarButton";
-import { ModeToggle } from "./ThemeButton";
+import { ThemeToggle } from "./ThemeButton";
 import { conversationsApi } from "@/lib/conversations-api";
 import { ConversationCard } from "./ConversationCard";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,15 +33,19 @@ export function LeftSidebar({
 }: LeftSidebarProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const newConversationId = useConversationStore((state) => state.newConversationId);
-  const setNewConversationId = useConversationStore((state) => state.setNewConversationId);
+
+  const newConversationId = useConversationStore(
+    (state) => state.newConversationId
+  );
+  const setNewConversationId = useConversationStore(
+    (state) => state.setNewConversationId
+  );
 
   const loadConversations = useCallback(async () => {
     try {
       setLoading(true);
       const response = await conversationsApi.list(1, 20, false);
-      setConversations(response.conversations);
+      setConversations(response.items);
     } catch (error) {
       console.error("Failed to load conversations:", error);
     } finally {
@@ -61,7 +65,15 @@ export function LeftSidebar({
       // Fetch only the new conversation and prepend it
       const fetchNewConversation = async () => {
         try {
-          const conversation = await conversationsApi.get(newConversationId);
+          const conversationDetail = await conversationsApi.get(newConversationId);
+          // Extract only the Conversation fields from ConversationDetail
+          const conversation: Conversation = {
+            id: conversationDetail.id,
+            title: conversationDetail.title,
+            message_count: conversationDetail.message_count,
+            is_archived: conversationDetail.is_archived,
+            last_updated: conversationDetail.updated_at,
+          };
           setConversations((prev) => {
             // Check if it already exists
             const exists = prev.some((c) => c.id === newConversationId);
@@ -82,7 +94,7 @@ export function LeftSidebar({
   const handleNewConversation = async () => {
     if (onNewConversation) {
       onNewConversation();
-      await loadConversations();
+      // Don't reload all conversations - the useEffect will handle adding the new one
     }
   };
 
@@ -136,18 +148,22 @@ export function LeftSidebar({
                       <motion.div
                         key={conversation.id}
                         layout
-                        initial={isNew ? { opacity: 0, y: -20, scale: 0.95 } : false}
+                        initial={
+                          isNew ? { opacity: 0, y: -20, scale: 0.95 } : false
+                        }
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, x: -20, scale: 0.95 }}
-                        transition={{ 
+                        transition={{
                           duration: 0.3,
-                          ease: "easeOut"
+                          ease: "easeOut",
                         }}
                       >
                         <ConversationCard
                           currentConversationId={currentConversationId || ""}
                           conversation={conversation}
-                          onClick={() => onSelectConversation?.(conversation.id)}
+                          onClick={() =>
+                            onSelectConversation?.(conversation.id)
+                          }
                           onDelete={onDeleteConversation}
                         />
                       </motion.div>
@@ -158,13 +174,8 @@ export function LeftSidebar({
             </div>
           )}
         </ScrollArea>
-        <div
-          className={cn(
-            "sticky bottom-0 p-4",
-            !isOpen && "flex justify-center"
-          )}
-        >
-          <ModeToggle />
+        <div className={cn("sticky bottom-0 p-4")}>
+          <ThemeToggle />
         </div>
       </div>
     </div>

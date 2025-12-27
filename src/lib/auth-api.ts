@@ -1,4 +1,5 @@
 import { User, AuthTokens } from "@/types/auth.type";
+import { apiClient } from "./api-client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -13,53 +14,28 @@ export const authApi = {
   /**
    * Get current user info
    */
-  async getMe(accessToken: string): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch user info: ${response.statusText}`);
-    }
-
-    return response.json();
+  async getMe(): Promise<User> {
+    return apiClient.get<User>("/api/v1/auth/me");
   },
 
   /**
-   * Refresh access token
+   * Refresh access token (uses skipRetry to avoid infinite loop)
    */
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to refresh token: ${response.statusText}`);
-    }
-
-    return response.json();
+    return apiClient.post<AuthTokens>(
+      "/api/v1/auth/refresh",
+      { refresh_token: refreshToken },
+      { skipAuth: true, skipRetry: true }
+    );
   },
 
   /**
    * Logout and revoke refresh token
    */
   async logout(refreshToken: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to logout: ${response.statusText}`);
-    }
+    return apiClient.post(
+      "/api/v1/auth/logout",
+      { refresh_token: refreshToken }
+    );
   },
 };

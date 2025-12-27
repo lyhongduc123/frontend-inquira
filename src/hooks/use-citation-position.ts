@@ -6,12 +6,11 @@ interface Position {
   placement: "top" | "bottom";
 }
 
-const CARD_WIDTH = 400;
-const CARD_HEIGHT = 300;
 const GAP = 8;
 
 export function useCitationPosition(
-  containerRef: RefObject<HTMLElement>,
+  triggerRef: RefObject<HTMLElement | null>,
+  cardRef: RefObject<HTMLElement | null>,
   isOpen: boolean
 ): Position {
   const [position, setPosition] = useState<Position>({
@@ -21,22 +20,27 @@ export function useCitationPosition(
   });
 
   const calculatePosition = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    const trigger = triggerRef.current;
+    const card = cardRef.current;
+    if (!trigger) return;
 
-    const rect = el.getBoundingClientRect();
+    const rect = trigger.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    
+    // Use actual card dimensions if available, otherwise use defaults
+    const cardWidth = card ? card.offsetWidth : 400;
+    const cardHeight = card ? card.offsetHeight : 300;
 
-    const vertical = calculateVerticalPosition(rect, vh);
-    const horizontal = calculateHorizontalPosition(rect, vw);
+    const vertical = calculateVerticalPosition(rect, vh, cardHeight);
+    const horizontal = calculateHorizontalPosition(rect, vw, cardWidth);
 
     setPosition({
       top: vertical.top,
       left: horizontal,
       placement: vertical.placement,
     });
-  }, [containerRef]);
+  }, [triggerRef, cardRef]);
 
   useLayoutEffect(() => {
     if (!isOpen) return;
@@ -65,13 +69,14 @@ export function useCitationPosition(
 
 function calculateVerticalPosition(
   rect: DOMRect,
-  vh: number
+  vh: number,
+  cardHeight: number
 ): { top: number; placement: "top" | "bottom" } {
   const spaceBelow = vh - rect.bottom;
   const spaceAbove = rect.top;
 
-  const fitsBelow = spaceBelow >= CARD_HEIGHT + GAP;
-  const fitsAbove = spaceAbove >= CARD_HEIGHT + GAP;
+  const fitsBelow = spaceBelow >= cardHeight + GAP;
+  const fitsAbove = spaceAbove >= cardHeight + GAP;
 
   if (fitsBelow) {
     // Position below the trigger
@@ -80,7 +85,7 @@ function calculateVerticalPosition(
 
   if (fitsAbove) {
     // Position above the trigger
-    return { top: rect.top - CARD_HEIGHT - GAP, placement: "top" };
+    return { top: rect.top - cardHeight - GAP, placement: "top" };
   }
 
   // When both sides are cramped, choose the side with more space
@@ -88,39 +93,34 @@ function calculateVerticalPosition(
     return { top: rect.bottom + GAP, placement: "bottom" };
   }
 
-  return { top: rect.top - CARD_HEIGHT - GAP, placement: "top" };
+  return { top: rect.top - cardHeight - GAP, placement: "top" };
 }
 
-function calculateHorizontalPosition(rect: DOMRect, vw: number): number {
-  const spaceToRight = vw - rect.left;
-  const spaceToLeft = rect.right;
+function calculateHorizontalPosition(rect: DOMRect, vw: number, cardWidth: number): number {
+  // Calculate center position relative to the citation trigger
+  const triggerCenter = rect.left + rect.width / 2;
+  const cardCenterOffset = cardWidth / 2;
+  const idealLeft = triggerCenter - cardCenterOffset;
 
-  // Ideal: align left edge if possible
-  if (spaceToRight >= CARD_WIDTH) {
-    return rect.left;
+  // Check if centered position fits within viewport with gap
+  const fitsLeft = idealLeft >= GAP;
+  const fitsRight = idealLeft + cardWidth <= vw - GAP;
+
+  // If centered position fits, use it
+  if (fitsLeft && fitsRight) {
+    return idealLeft;
   }
 
-  // Otherwise try aligning right edge
-  if (spaceToLeft >= CARD_WIDTH) {
-    return rect.right - CARD_WIDTH;
+  // If card would overflow on the right, align to right edge
+  if (!fitsRight) {
+    return vw - cardWidth - GAP;
   }
 
-  // Center if possible
-  const centerOffset = (CARD_WIDTH - rect.width) / 2;
-  const canCenter =
-    rect.left - centerOffset >= GAP &&
-    rect.left - centerOffset + CARD_WIDTH <= vw - GAP;
-
-  if (canCenter) {
-    return rect.left - centerOffset;
-  }
-
-  // Clamp to viewport edges
-  if (rect.left < vw / 2) {
-    // Clamp left side
+  // If card would overflow on the left, align to left edge
+  if (!fitsLeft) {
     return GAP;
   }
 
-  // Clamp right side
-  return vw - CARD_WIDTH - GAP;
+  // Fallback to left edge (shouldn't normally reach here)
+  return GAP;
 }

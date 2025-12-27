@@ -13,13 +13,14 @@ interface CitationProps {
   source?: PaperSource;
 }
 
-export function Citation({ number, paperId, source }: CitationProps) {
+export function Citation({ number, source }: Omit<CitationProps, 'paperId'> & { paperId?: string }) {
   const [open, setOpen] = React.useState(false);
   const containerRef = React.useRef<HTMLSpanElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
 
-  useClickOutside(containerRef, () => setOpen(false), open);
-  const position = useCitationPosition(containerRef, open);
+  useClickOutside(containerRef as React.RefObject<HTMLElement>, () => setOpen(false), open);
+  const position = useCitationPosition(triggerRef, cardRef, open);
 
   if (!source) {
     return <span>[{number}]</span>;
@@ -31,6 +32,7 @@ export function Citation({ number, paperId, source }: CitationProps) {
       style={{ position: "relative", display: "inline-block" }}
     >
       <CitationTrigger
+        ref={triggerRef}
         paperDetail={source}
         number={Number(number)}
         isVisible={true}

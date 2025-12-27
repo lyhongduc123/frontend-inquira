@@ -36,7 +36,7 @@ export const useAuthStore = create<AuthState>()(
       login: async (tokens: AuthTokens) => {
         try {
           set({ tokens, isLoading: true });
-          const user = await authApi.getMe(tokens.access_token);
+          const user = await authApi.getMe();
           set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
           console.error("Login failed:", error);
@@ -66,7 +66,7 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const newTokens = await authApi.refreshToken(tokens.refresh_token);
-          const user = await authApi.getMe(newTokens.access_token);
+          const user = await authApi.getMe();
           set({ tokens: newTokens, user, isAuthenticated: true });
         } catch (error) {
           console.error("Token refresh failed:", error);
@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
         }
 
         try {
-          const user = await authApi.getMe(tokens.access_token);
+          const user = await authApi.getMe();
           set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
           console.error("Auth check failed:", error);

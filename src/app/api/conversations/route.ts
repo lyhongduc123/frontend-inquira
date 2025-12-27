@@ -30,15 +30,17 @@ export async function GET(request: NextRequest) {
       headers,
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.text();
+      // Backend returns ApiResponse with error field
       return NextResponse.json(
-        { error: `Failed to fetch conversations: ${error}` },
+        data,
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    // Pass through the ApiResponse structure
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching conversations:', error);
@@ -66,15 +68,17 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.text();
+      // Backend returns ApiResponse with error field
       return NextResponse.json(
-        { error: `Failed to create conversation: ${error}` },
+        data,
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    // Pass through the ApiResponse structure
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error creating conversation:', error);

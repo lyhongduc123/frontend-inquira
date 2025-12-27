@@ -14,8 +14,8 @@ export function useConversation() {
   const incrementRefreshTrigger = useConversationStore((state) => state.incrementRefreshTrigger);
   const setNewConversationId = useConversationStore((state) => state.setNewConversationId);
 
-  const createConversation = useCallback(async (): Promise<Conversation> => {
-    const conversation = await conversationsApi.create();
+  const createConversation = useCallback(async (title?: string): Promise<Conversation> => {
+    const conversation = await conversationsApi.create(title);
     setCurrentConversationId(conversation.id);
     setNewConversationId(conversation.id);
     incrementRefreshTrigger();
@@ -26,6 +26,12 @@ export function useConversation() {
     async (conversationId: string): Promise<Message[]> => {
       if (conversationId === currentConversationId) {
         return [];
+      }
+
+      // Abort any ongoing stream before switching
+      const { abortStream } = useConversationStore.getState();
+      if (abortStream) {
+        abortStream();
       }
 
       setIsLoadingMessages(true);

@@ -1,10 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperSource } from "@/types/paper.type";
 import { ExternalLink, FileText } from "lucide-react";
 
@@ -18,6 +13,7 @@ export function CitationCard({ paperDetail }: CitationCardProps) {
 
   const hasFullText = !!paperDetail.pdf_url;
   const displayUrl = hasFullText ? paperDetail.pdf_url : paperDetail.url;
+  const authors = paperDetail?.authors ?? [];
 
   return (
     <Card className="shadow-lg max-w-6xl">
@@ -25,13 +21,12 @@ export function CitationCard({ paperDetail }: CitationCardProps) {
         <CardTitle className="font-semibold leading-tight line-clamp-3">
           {paperDetail.title}
         </CardTitle>
-        {paperDetail.authors && paperDetail.authors.length > 0 && (
+        {authors.length > 0 && (
           <p className="text-xs text-muted-foreground mt-2">
-            {paperDetail.authors
+            {authors
               .slice(0, 3)
               .map((a) => a.name)
               .join(", ")}
-            {paperDetail.authors.length > 3 && ` et al.`}
           </p>
         )}
         <div className="flex gap-2 text-xs text-muted-foreground mt-1">

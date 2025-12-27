@@ -16,17 +16,38 @@ export function normalizeMarkdownLists(text: string): string {
   );
 }
 
+import type { PaperSource } from "@/types/paper.type";
+
 /**
  * Converts markdown citation links to custom citation HTML elements.
+ * Supports formats:
+ * - (cite:paper_id) - auto-numbered citations, matched against sources array
+ * - [1](paper_id) - legacy format with explicit numbers
+ * Citation numbers match the position in the sources array.
  */
-export function convertCitationsToElements(
-  text: string,
-  getSourceById: (id: string) => boolean
-): string {
-  return text.replace(/\[(\d+)\]\(([^)]+)\)/g, (match, number, paperId) => {
-    if (!getSourceById(paperId)) {
-      return `[${number}]`;
+export function convertCitationsToElements(text: string, sources?: PaperSource[]): string {
+  // Create a map of paper_id to citation number (based on position in sources array)
+  const citationMap = new Map<string, number>();
+  if (sources && Array.isArray(sources)) {
+    sources.forEach((source, index) => {
+      citationMap.set(source.paper_id, index + 1);
+    });
+  }
+
+  // First, replace (cite:paper_id) format with numbers from sources
+  let result = text.replace(/\(cite:([^)]+)\)/g, (match, paperId) => {
+    const number = citationMap.get(paperId);
+    if (number !== undefined) {
+      return `<citation data-id="${paperId}" data-number="${number}"/>`;
     }
-    return `<citation data-id="${paperId}" data-number="${number}"></citation>`;
+    // If paper_id not in sources, return empty or just the number
+    return '';
   });
+
+  // Also support legacy [1](paper_id) format
+  result = result.replace(/\[(\d+)\]\(([^)]+)\)/g, (match, number, paperId) => {
+    return `<citation data-id="${paperId}" data-number="${number}"/>`;
+  });
+
+  return result;
 }

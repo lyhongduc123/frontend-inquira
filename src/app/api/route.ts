@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   };
   
   try {
-    const res = await fetch(`${apiUrl}/api/v1/chat/stream`, {
+    const res = await fetch(`${apiUrl}/api/v1/chat/test-stream`, {
       method: "POST",
       headers,
       body: JSON.stringify({ query, stream: true }),

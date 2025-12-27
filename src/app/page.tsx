@@ -10,7 +10,7 @@ import { Sidebar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChat } from "@/hooks/use-chat";
 import { useConversation } from "@/hooks/use-conversation";
-import { useProgressTracking } from "@/hooks/use-progress-tracking";
+import { ProgressState, useProgressTracking } from "@/hooks/use-progress-tracking";
 import { useConversationStore } from "@/store/conversation-store";
 import { useAuthStore } from "@/store/auth-store";
 import { Message } from "@/types/message.type";
@@ -36,14 +36,18 @@ export default function ChatPage() {
     deleteConversation,
   } = useConversation();
 
-  const { messages, isStreaming, sendMessage, clearMessages } = useChat({
+  const { progress, handlePhase, handleThought, handleAnalysis, resetProgress } = useProgressTracking();
+
+  const { messages, isStreaming, isError, sendMessage, clearMessages } = useChat({
     onConversationCreated: (conversationId: string) => {
       useConversationStore.getState().setCurrentConversationId(conversationId);
       useConversationStore.getState().incrementRefreshTrigger();
     },
+    onPhase: handlePhase,
+    onThought: handleThought,
+    onAnalysis: handleAnalysis,
+    onError: resetProgress,
   });
-
-  const { progress, resetProgress } = useProgressTracking();
 
   const handleSend = async (query: string) => {
     await sendMessage(query, currentConversationId);
@@ -54,7 +58,9 @@ export default function ChatPage() {
   };
 
   const handleNewConversation = () => {
+    // First clear the conversation state (including loading flag)
     resetConversation();
+    // Then clear messages and progress
     clearMessages();
     resetProgress();
   };
@@ -152,11 +158,7 @@ function EmptyState({ onSend, isDisabled }: EmptyStateProps) {
 
 interface ChatViewProps {
   messages: Message[];
-  progress: {
-    steps: string[];
-    subtopics: [string, string][];
-    thoughts: string[];
-  };
+  progress: ProgressState;
   onSend: (query: string) => void;
   isStreaming: boolean;
 }
@@ -167,9 +169,8 @@ function ChatView({ messages, progress, onSend, isStreaming }: ChatViewProps) {
       <div className="flex-1 overflow-y-hidden relative">
         <MessageArea
           messages={messages}
-          progressSteps={progress.steps}
-          progressSubtopics={progress.subtopics}
-          progressThoughts={progress.thoughts}
+          progress={progress}
+          isStreaming={isStreaming}
         />
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-background via-background/80 to-transparent" />
       </div>

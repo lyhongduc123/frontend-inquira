@@ -12,6 +12,9 @@ interface ConversationState {
   refreshTrigger: number;
   newConversationId: string | null; // Track newly created conversation for animation
   
+  // Stream abort callback
+  abortStream: (() => void) | null;
+  
   // Actions
   setCurrentConversationId: (id: string | null) => void;
   setMessages: (messages: Message[]) => void;
@@ -19,6 +22,7 @@ interface ConversationState {
   toggleSidebar: () => void;
   incrementRefreshTrigger: () => void;
   setNewConversationId: (id: string | null) => void;
+  setAbortStream: (callback: (() => void) | null) => void;
   clearConversation: () => void;
 }
 
@@ -30,6 +34,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
   isSidebarOpen: true,
   refreshTrigger: 0,
   newConversationId: null,
+  abortStream: null,
 
   // Actions
   setCurrentConversationId: (id) => set({ currentConversationId: id }),
@@ -44,9 +49,18 @@ export const useConversationStore = create<ConversationState>((set) => ({
   
   setNewConversationId: (id) => set({ newConversationId: id }),
   
-  clearConversation: () => set({
-    currentConversationId: null,
-    messages: [],
-    isLoadingMessages: false,
+  setAbortStream: (callback) => set({ abortStream: callback }),
+  
+  clearConversation: () => set((state) => {
+    // Abort any ongoing stream before clearing
+    if (state.abortStream) {
+      state.abortStream();
+    }
+    return {
+      currentConversationId: null,
+      messages: [],
+      isLoadingMessages: false,
+      abortStream: null,
+    };
   }),
 }));

@@ -32,32 +32,29 @@ export function StreamdownRender({
   };
 
   const processedMessage = React.useMemo(() => {
-    const sourceExists = (id: string) => {
-      if (!Array.isArray(sources)) return false;
-      return sources.some((src) => src.paper_id === id);
-    };
-    return convertCitationsToElements(message, sourceExists);
+    return convertCitationsToElements(message, sources);
   }, [message, sources]);
 
-  const CitationComponent = (props: { [key: string]: string }) => {
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const CitationComponent = React.useCallback((props: { [key: string]: string }) => {
     const number = props["data-number"];
     const paperId = props["data-id"];
     const source = getSourceById(paperId);
 
     return <Citation number={number} paperId={paperId} source={source} />;
-  };
+  }, [sources]); // Re-create when sources change
 
   return (
-    // <div className="markdown-content">
-    <Streamdown
-      mode={isStatic ? "static" : "streaming"}
-      shikiTheme={["github-light", "github-dark"]}
-      components={{
-        citation: CitationComponent,
-      }}
-    >
-      {processedMessage}
-    </Streamdown>
-    // </div>
+    <div className="markdown-content">
+      <Streamdown
+        mode={"streaming"}
+        shikiTheme={["github-light", "github-dark"]}
+        components={{
+          citation: CitationComponent,
+        }}
+      >
+        {processedMessage}
+      </Streamdown>
+    </div>
   );
 }

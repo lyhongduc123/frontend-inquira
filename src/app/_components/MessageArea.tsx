@@ -12,19 +12,19 @@ import {
 } from "@/components/ui/empty";
 import { Brand } from "@/components/global/brand";
 import { MessageSection } from "./MessageSection";
+import { ProgressState } from "@/hooks/use-progress-tracking";
+import { QueryProgress } from "./QueryProgress";
 
 interface MessageAreaProps {
   messages: Message[];
-  progressSteps?: string[];
-  progressSubtopics?: [string, string][];
-  progressThoughts?: string[];
+  progress: ProgressState;
+  isStreaming: boolean;
 }
 
 export function MessageArea({
   messages,
-  progressSteps = [],
-  progressSubtopics = [],
-  progressThoughts = [],
+  progress,
+  isStreaming
 }: MessageAreaProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
@@ -94,17 +94,33 @@ export function MessageArea({
           {messages.map((m, i) => {
             const isUserMessage = m.role === "user";
             const showDivider = !isUserMessage && i < messages.length - 1;
+            // Show progress after the last user message (even if there's an assistant message after it)
+            const nextMessage = messages[i + 1];
+            const isLastUserMessageBeforeAssistant = isUserMessage && nextMessage?.role === "assistant" && i === messages.length - 2;
+            const showProgress = isLastUserMessageBeforeAssistant && isStreaming && progress.currentPhase;
 
             return (
-              <MessageSection
-                key={i}
-                isUserMessage={isUserMessage}
-                showDivider={showDivider}
-                progressSteps={progressSteps}
-                progressSubtopics={progressSubtopics}
-                progressThoughts={progressThoughts}
-                message={m}
-              />
+              <div key={i}>
+                <MessageSection
+                  isUserMessage={isUserMessage}
+                  showDivider={showDivider}
+                  progressSteps={progress.steps}
+                  progressSubtopics={progress.subtopics}
+                  progressThoughts={progress.thoughts.map(t => t.content)}
+                  message={m}
+                />
+                {showProgress && (
+                  <div className="mt-4">
+                    <QueryProgress
+                      currentPhase={progress.currentPhase}
+                      phaseMessage={progress.phaseMessage}
+                      progress={progress.progress}
+                      thoughts={progress.thoughts}
+                      analysisStats={progress.analysisStats}
+                    />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

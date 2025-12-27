@@ -20,15 +20,17 @@ export async function GET(
       headers,
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.text();
+      // Backend returns ApiResponse with error field
       return NextResponse.json(
-        { error: `Failed to fetch conversation: ${error}` },
+        data,
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    // Pass through the ApiResponse structure
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching conversation:', error);
@@ -60,15 +62,17 @@ export async function PATCH(
       body: JSON.stringify(body),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.text();
+      // Backend returns ApiResponse with error field
       return NextResponse.json(
-        { error: `Failed to update conversation: ${error}` },
+        data,
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    // Pass through the ApiResponse structure
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating conversation:', error);
@@ -93,18 +97,22 @@ export async function DELETE(
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': request.headers.get('Authorization') || '',
       },
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.text();
+      // Backend returns ApiResponse with error field
       return NextResponse.json(
-        { error: `Failed to delete conversation: ${error}` },
+        data,
         { status: response.status }
       );
     }
 
-    return NextResponse.json({ success: true });
+    // Pass through the ApiResponse structure
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error deleting conversation:', error);
     return NextResponse.json(
