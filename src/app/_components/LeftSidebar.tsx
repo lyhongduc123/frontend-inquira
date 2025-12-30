@@ -4,8 +4,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { MessageSquare } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import { SidebarButton } from "./LeftSidebarButton";
-import { ThemeToggle } from "./ThemeButton";
+import { LeftSidebarButton } from "./LeftSidebarButton";
+import { ThemeButton } from "./ThemeButton";
 import { conversationsApi } from "@/lib/conversations-api";
 import { ConversationCard } from "./ConversationCard";
 import { motion, AnimatePresence } from "framer-motion";
@@ -120,13 +120,13 @@ export function LeftSidebar({
         )}
       >
         <div className="p-4">
-          <SidebarButton
+          <LeftSidebarButton
             isOpen={isOpen}
             onClick={handleNewConversation}
             text="New Chat"
           >
             <MessageSquare />
-          </SidebarButton>
+          </LeftSidebarButton>
         </div>
 
         <ScrollArea className="flex-1 px-4 overflow-auto">
@@ -175,7 +175,7 @@ export function LeftSidebar({
           )}
         </ScrollArea>
         <div className={cn("sticky bottom-0 p-4")}>
-          <ThemeToggle />
+          <ThemeButton />
         </div>
       </div>
     </div>

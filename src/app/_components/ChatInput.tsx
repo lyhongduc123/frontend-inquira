@@ -30,7 +30,7 @@ export function ChatInput({
     if (!msg.trim() || isDisabled) return;
     onSend(msg);
     setMsg("");
-    // Reset textarea height
+    
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }

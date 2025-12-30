@@ -10,7 +10,7 @@ interface AnswerContentProps {
   isDone?: boolean;
 }
 
-export function AssistantMessageContent({
+export function AssistantMessageBody({
   text,
   sources,
   isDone = false,

@@ -2,7 +2,7 @@
 
 import { Separator } from "@/components/ui/separator";
 import type { PaperSource } from "@/types/paper.type";
-import { AssistantMessageContent } from "./AssistantMessageContent";
+import { AssistantMessageBody } from "./AssistantMessageBody";
 import { ReferencesList } from "./ReferencesList";
 
 interface AssistantMessageProps {
@@ -13,7 +13,7 @@ interface AssistantMessageProps {
   isDone?: boolean;
 }
 
-export function AssistantResponse({
+export function AssistantMessage({
   text,
   sources,
   showDivider = false,
@@ -21,7 +21,7 @@ export function AssistantResponse({
 }: AssistantMessageProps) {
   return (
     <>
-      <AssistantMessageContent text={text} sources={sources} isDone={isDone} />
+      <AssistantMessageBody text={text} sources={sources} isDone={isDone} />
 
       {sources && sources.length > 0 && <ReferencesList sources={sources} />}
 

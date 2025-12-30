@@ -62,6 +62,26 @@ export function MessageArea({
     }
   }, [messages, isUserScrolling]);
 
+  // Force scroll to bottom when new message is sent (user sends a message)
+  useEffect(() => {
+    if (messages.length > 0 && messages[messages.length - 1].role === "user") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsUserScrolling(false); // Re-enable auto-scroll
+      if (scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current.querySelector(
+          "[data-radix-scroll-area-viewport]"
+        );
+        if (scrollContainer) {
+          // Use smooth scroll for better UX
+          scrollContainer.scrollTo({
+            top: scrollContainer.scrollHeight,
+            behavior: "smooth"
+          });
+        }
+      }
+    }
+  }, [messages, messages.length]);
+
   if (!messages || messages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">

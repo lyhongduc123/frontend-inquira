@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { conversationsApi } from "@/lib/conversations-api";
 import { Message } from "@/types/message.type";
 import { useConversationStore } from "@/store/conversation-store";
@@ -14,11 +14,19 @@ export function useConversation() {
   const incrementRefreshTrigger = useConversationStore((state) => state.incrementRefreshTrigger);
   const setNewConversationId = useConversationStore((state) => state.setNewConversationId);
 
+  const latestCreateRequestRef = useRef<number>(0);
+
   const createConversation = useCallback(async (title?: string): Promise<Conversation> => {
+    const requestId = ++latestCreateRequestRef.current;
     const conversation = await conversationsApi.create(title);
-    setCurrentConversationId(conversation.id);
-    setNewConversationId(conversation.id);
-    incrementRefreshTrigger();
+    
+    // Only update state if this is still the latest request
+    if (requestId === latestCreateRequestRef.current) {
+      setCurrentConversationId(conversation.id);
+      setNewConversationId(conversation.id);
+      incrementRefreshTrigger();
+    }
+    
     return conversation;
   }, [setCurrentConversationId, setNewConversationId, incrementRefreshTrigger]);
 

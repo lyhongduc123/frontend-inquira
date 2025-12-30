@@ -1,7 +1,7 @@
 import { Message } from "@/types/message.type";
 import { UserMessage } from "./UserMessage";
 import { QueryProgress } from "@/components/global/query-progress";
-import { AssistantResponse } from "./AssistantMessage";
+import { AssistantMessage } from "./AssistantMessage";
 
 interface MessageSectionProps {
   isUserMessage: boolean;
@@ -33,7 +33,7 @@ export function MessageSection({
           subtopics={progressSubtopics}
           thoughts={progressThoughts}
         />
-        <AssistantResponse
+        <AssistantMessage
           isVisible={false}
           text={m.text}
           sources={Array.isArray(m.sources) ? m.sources : []}
