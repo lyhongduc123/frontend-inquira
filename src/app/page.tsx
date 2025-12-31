@@ -1,44 +1,47 @@
 "use client";
 
-import { useEffect } from "react";
-import { MessageArea } from "./_components/MessageArea";
-import { ChatInput } from "./_components/ChatInput";
 import { LeftSidebar } from "./_components/LeftSidebar";
+import { LoadingState } from "./_components/LoadingState";
+import { EmptyState } from "./_components/EmptyState";
+import { ChatView } from "./_components/ChatView";
+import { SidebarToggle } from "./_components/SidebarToggle";
 import { Header } from "@/components/global/header";
-import { Button } from "@/components/ui/button";
-import { Sidebar } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useChat } from "@/hooks/use-chat";
 import { useConversation } from "@/hooks/use-conversation";
-import { ProgressState, useProgressTracking } from "@/hooks/use-progress-tracking";
+import { useProgressTracking } from "@/hooks/use-progress-tracking";
+import { useAuth } from "@/hooks/use-auth";
+import { useViewMode } from "@/hooks/use-view-mode";
+import { useChatHandlers } from "@/hooks/use-chat-handlers";
 import { useConversationStore } from "@/store/conversation-store";
-import { useAuthStore } from "@/store/auth-store";
-import { Message } from "@/types/message.type";
 
 export default function ChatPage() {
-  const isSidebarOpen = useConversationStore((state) => state.isSidebarOpen);
-  const toggleSidebar = useConversationStore((state) => state.toggleSidebar);
-  const refreshTrigger = useConversationStore((state) => state.refreshTrigger);
-
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const isAuthLoading = useAuthStore((state) => state.isLoading);
-  const checkAuth = useAuthStore((state) => state.checkAuth);
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  const {
-    currentConversationId,
+  // Auth state
+  const { showContent } = useAuth();
+  
+  // Sidebar state
+  const sidebarState = useConversationStore((state) => ({
+    isOpen: state.isSidebarOpen,
+    toggle: state.toggleSidebar,
+    refreshTrigger: state.refreshTrigger,
+  }));
+  
+  // View mode and navigation
+  const { viewMode, setViewMode, messageAreaRef, handleQueryClick } = useViewMode();
+  
+  // Conversation state
+  const { 
+    currentConversationId, 
     isLoadingMessages,
     loadConversation,
     resetConversation,
     deleteConversation,
   } = useConversation();
-
+  
+  // Progress tracking
   const { progress, handlePhase, handleThought, handleAnalysis, resetProgress } = useProgressTracking();
-
-  const { messages, isStreaming, isError, sendMessage, clearMessages } = useChat({
+  
+  // Chat state with callbacks
+  const { messages, isStreaming, sendMessage, clearMessages } = useChat({
     onConversationCreated: (conversationId: string) => {
       useConversationStore.getState().setCurrentConversationId(conversationId);
       useConversationStore.getState().incrementRefreshTrigger();
@@ -48,61 +51,51 @@ export default function ChatPage() {
     onAnalysis: handleAnalysis,
     onError: resetProgress,
   });
-
-  const handleSend = async (query: string) => {
-    await sendMessage(query, currentConversationId);
-  };
-
-  const handleSelectConversation = async (conversationId: string) => {
-    await loadConversation(conversationId);
-  };
-
-  const handleNewConversation = () => {
-    // First clear the conversation state (including loading flag)
-    resetConversation();
-    // Then clear messages and progress
-    clearMessages();
-    resetProgress();
-  };
-
-  const handleDeleteConversation = async (conversationId: string) => {
-    const shouldReset = await deleteConversation(conversationId);
-    if (shouldReset) {
-      handleNewConversation();
-    }
-  };
+  
+  // Event handlers
+  const { 
+    handleSend, 
+    handleSelectConversation, 
+    handleNewConversation, 
+    handleDeleteConversation 
+  } = useChatHandlers({
+    currentConversationId,
+    sendMessage,
+    loadConversation,
+    resetConversation,
+    deleteConversation,
+    clearMessages,
+    resetProgress,
+  });
 
   return (
-    <div className="flex flex-col h-screen">
-      <Header />
-      <div className="flex flex-row flex-1 overflow-hidden">
-        {!isAuthLoading && isAuthenticated && (
-          <LeftSidebar
-            isOpen={isSidebarOpen}
-            onToggle={toggleSidebar}
-            onSelectConversation={handleSelectConversation}
-            onNewConversation={handleNewConversation}
-            onDeleteConversation={handleDeleteConversation}
-            currentConversationId={currentConversationId || undefined}
-            refreshTrigger={refreshTrigger}
-          />
+    <div className="flex flex-row h-screen">
+      {/* Full-height sidebar */}
+      {showContent && (
+        <LeftSidebar
+          isOpen={sidebarState.isOpen}
+          onToggle={sidebarState.toggle}
+          onSelectConversation={handleSelectConversation}
+          onNewConversation={handleNewConversation}
+          onDeleteConversation={handleDeleteConversation}
+          currentConversationId={currentConversationId || undefined}
+          refreshTrigger={sidebarState.refreshTrigger}
+        />
+      )}
+      
+      {/* Main content area */}
+      <div className="flex flex-col flex-1 h-full overflow-hidden">
+        {/* Header */}
+        {showContent && (
+          <Header viewMode={viewMode} onViewModeChange={setViewMode} />
         )}
-        <div className="flex flex-col flex-1 h-full relative">
-          {!isAuthLoading && isAuthenticated && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="absolute left-4 top-4 z-10 min-h-8 min-w-8 h-8 w-8 rounded-full border border-border bg-background shadow-md hover:bg-muted"
-            >
-              <Sidebar
-                className={cn(
-                  "h-4 w-4 transition-transform duration-300",
-                  isSidebarOpen ? "" : "rotate-180"
-                )}
-              />
-            </Button>
+        
+        {/* Chat content */}
+        <div className="flex flex-col flex-1 overflow-hidden relative">
+          {showContent && (
+            <SidebarToggle isOpen={sidebarState.isOpen} onClick={sidebarState.toggle} />
           )}
+          
           {isLoadingMessages ? (
             <LoadingState />
           ) : messages.length === 0 ? (
@@ -113,70 +106,13 @@ export default function ChatPage() {
               progress={progress}
               onSend={handleSend}
               isStreaming={isStreaming}
+              viewMode={viewMode}
+              onQueryClick={handleQueryClick}
+              messageAreaRef={messageAreaRef}
             />
           )}
         </div>
       </div>
     </div>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="flex-1 flex items-center justify-center">
-      <div className="text-center space-y-2">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="text-sm text-muted-foreground">Loading messages...</p>
-      </div>
-    </div>
-  );
-}
-
-interface EmptyStateProps {
-  onSend: (query: string) => void;
-  isDisabled: boolean;
-}
-
-function EmptyState({ onSend, isDisabled }: EmptyStateProps) {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="text-center space-y-3">
-          <h1 className="text-4xl font-bold bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Welcome to Exegent
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Your AI-powered research assistant. Ask questions and get
-            evidence-based answers with citations.
-          </p>
-        </div>
-        <ChatInput onSend={onSend} isDisabled={isDisabled} isAtBottom={false} />
-      </div>
-    </div>
-  );
-}
-
-interface ChatViewProps {
-  messages: Message[];
-  progress: ProgressState;
-  onSend: (query: string) => void;
-  isStreaming: boolean;
-}
-
-function ChatView({ messages, progress, onSend, isStreaming }: ChatViewProps) {
-  return (
-    <>
-      <div className="flex-1 overflow-y-hidden relative">
-        <MessageArea
-          messages={messages}
-          progress={progress}
-          isStreaming={isStreaming}
-        />
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-background via-background/80 to-transparent" />
-      </div>
-      <div className="relative bg-transparent shrink-0 z-10">
-        <ChatInput onSend={onSend} isDisabled={isStreaming} isAtBottom={true} />
-      </div>
-    </>
   );
 }

@@ -11,6 +11,8 @@ import { ConversationCard } from "./ConversationCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { Conversation } from "@/types/conversation.type";
 import { useConversationStore } from "@/store/conversation-store";
+import { Brand } from "@/components/global/brand";
+import { Separator } from "@/components/ui/separator";
 
 interface LeftSidebarProps {
   className?: string;
@@ -119,6 +121,14 @@ export function LeftSidebar({
           isOpen ? "w-80" : "w-16 overflow-hidden"
         )}
       >
+        {/* Brand Section */}
+        <div className="p-4">
+          <Brand showText={isOpen} />
+        </div>
+        
+        <Separator />
+        
+        {/* New Chat Button */}
         <div className="p-4">
           <LeftSidebarButton
             isOpen={isOpen}

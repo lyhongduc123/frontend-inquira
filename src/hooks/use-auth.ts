@@ -15,5 +15,6 @@ export function useAuth() {
     isAuthenticated,
     isLoading,
     user,
+    showContent: !isLoading && isAuthenticated,
   };
 }

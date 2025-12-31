@@ -1,7 +1,7 @@
 "use client";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { Message } from "@/types/message.type";
 import {
   Empty,
@@ -15,19 +15,41 @@ import { MessageSection } from "./MessageSection";
 import { ProgressState } from "@/hooks/use-progress-tracking";
 import { QueryProgress } from "./QueryProgress";
 
+export interface MessageAreaRef {
+  scrollToMessage: (index: number) => void;
+}
+
 interface MessageAreaProps {
   messages: Message[];
   progress: ProgressState;
   isStreaming: boolean;
 }
 
-export function MessageArea({
-  messages,
-  progress,
-  isStreaming
-}: MessageAreaProps) {
+export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(function MessageArea(
+  { messages, progress, isStreaming },
+  ref
+) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Expose scrollToMessage function to parent
+  useImperativeHandle(ref, () => ({
+    scrollToMessage: (index: number) => {
+      const messageElement = messageRefs.current[index];
+      const scrollContainer = scrollAreaRef.current?.querySelector(
+        "[data-radix-scroll-area-viewport]"
+      ) as HTMLElement;
+      
+      if (messageElement && scrollContainer) {
+        const offsetTop = messageElement.offsetTop;
+        scrollContainer.scrollTo({
+          top: offsetTop - 100, // 100px offset from top for better visibility
+          behavior: "smooth"
+        });
+      }
+    }
+  }));
 
   // Track if user is near bottom of scroll
   useEffect(() => {
@@ -50,6 +72,17 @@ export function MessageArea({
 
   // Auto-scroll only if user hasn't scrolled up
   useEffect(() => {
+    if (messages[messages.length - 1]?.role !== "assistant") {
+      if (scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current.querySelector(
+          "[data-radix-scroll-area-viewport]"
+        );
+        if (scrollContainer) {
+          scrollContainer.scrollTo(0, scrollContainer.scrollHeight);
+        }
+      }
+      return;
+    }
     if (isUserScrolling) return;
 
     if (scrollAreaRef.current) {
@@ -61,26 +94,6 @@ export function MessageArea({
       }
     }
   }, [messages, isUserScrolling]);
-
-  // Force scroll to bottom when new message is sent (user sends a message)
-  useEffect(() => {
-    if (messages.length > 0 && messages[messages.length - 1].role === "user") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsUserScrolling(false); // Re-enable auto-scroll
-      if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector(
-          "[data-radix-scroll-area-viewport]"
-        );
-        if (scrollContainer) {
-          // Use smooth scroll for better UX
-          scrollContainer.scrollTo({
-            top: scrollContainer.scrollHeight,
-            behavior: "smooth"
-          });
-        }
-      }
-    }
-  }, [messages, messages.length]);
 
   if (!messages || messages.length === 0) {
     return (
@@ -120,7 +133,12 @@ export function MessageArea({
             const showProgress = isLastUserMessageBeforeAssistant && isStreaming && progress.currentPhase;
 
             return (
-              <div key={i}>
+              <div 
+                key={i}
+                ref={(el) => {
+                  messageRefs.current[i] = el;
+                }}
+              >
                 <MessageSection
                   isUserMessage={isUserMessage}
                   showDivider={showDivider}
@@ -147,4 +165,4 @@ export function MessageArea({
       </div>
     </ScrollArea>
   );
-}
+});
