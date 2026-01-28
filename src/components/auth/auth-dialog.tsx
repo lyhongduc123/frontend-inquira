@@ -11,7 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Icon } from "@iconify/react";
-import { authApi } from "@/lib/auth-api";
+import { authApi } from "@/lib/api/auth-api";
+import { TypographyP } from "@/components/global/typography";
+import { HStack } from "@/components/layout/hstack";
 
 interface AuthDialogProps {
   isOpen: boolean;
@@ -71,12 +73,12 @@ export function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
             <Button
               type="submit"
               variant="outline"
-              className="w-full hover:bg-transparent hover:text-current hover:border-current cursor-pointer"
+              className="w-full cursor-pointer hover:border-current hover:bg-transparent hover:text-current"
               disabled={!email || isSubmitting}
             >
               <Icon
                 icon="mdi:email-outline"
-                className="h-6 w-6 scale-125 -translate-y-px"
+                className="h-6 w-6 -translate-y-px scale-125"
               />
               Continue with Email
             </Button>
@@ -84,27 +86,27 @@ export function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
           {/* Divider */}
           <div className="relative">
-            <div className="absolute inset-0 flex items-center">
+            <HStack className="absolute inset-0 items-center">
               <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
+            </HStack>
+            <HStack className="relative justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
                 Or continue with
               </span>
-            </div>
+            </HStack>
           </div>
 
           {/* OAuth Providers */}
           <div className="space-y-2">
             <Button
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 hover:bg-transparent hover:text-current hover:border-current cursor-pointer"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 hover:border-current hover:bg-transparent hover:text-current"
               onClick={() => handleOAuthLogin("google")}
             >
-              <span className="flex items-center justify-center h-5 w-5">
+              <span className="flex h-5 w-5 items-center justify-center">
                 <Icon
                   icon="logos:google-icon"
-                  className="h-5 w-5 scale-110 -translate-y-px"
+                  className="h-5 w-5 -translate-y-px scale-110"
                 />
               </span>
               Continue with Google
@@ -112,22 +114,22 @@ export function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
             <Button
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 hover:bg-transparent hover:text-current hover:border-current cursor-pointer"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 hover:border-current hover:bg-transparent hover:text-current"
               onClick={() => handleOAuthLogin("github")}
             >
-              <span className="flex items-center justify-center h-5 w-5">
+              <span className="flex h-5 w-5 items-center justify-center">
                 <Icon
                   icon="octicon:mark-github-16"
-                  className="h-5 w-5 scale-110 -translate-y-px"
+                  className="h-5 w-5 -translate-y-px scale-110"
                 />
               </span>
               Continue with GitHub
             </Button>
           </div>
 
-          <p className="text-xs text-center text-muted-foreground px-8">
+          <TypographyP variant="muted" size="xs" align="center" className="px-8">
             By continuing, you agree to our Terms of Service and Privacy Policy
-          </p>
+          </TypographyP>
         </div>
       </DialogContent>
     </Dialog>

@@ -13,8 +13,6 @@ import { useAuthStore } from "@/store/auth-store";
 import type { ApiResponse } from "@/types/api.type";
 import { unwrapApiResponse } from "@/types/api.type";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 interface RequestConfig extends RequestInit {
   skipAuth?: boolean;
   skipRetry?: boolean;
@@ -50,7 +48,7 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      const response = await fetch("/api/auth/refresh", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,8 +98,8 @@ class ApiClient {
       headers.Authorization = `Bearer ${tokens.access_token}`;
     }
 
-    // Make the request
-    let response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    // Make the request - endpoint should be Next.js API route
+    let response = await fetch(endpoint, {
       ...fetchConfig,
       headers,
     });
@@ -118,7 +116,7 @@ class ApiClient {
 
           // Retry the original request with the new token
           headers.Authorization = `Bearer ${newToken}`;
-          response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          response = await fetch(endpoint, {
             ...fetchConfig,
             headers,
           });
@@ -134,7 +132,7 @@ class ApiClient {
 
         // Retry the original request with the new token
         headers.Authorization = `Bearer ${newToken}`;
-        response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        response = await fetch(endpoint, {
           ...fetchConfig,
           headers,
         });
@@ -142,16 +140,16 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      // Try to parse error response
+      // Read response body once as text, then try to parse as JSON
+      const errorText = await response.text();
       try {
-        const errorResponse = await response.json() as ApiResponse<unknown>;
+        const errorResponse = JSON.parse(errorText) as ApiResponse<unknown>;
         if (errorResponse.error) {
           throw new Error(errorResponse.error.message || `Request failed with status ${response.status}`);
         }
       } catch {
-        // If parsing fails, use generic error
-        const error = await response.text();
-        throw new Error(error || `Request failed with status ${response.status}`);
+        // If parsing fails, use the text error
+        throw new Error(errorText || `Request failed with status ${response.status}`);
       }
     }
 

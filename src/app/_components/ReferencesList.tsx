@@ -28,16 +28,16 @@ export function ReferencesList({ sources }: ReferencesListProps) {
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-fit justify-between p-0 h-auto cursor-pointer group hover:bg-transparent"
+            className="group h-auto w-fit cursor-pointer justify-between p-0 hover:bg-transparent"
           >
             <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground">
               References ({sources.length})
             </span>
-            <ArrowDownNarrowWide className="h-4 w-4 ml-2 group-hover:text-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+            <ArrowDownNarrowWide className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:text-foreground group-data-[state=open]:rotate-180" />
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-2 mt-2">
+          <div className="mt-2 space-y-2">
             {sources.map((source, j) => (
               <PaperCard
                 key={source.paper_id || j}
@@ -48,6 +48,7 @@ export function ReferencesList({ sources }: ReferencesListProps) {
                 abstract={source.abstract}
                 url={source.pdf_url || source.url || ""}
                 citation_count={source.citation_count}
+                sjr_data={source.sjr_data}
               />
             ))}
           </div>

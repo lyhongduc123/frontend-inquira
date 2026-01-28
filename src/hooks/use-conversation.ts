@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { conversationsApi } from "@/lib/conversations-api";
+import { conversationsApi } from "@/lib/api/conversations-api";
 import { Message } from "@/types/message.type";
 import { useConversationStore } from "@/store/conversation-store";
 import { Conversation } from "@/types/conversation.type";

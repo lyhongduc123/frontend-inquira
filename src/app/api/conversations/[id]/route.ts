@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '@/core';
 
 /**
  * GET /api/conversations/[id] - Get a specific conversation
@@ -16,7 +15,7 @@ export async function GET(
       'Authorization': request.headers.get('Authorization') || '',
     };
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/conversations/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${id}`, {
       headers,
     });
 
@@ -56,7 +55,7 @@ export async function PATCH(
       'Authorization': request.headers.get('Authorization') || '',
     };
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/conversations/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${id}`, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(body),
@@ -93,7 +92,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/conversations/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/conversations/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

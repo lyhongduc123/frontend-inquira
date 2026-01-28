@@ -1,8 +1,6 @@
 import type { PaperSource } from "@/types/paper.type";
 import { useAuthStore } from "@/store/auth-store";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 // Structured event types from backend
 export interface PhaseEvent {
   phase: string;
@@ -22,8 +20,9 @@ export interface AnalysisEvent {
   message?: string;
 }
 
-export interface SourcesEvent {
-  sources: PaperSource[];
+export interface MetadataEvent {
+  type: 'metadata';
+  papers: PaperSource[];
 }
 
 export interface ConversationEvent {
@@ -39,7 +38,7 @@ export interface StreamCallbacks {
   
   // Structured event handlers
   onConversation?: (conversationId: string) => void;
-  onSources?: (sources: PaperSource[]) => void;
+  onMetadata?: (papers: PaperSource[]) => void;
   onPhase?: (event: PhaseEvent) => void;
   onThought?: (event: ThoughtEvent) => void;
   onAnalysis?: (event: AnalysisEvent) => void;
@@ -63,7 +62,7 @@ export async function streamEvent(
     headers.Authorization = `Bearer ${tokens.access_token}`;
   }
 
-  const res = await fetch(`${API_BASE_URL}${url}`, {
+  const res = await fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(payload),
@@ -83,13 +82,16 @@ export async function streamEvent(
   let buffer = "";
 
   const dispatch = (eventType: string, rawData: string) => {
+    console.log("Dispatching event:", eventType, "with raw data:", rawData);
     // Parse JSON data if possible
     let parsedData: unknown;
     try {
       parsedData = JSON.parse(rawData);
+      console.log("Parsed data:", parsedData);
     } catch {
       // Keep as raw string for text chunks
       parsedData = rawData;
+      console.log("Using raw string data:", rawData);
     }
 
     // Route to appropriate handler based on event type
@@ -101,14 +103,11 @@ export async function streamEvent(
         }
         break;
 
-      case "sources":
+      case "metadata":
         if (typeof parsedData === "object" && parsedData !== null) {
-          // Backend can send sources directly as an array or wrapped in an object
-          const sources = Array.isArray(parsedData) 
-            ? parsedData 
-            : (parsedData as SourcesEvent).sources;
-          if (sources) {
-            callbacks.onSources?.(sources);
+          const event = parsedData as MetadataEvent;
+          if (event.papers) {
+            callbacks.onMetadata?.(event.papers);
           }
         }
         break;
@@ -133,14 +132,39 @@ export async function streamEvent(
 
       case "chunk":
         // Extract text from chunk data object: {text: string, newlines: number}
+        console.log("Chunk event received, parsedData:", parsedData);
         let chunkText = "";
         if (typeof parsedData === "object" && parsedData !== null && "text" in parsedData) {
           chunkText = String(parsedData.text);
+          console.log("Extracted chunk text from object:", chunkText);
         } else if (typeof parsedData === "string") {
           chunkText = parsedData;
+          console.log("Using chunk text as string:", chunkText);
         }
         if (chunkText) {
+          console.log("Calling onChunk callback with:", chunkText);
           callbacks.onChunk?.(chunkText);
+        } else {
+          console.log("No chunk text to send");
+        }
+        break;
+
+      case "token":
+        // Extract text from token data object: {type: "token", content: string}
+        console.log("Token event received, parsedData:", parsedData);
+        let tokenText = "";
+        if (typeof parsedData === "object" && parsedData !== null && "content" in parsedData) {
+          tokenText = String(parsedData.content);
+          console.log("Extracted token text from object:", tokenText);
+        } else if (typeof parsedData === "string") {
+          tokenText = parsedData;
+          console.log("Using token text as string:", tokenText);
+        }
+        if (tokenText) {
+          console.log("Calling onChunk callback with token:", tokenText);
+          callbacks.onChunk?.(tokenText);
+        } else {
+          console.log("No token text to send");
         }
         break;
 

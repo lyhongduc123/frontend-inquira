@@ -7,11 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { conversationsApi } from "@/lib/conversations-api";
+import { conversationsApi } from "@/lib/api/conversations-api";
 import { Conversation } from "@/types/conversation.type";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EllipsisVerticalIcon } from "lucide-react";
+import { TypographyP } from "@/components/global/typography";
+import { Box } from "@/components/layout/box";
 
 interface ConversationCardProps {
   currentConversationId: string;
@@ -72,15 +74,15 @@ export function ConversationCard({
       )}
       onClick={onClick}
     >
-      <div className="flex-1 min-w-0 select-none">
-        <p className="text-sm font-medium text-foreground line-clamp-1">
+      <Box className="flex-1 min-w-0 select-none p-0 bg-transparent">
+        <TypographyP size="sm" weight="medium" leading="none" className="line-clamp-1">
           {conversation.title || "New Conversation"}
-        </p>
-        <p className="text-xs text-muted-foreground">
+        </TypographyP>
+        <TypographyP variant="muted" size="xs" leading="none">
           {formatDate(conversation.last_updated)}
           {/* {conversation.message_count} messages */}
-        </p>
-      </div>
+        </TypographyP>
+      </Box>
       <div
         className={cn(
           "transition-opacity duration-200 group-hover:opacity-100 opacity-0 flex pointer-events-auto"

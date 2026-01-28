@@ -3,8 +3,12 @@
 import { Message } from "@/types/message.type";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { MessageCircleQuestionMark, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TypographyH3, TypographyP } from "@/components/global/typography";
+import { VStack } from "@/components/layout/vstack";
+import { HStack } from "@/components/layout/hstack";
+import { Box } from "@/components/layout/box";
 
 interface QueryNavigatorProps {
   messages: Message[];
@@ -12,53 +16,61 @@ interface QueryNavigatorProps {
   activeQueryIndex?: number;
 }
 
-export function QueryNavigator({ messages, onQueryClick, activeQueryIndex }: QueryNavigatorProps) {
-  // Filter only user messages
+export function QueryNavigator({
+  messages,
+  onQueryClick,
+  activeQueryIndex,
+}: QueryNavigatorProps) {
   const userQueries = messages
     .map((msg, idx) => ({ ...msg, originalIndex: idx }))
     .filter((msg) => msg.role === "user");
 
   if (userQueries.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full p-4 text-sm text-muted-foreground">
+      <VStack className="items-center justify-center h-full p-4 text-sm text-muted-foreground">
         No queries yet
-      </div>
+      </VStack>
     );
   }
 
   return (
-    <div className="flex flex-col h-full border-r border-border bg-background">
-      <div className="p-4 border-b border-border">
-        <h3 className="text-sm font-semibold">Queries in this conversation</h3>
-        <p className="text-xs text-muted-foreground mt-1">
+    <VStack className="w-full h-full min-h-0 border-r bg-background gap-0">
+      <VStack className="w-full border-b p-4">
+        <TypographyH3 size="xs">Queries in this conversation</TypographyH3>
+        <TypographyP variant="muted" size="xs" className="mt-1">
           {userQueries.length} {userQueries.length === 1 ? "query" : "queries"}
-        </p>
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-2">
+        </TypographyP>
+      </VStack>
+      <ScrollArea className="flex-1 min-h-0">
+        <Box className="p-2 space-y-2 w-80">
           {userQueries.map((query, idx) => (
             <Button
               key={query.originalIndex}
-              variant={activeQueryIndex === query.originalIndex ? "secondary" : "ghost"}
+              variant={
+                activeQueryIndex === query.originalIndex ? "secondary" : "ghost"
+              }
               className={cn(
-                "w-full justify-start text-left h-auto py-3 px-3",
-                activeQueryIndex === query.originalIndex && "bg-secondary"
+                "h-auto w-full justify-start px-3 py-3 text-left whitespace-normal overflow-hidden",
+                activeQueryIndex === query.originalIndex && "bg-secondary",
               )}
               onClick={() => onQueryClick(query.originalIndex)}
             >
-              <div className="flex items-start gap-3 w-full">
-                <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground mb-1">Query {idx + 1}</p>
-                  <p className="text-sm line-clamp-2 break-all">
+              <HStack className="w-full items-start gap-3 min-w-0">
+                <MessageCircleQuestionMark className="mt-0.5 h-4 w-4 shrink-0" />
+
+                <VStack className="flex-1 min-w-0 gap-1">
+                  <TypographyP size="sm" className="block truncate max-w-full">
                     {query.text}
-                  </p>
-                </div>
-              </div>
+                  </TypographyP>
+                  <TypographyP size="xs" variant="muted" className="whitespace-nowrap">
+                    Sources: 20
+                  </TypographyP>
+                </VStack>
+              </HStack>
             </Button>
           ))}
-        </div>
+        </Box>
       </ScrollArea>
-    </div>
+    </VStack>
   );
 }

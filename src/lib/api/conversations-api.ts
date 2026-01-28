@@ -2,7 +2,7 @@ import { apiClient } from "./api-client";
 import {
   ConversationListResponse,
   ConversationDetail,
-} from "../types/conversation.type";
+} from "../../types/conversation.type";
 
 export const conversationsApi = {
   /**

@@ -13,7 +13,7 @@ export function SidebarToggle({ isOpen, onClick }: SidebarToggleProps) {
       variant="ghost"
       size="icon"
       onClick={onClick}
-      className="absolute left-4 top-4 z-10 min-h-8 min-w-8 h-8 w-8 rounded-full border border-border bg-background shadow-md hover:bg-muted"
+      className="absolute left-4 top-4 z-10 h-8 w-8 rounded-full border bg-background shadow-md hover:bg-muted"
     >
       <Sidebar
         className={cn(

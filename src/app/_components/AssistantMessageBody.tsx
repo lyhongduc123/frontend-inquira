@@ -17,7 +17,7 @@ export function AssistantMessageBody({
 }: AnswerContentProps) {
   return (
     <div className="w-full">
-      <div className="prose prose-sm dark:prose-invert max-w-none">
+      <div className="prose prose-sm max-w-none dark:prose-invert">
         {text ? (
           <StreamdownRender message={text} sources={sources} isStatic={isDone} />
         ) : (

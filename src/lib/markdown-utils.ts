@@ -26,7 +26,6 @@ import type { PaperSource } from "@/types/paper.type";
  * Citation numbers match the position in the sources array.
  */
 export function convertCitationsToElements(text: string, sources?: PaperSource[]): string {
-  // Create a map of paper_id to citation number (based on position in sources array)
   const citationMap = new Map<string, number>();
   if (sources && Array.isArray(sources)) {
     sources.forEach((source, index) => {
@@ -34,17 +33,15 @@ export function convertCitationsToElements(text: string, sources?: PaperSource[]
     });
   }
 
-  // First, replace (cite:paper_id) format with numbers from sources
   let result = text.replace(/\(cite:([^)]+)\)/g, (match, paperId) => {
     const number = citationMap.get(paperId);
-    if (number !== undefined) {
-      return `<citation data-id="${paperId}" data-number="${number}"/>`;
-    }
-    // If paper_id not in sources, return empty or just the number
-    return '';
+    const replacement = number !== undefined 
+      ? `<citation data-id="${paperId}" data-number="${number}"/>`
+      : match;
+    return replacement;
   });
 
-  // Also support legacy [1](paper_id) format
+  // Support legacy [1](paper_id) format
   result = result.replace(/\[(\d+)\]\(([^)]+)\)/g, (match, number, paperId) => {
     return `<citation data-id="${paperId}" data-number="${number}"/>`;
   });

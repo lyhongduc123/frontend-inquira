@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { HStack } from "../layout/hstack";
 
 interface BrandProps {
   src?: string;
@@ -10,14 +11,14 @@ interface BrandProps {
 
 export function Brand({ src = "/logo.svg", alt, size = "32px", showText = false, onClick }: BrandProps) {
   return (
-    <div className="flex items-center" onClick={onClick}>
+    <HStack className="items-center" onClick={onClick}>
       <Avatar className="rounded-lg">
         <AvatarImage src={src} sizes={size} />
         <AvatarFallback>
           {alt ? alt.charAt(0).toUpperCase() : "E"}
         </AvatarFallback>
       </Avatar>
-      {showText && <h2 className="ml-2 text-lg font-bold select-none">Exegent</h2>}
-    </div>
+      {showText && <h2 className="ml-2 select-none text-lg font-bold">Exegent</h2>}
+    </HStack>
   );
 }

@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperSource } from "@/types/paper.type";
 import { ExternalLink, FileText } from "lucide-react";
+import { TypographyP } from "@/components/global/typography";
+import { HStack } from "@/components/layout/hstack";
 
 interface CitationCardProps {
   isVisible: boolean;
@@ -16,20 +18,20 @@ export function CitationCard({ paperDetail }: CitationCardProps) {
   const authors = paperDetail?.authors ?? [];
 
   return (
-    <Card className="shadow-lg max-w-6xl">
+    <Card className="max-w-6xl shadow-lg">
       <CardHeader className="pb-1">
-        <CardTitle className="font-semibold leading-tight line-clamp-3">
+        <CardTitle className="line-clamp-3 font-semibold leading-tight">
           {paperDetail.title}
         </CardTitle>
         {authors.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-2">
+          <TypographyP variant="muted" size="xs" className="mt-2">
             {authors
               .slice(0, 3)
               .map((a) => a.name)
               .join(", ")}
-          </p>
+          </TypographyP>
         )}
-        <div className="flex gap-2 text-xs text-muted-foreground mt-1">
+        <HStack className="mt-1 gap-2 text-xs text-muted-foreground">
           {paperDetail.year && <span>{paperDetail.year}</span>}
           {paperDetail.venue && (
             <>
@@ -37,17 +39,17 @@ export function CitationCard({ paperDetail }: CitationCardProps) {
               <span className="line-clamp-1">{paperDetail.venue}</span>
             </>
           )}
-        </div>
+        </HStack>
       </CardHeader>
 
       {displayUrl && (
-        <CardFooter className="pt-1 border-t">
+        <CardFooter className="border-t pt-1">
           <Button
             onClick={() => {
               window.open(displayUrl, "_blank");
             }}
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm hover:underline transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm transition-colors hover:underline"
           >
             {hasFullText ? (
               <>

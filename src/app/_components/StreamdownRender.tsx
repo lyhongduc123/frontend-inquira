@@ -19,20 +19,14 @@ export function StreamdownRender({
   sources,
   isStatic = false,
 }: StreamdownRenderProps) {
-  // const { theme } = useTheme();
-
-  // const shiki = React.useMemo(() => {
-  //   const themes: [BundledTheme, BundledTheme] = ["github-light", "dracula"];
-  //   return themes;
-  // }, []);
-
   const getSourceById = (id: string): PaperSource | undefined => {
     if (!Array.isArray(sources)) return undefined;
     return sources.find((src) => src.paper_id === id);
   };
 
   const processedMessage = React.useMemo(() => {
-    return convertCitationsToElements(message, sources);
+    const result = convertCitationsToElements(message, sources);
+    return result;
   }, [message, sources]);
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
@@ -42,7 +36,7 @@ export function StreamdownRender({
     const source = getSourceById(paperId);
 
     return <Citation number={number} paperId={paperId} source={source} />;
-  }, [sources]); // Re-create when sources change
+  }, [sources]); 
 
   return (
     <div className="markdown-content">

@@ -4,6 +4,7 @@ import { streamEvent, PhaseEvent, ThoughtEvent, AnalysisEvent } from "@/lib/stre
 import { PaperSource } from "@/types/paper.type";
 import { useConversation } from "./use-conversation";
 import { useConversationStore } from "@/store/conversation-store";
+import { useAuthStore } from "@/store/auth-store";
 
 interface UseChatOptions {
   apiEndpoint?: string;
@@ -22,7 +23,7 @@ interface StreamState {
 
 export function useChat(options: UseChatOptions = {}) {
   const { 
-    apiEndpoint = "/api/v1/chat/stream", 
+    apiEndpoint = "/api/test/stream", 
     onConversationCreated,
     onPhase,
     onThought,
@@ -33,7 +34,6 @@ export function useChat(options: UseChatOptions = {}) {
 
   const messages = useConversationStore((state) => state.messages);
   const setMessages = useConversationStore((state) => state.setMessages);
-  const currentConversationId = useConversationStore((state) => state.currentConversationId);
   const [streamState, setStreamState] = useState<StreamState>({
     isStreaming: false,
     isError: false,
@@ -62,6 +62,7 @@ export function useChat(options: UseChatOptions = {}) {
 
   const addAssistantMessage = useCallback(() => {
     const currentMessages = useConversationStore.getState().messages;
+    console.log("Adding assistant message, current messages:", currentMessages.length);
     setMessages([...currentMessages, { role: "assistant", text: "" } as Message]);
   }, [setMessages]);
 
@@ -70,11 +71,13 @@ export function useChat(options: UseChatOptions = {}) {
       // Only update if this is still the active conversation
       const currentConvId = useConversationStore.getState().currentConversationId;
       if (currentConvId !== activeConversationIdRef.current) {
+        console.log("Ignoring update for old conversation");
         return; // Ignore updates for old conversations
       }
       
       const currentMessages = useConversationStore.getState().messages;
       const last = currentMessages[currentMessages.length - 1];
+      console.log("Updating last message:", updates);
       setMessages([...currentMessages.slice(0, -1), { ...last, ...updates }]);
     },
     [setMessages]
@@ -89,15 +92,24 @@ export function useChat(options: UseChatOptions = {}) {
       
       resetStreamState();
       addUserMessage(query);
+      
+      // Only create conversation if user is authenticated and not using test endpoint
+      const isTestEndpoint = apiEndpoint.includes('/test');
+      const { isAuthenticated } = useAuthStore.getState();
+      
       try {
-        if (!conversationId) {
+        if (!conversationId && !isTestEndpoint && isAuthenticated) {
           // Create conversation with user query as title
           const newConversation = await createConversation(query);
           conversationId = newConversation.id;
           onConversationCreated?.(conversationId);
         }
       } catch (error) {
-        throw error;
+        console.error("Error creating conversation:", error);
+        // Continue even if conversation creation fails for test endpoint
+        if (!isTestEndpoint) {
+          throw error;
+        }
       }
 
       // Track active conversation for this stream
@@ -126,8 +138,8 @@ export function useChat(options: UseChatOptions = {}) {
             onConversation: (id) => {
               onConversationCreated?.(id);
             },
-            onSources: (sources: PaperSource[]) => {
-              updateLastMessage({ sources });
+            onMetadata: (papers: PaperSource[]) => {
+              updateLastMessage({ sources: papers });
             },
             onPhase: (event) => {
               onPhase?.(event);
@@ -139,7 +151,9 @@ export function useChat(options: UseChatOptions = {}) {
               onAnalysis?.(event);
             },
             onChunk: (chunk) => {
+              console.log("Received chunk:", chunk);
               accumulatedTextRef.current += chunk;
+              console.log("Accumulated text:", accumulatedTextRef.current);
               updateLastMessage({ text: accumulatedTextRef.current });
             },
             onDone: () => {

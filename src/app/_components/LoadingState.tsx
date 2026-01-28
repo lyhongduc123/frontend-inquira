@@ -1,10 +1,13 @@
+import { TypographyP } from "@/components/global/typography";
+import { VStack } from "@/components/layout/vstack";
+
 export function LoadingState() {
   return (
-    <div className="flex-1 flex items-center justify-center">
-      <div className="text-center space-y-2">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="text-sm text-muted-foreground">Loading messages...</p>
+    <VStack className="flex-1 items-center justify-center">
+      <div className="space-y-2 text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+        <TypographyP variant="muted" size="sm">Loading messages...</TypographyP>
       </div>
-    </div>
+    </VStack>
   );
 }

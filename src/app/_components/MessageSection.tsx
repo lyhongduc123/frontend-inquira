@@ -1,14 +1,15 @@
 import { Message } from "@/types/message.type";
 import { UserMessage } from "./UserMessage";
-import { QueryProgress } from "@/components/global/query-progress";
 import { AssistantMessage } from "./AssistantMessage";
+import { QueryProgress } from "./QueryProgress";
+import { ThoughtEvent } from "@/lib/stream";
 
 interface MessageSectionProps {
   isUserMessage: boolean;
   showDivider: boolean;
   progressSteps?: string[];
   progressSubtopics?: [string, string][];
-  progressThoughts?: string[];
+  progressThoughts?: ThoughtEvent[];
   message: Message;
 }
 
@@ -27,12 +28,6 @@ export function MessageSection({
   const renderAssistantMessage = () => {
     return (
       <div>
-        <QueryProgress
-          isVisible={false}
-          steps={progressSteps}
-          subtopics={progressSubtopics}
-          thoughts={progressThoughts}
-        />
         <AssistantMessage
           isVisible={false}
           text={m.text}

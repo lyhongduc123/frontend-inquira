@@ -1,15 +1,16 @@
-export async function POST(req: Request) {
+import { NextRequest } from 'next/server';
+import { API_BASE_URL } from '@/core';
+
+export async function POST(req: NextRequest) {
   const { query } = await req.json();
   
-  const apiUrl = process.env.API_URL || 'http://localhost:8000';
-
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    "Authorization": req.headers.get("Authorization") || "",
+    // "Authorization": req.headers.get("Authorization") || "",
   };
   
   try {
-    const res = await fetch(`${apiUrl}/api/v1/chat/test-stream`, {
+    const res = await fetch(`${API_BASE_URL}/api/v1/test/stream`, {
       method: "POST",
       headers,
       body: JSON.stringify({ query, stream: true }),

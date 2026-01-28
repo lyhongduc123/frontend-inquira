@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '@/core';
 
 /**
  * GET /api/conversations - List all conversations
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
       'Authorization': request.headers.get('Authorization') || '',
     };
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/conversations?${params}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/conversations?${params}`, {
       headers,
     });
 
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
       'Authorization': request.headers.get('Authorization') || '',
     };
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/conversations`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/conversations`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),

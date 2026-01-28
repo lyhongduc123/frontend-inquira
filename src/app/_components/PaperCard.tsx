@@ -2,8 +2,8 @@ import { HStack } from "@/components/layout/hstack";
 import { VStack } from "@/components/layout/vstack";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Author } from "@/types/paper.type";
+import { Author, SJRData } from "@/types/paper.type";
+import { TypographyP } from "@/components/global/typography";
 import {
   ExternalLink,
   BookOpen,
@@ -13,6 +13,8 @@ import {
   Zap,
   Lock,
   FileText,
+  Award,
+  TrendingUp,
 } from "lucide-react";
 
 interface PaperCardProps {
@@ -27,6 +29,7 @@ interface PaperCardProps {
   influential_citation_count?: number;
   rank?: number;
   pdf_url?: string;
+  sjr_data?: SJRData;
 }
 
 export function PaperCard({
@@ -41,6 +44,7 @@ export function PaperCard({
   influential_citation_count,
   rank,
   pdf_url,
+  sjr_data,
 }: PaperCardProps) {
   const displayText = snippet || abstract;
 
@@ -72,20 +76,20 @@ export function PaperCard({
   };
 
   return (
-    <Card className="transition gap-1 relative p-3">
+    <Card className="relative gap-1 p-3 transition">
       {rank !== undefined && (
-        <div className="absolute left-0 top-0 h-full w-[4px] bg-gradient-to-b from-primary to-primary/40" />
+        <div className="absolute left-0 top-0 h-full w-[4px] bg-linear-to-b from-primary to-primary/40" />
       )}
 
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 relative">
+      <CardHeader className="relative flex flex-row items-center justify-between space-y-0">
         {rank !== undefined && (
-          <div className="absolute -top-2 -left-2 bg-primary text-white text-xs font-bold px-2 py-1 rounded-full shadow">
+          <div className="absolute -left-2 -top-2 rounded-full bg-primary px-2 py-1 text-xs font-bold text-white shadow">
             #{rank}
           </div>
         )}
 
-        <CardTitle className="text-sm font-medium flex-1">
-          <div className="flex items-center gap-1">
+        <CardTitle className="flex-1 text-sm font-medium">
+          <HStack className="items-center gap-1">
             <a
               href={url}
               target="_blank"
@@ -100,7 +104,7 @@ export function PaperCard({
               href={pdf_url || url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 hover:bg-primary/20 rounded transition-colors shrink-0"
+              className="flex shrink-0 items-center gap-1.5 rounded bg-primary/10 px-2.5 py-1 transition-colors hover:bg-primary/20"
             >
               {pdf_url ? (
                 <>
@@ -119,7 +123,7 @@ export function PaperCard({
                 </>
               )}
             </a>
-          </div>
+          </HStack>
         </CardTitle>
       </CardHeader>
 
@@ -128,47 +132,90 @@ export function PaperCard({
           <VStack className="flex-1 w-full">
             {/* Authors and Year */}
             {authors && (
-              <div className="flex items-center gap-3 text-sm text-accent flex-wrap">
-                <div className="flex items-center gap-1 min-w-0">
-                  <Users className="h-4 w-4 -translate-y-0.5 shrink-0" />
+              <HStack className="flex-wrap items-center gap-3 text-sm text-accent">
+                <HStack className="min-w-0 items-center gap-1">
+                  <Users className="h-4 w-4 shrink-0 -translate-y-0.5" />
                   <span className="line-clamp-1">{formatAuthors(authors)}</span>
-                </div>
-              </div>
+                </HStack>
+              </HStack>
             )}
 
             {/* Abstract/Snippet */}
             {displayText ? (
-              <p className="text-xs text-muted-foreground line-clamp-3 mt-1">
+              <TypographyP variant="muted" size="xs" className="mt-1 line-clamp-3">
                 {displayText}
-              </p>
+              </TypographyP>
             ) : (
-              <p className="text-xs text-accent italic mt-1">
+              <TypographyP variant="accent" size="xs" className="mt-1 italic">
                 No abstract available.
-              </p>
+              </TypographyP>
             )}
 
             {/* Citation Levels */}
             {(citationLevel() || influentialLevel()) && (
               <HStack className="mt-2">
                 {citationLevel() && (
-                  <Badge variant="secondary" className="font-bold h-6 text-xs px-2">
+                  <Badge variant="secondary" className="h-6 px-2 text-xs font-bold">
                     <Quote className="h-3 w-3 fill-green-600 text-green-600" />
                     <span className="font-semibold">{citationLevel()}</span>{" "}
                   </Badge>
                 )}
                 {influentialLevel() && (
-                  <Badge variant="default" className="font-bold h-6 text-xs px-2">
+                  <Badge variant="default" className="h-6 px-2 text-xs font-bold">
                     <Zap className="h-3 w-3 fill-amber-700 text-amber-700" />
                     <span className="font-semibold">{influentialLevel()}</span>{" "}
                   </Badge>
                 )}
               </HStack>
             )}
+
+            {/* SJR Journal Metrics */}
+            {sjr_data && (
+              <div className="mt-2 rounded-md border border-accent/30 bg-accent/20 p-2">
+                <HStack className="flex-wrap items-center gap-2">
+                  <Badge 
+                    variant={
+                      sjr_data.quartile === 'Q1' ? 'default' : 
+                      sjr_data.quartile === 'Q2' ? 'secondary' : 
+                      'outline'
+                    }
+                    className="h-6 px-2 font-bold"
+                  >
+                    <Award className="mr-1 h-3 w-3" />
+                    {sjr_data.quartile}
+                  </Badge>
+                  
+                  <span className="text-xs">
+                    <span className="font-semibold">SJR:</span>{" "}
+                    <span className="font-bold text-primary">{sjr_data.sjr_score.toFixed(2)}</span>
+                  </span>
+                  
+                  {sjr_data.percentile && (
+                    <Badge variant="outline" className="h-6 px-2">
+                      <TrendingUp className="mr-1 h-3 w-3" />
+                      Top {(100 - sjr_data.percentile).toFixed(1)}%
+                    </Badge>
+                  )}
+                  
+                  {sjr_data.impact_factor && (
+                    <span className="text-xs text-muted-foreground">
+                      IF: <span className="font-semibold">{sjr_data.impact_factor.toFixed(1)}</span>
+                    </span>
+                  )}
+                  
+                  {sjr_data.h_index && (
+                    <span className="text-xs text-muted-foreground">
+                      h-index: <span className="font-semibold">{sjr_data.h_index}</span>
+                    </span>
+                  )}
+                </HStack>
+              </div>
+            )}
           </VStack>
 
           {/* Bottom: Venue and Citation Text - Horizontal */}
           {(year || venue || citation_count || influential_citation_count) && (
-            <HStack className="flex-wrap gap-4 items-center text-xs border-t pt-2 mt-2 w-full">
+            <HStack className="mt-2 w-full flex-wrap items-center gap-4 border-t pt-2 text-xs">
               {year && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4 -translate-y-0.5" />

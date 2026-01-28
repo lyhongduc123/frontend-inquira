@@ -54,8 +54,7 @@ export function ChatInput({
   return (
     <div
       className={cn(
-        "transition-all duration-500 ease-out",
-        isAtBottom ? "p-4" : "w-full"
+        "py-4 transition-all duration-500 ease-out w-full"
       )}
     >
       <div
@@ -66,11 +65,10 @@ export function ChatInput({
       >
         <InputGroup
           className={cn(
-            "border-2 rounded-2xl transition-all duration-300",
+            "rounded-2xl border-2 transition-all duration-300 bg-background/95 backdrop-blur-sm",
             isFocused
               ? "border-primary shadow-lg shadow-primary/20"
-              : "border-border shadow-sm hover:shadow-md",
-            "bg-background/95 backdrop-blur-sm"
+              : "border-border shadow-sm hover:shadow-md"
           )}
         >
           <InputGroupTextarea
@@ -94,12 +92,12 @@ export function ChatInput({
           <InputGroupAddon align="block-end">
             <InputGroupButton
               variant="ghost"
-              className="rounded-full hover:bg-accent transition-colors"
+              className="rounded-full transition-colors hover:bg-accent"
               size="icon-xs"
             >
               <Plus className="h-4 w-4" />
             </InputGroupButton>
-            <Separator orientation="vertical" className="h-4 ml-auto" />
+            <Separator orientation="vertical" className="ml-auto h-4" />
             <InputGroupButton
               variant="default"
               className={cn(

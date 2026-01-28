@@ -1,5 +1,4 @@
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { SidebarMenuButton } from "@/components/ui/sidebar";
 
 export function LeftSidebarButton({
   isOpen,
@@ -13,18 +12,13 @@ export function LeftSidebarButton({
   children?: React.ReactNode;
 }) {
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <SidebarMenuButton
       onClick={onClick}
-      className={cn(
-        "flex flex-row items-center justify-start gap-2 min-h-8 min-w-8 h-full transition-all duration-300",
-        isOpen ? "w-full px-4" : "w-8 px-2"
-      )}
+      tooltip={!isOpen ? text : undefined}
+      className="w-full"
     >
-      <div className="shrink-0">{children}</div>
-      {isOpen && <span className="whitespace-nowrap">{text}</span>}
-      
-    </Button>
+      {children}
+      {isOpen && <span>{text}</span>}
+    </SidebarMenuButton>
   );
 }

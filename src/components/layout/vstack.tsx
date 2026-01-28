@@ -1,19 +1,5 @@
-import { ReactNode } from "react";
+import { Stack, StackProps } from "./stack"
 
-interface VStackProps {
-  children: ReactNode;
-  className?: string;
-}
-
-export function VStack({
-  children,
-  className = "",
-}: VStackProps) {
-  return (
-    <div
-      className={`flex flex-col ${className}`}
-    >
-      {children}
-    </div>
-  );
+export function VStack(props: Omit<StackProps, 'direction'>) {
+  return <Stack direction="vertical" {...props} />
 }
