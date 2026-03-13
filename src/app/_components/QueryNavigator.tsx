@@ -1,14 +1,32 @@
 "use client";
 
 import { Message } from "@/types/message.type";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { MessageCircleQuestionMark, MessageSquare } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { TypographyH3, TypographyP } from "@/components/global/typography";
+import {
+  CircleDot,
+  CircleXIcon,
+  TargetIcon,
+} from "lucide-react";
 import { VStack } from "@/components/layout/vstack";
-import { HStack } from "@/components/layout/hstack";
-import { Box } from "@/components/layout/box";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface QueryNavigatorProps {
   messages: Message[];
@@ -26,51 +44,76 @@ export function QueryNavigator({
     .filter((msg) => msg.role === "user");
 
   if (userQueries.length === 0) {
-    return (
-      <VStack className="items-center justify-center h-full p-4 text-sm text-muted-foreground">
-        No queries yet
-      </VStack>
-    );
+    return null;
   }
 
+  const activeQuery = userQueries.find(
+    (q) => q.originalIndex === activeQueryIndex
+  );
+
+  const displayQuery = activeQuery || userQueries[0];
+
   return (
-    <VStack className="w-full h-full min-h-0 border-r bg-background gap-0">
-      <VStack className="w-full border-b p-4">
-        <TypographyH3 size="xs">Queries in this conversation</TypographyH3>
-        <TypographyP variant="muted" size="xs" className="mt-1">
-          {userQueries.length} {userQueries.length === 1 ? "query" : "queries"}
-        </TypographyP>
-      </VStack>
-      <ScrollArea className="flex-1 min-h-0">
-        <Box className="p-2 space-y-2 w-80">
-          {userQueries.map((query, idx) => (
-            <Button
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8">
+          <CircleDot className="h-2 w-2" />
+          {displayQuery?.text}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] h-[70vh] flex flex-col">
+        <DialogTitle>Query Navigator</DialogTitle>
+        <VStack className="flex-1 min-h-0 w-full gap-1 overflow-auto pr-2">
+          {userQueries.map((query) => (
+            <Item
               key={query.originalIndex}
               variant={
-                activeQueryIndex === query.originalIndex ? "secondary" : "ghost"
+                activeQueryIndex === query.originalIndex ? "primary" : "outline"
               }
-              className={cn(
-                "h-auto w-full justify-start px-3 py-3 text-left whitespace-normal overflow-hidden",
-                activeQueryIndex === query.originalIndex && "bg-secondary",
-              )}
-              onClick={() => onQueryClick(query.originalIndex)}
+              className=""
             >
-              <HStack className="w-full items-start gap-3 min-w-0">
-                <MessageCircleQuestionMark className="mt-0.5 h-4 w-4 shrink-0" />
-
-                <VStack className="flex-1 min-w-0 gap-1">
-                  <TypographyP size="sm" className="block truncate max-w-full">
-                    {query.text}
-                  </TypographyP>
-                  <TypographyP size="xs" variant="muted" className="whitespace-nowrap">
-                    Sources: 20
-                  </TypographyP>
-                </VStack>
-              </HStack>
-            </Button>
+              <ItemMedia>
+                <CircleDot className="h-4 w-4 shrink-0" />
+              </ItemMedia>
+              <ItemContent className="min-w-0">
+                <ItemTitle className="block w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                  {query.text}
+                </ItemTitle>
+                <ItemDescription>
+                  Sources: {query.paperSnapshots?.length || 0}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions className="gap-1">
+                <Tooltip delayDuration={500}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="icon"
+                      size="icon"
+                      onClick={() => onQueryClick(query.originalIndex)}
+                    >
+                      <TargetIcon />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Go to this query</TooltipContent>
+                </Tooltip>
+                <Tooltip delayDuration={500}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="icon"
+                      size="icon"
+                      onClick={() => onQueryClick(query.originalIndex)}
+                      className="text-destructive"
+                    >
+                      <CircleXIcon />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete this query</TooltipContent>
+                </Tooltip>
+              </ItemActions>
+            </Item>
           ))}
-        </Box>
-      </ScrollArea>
-    </VStack>
+        </VStack>
+      </DialogContent>
+    </Dialog>
   );
 }

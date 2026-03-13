@@ -53,6 +53,111 @@ function useSidebar() {
   return context
 }
 
+// A record to hold the sidebar context for each named sidebar
+type SidebarRegistry = Record<string, SidebarContextProps>;
+
+type SidebarManagerContextProps = {
+  register: (name: string, context: SidebarContextProps) => void;
+  unregister: (name: string) => void;
+  use: (name: string) => SidebarContextProps | null;
+};
+
+const SidebarManagerContext = React.createContext<SidebarManagerContextProps | null>(null);
+
+function useSidebarManager() {
+  const context = React.useContext(SidebarManagerContext);
+  if (!context) {
+    throw new Error("useSidebarManager must be used within a SidebarManagerProvider.");
+  }
+  return context;
+}
+
+function SidebarManagerProvider({ children }: { children: React.ReactNode }) {
+  const [sidebars, setSidebars] = React.useState<SidebarRegistry>({});
+
+  const register = React.useCallback((name: string, context: SidebarContextProps) => {
+    setSidebars((prev) => ({ ...prev, [name]: context }));
+  }, []);
+
+  const unregister = React.useCallback((name: string) => {
+    setSidebars((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  }, []);
+
+  const value = React.useMemo(
+    () => ({ register, unregister, use: (name: string) => sidebars[name] }),
+    [register, unregister, sidebars]
+  );
+
+  return (
+    <SidebarManagerContext.Provider value={value}>
+      {children}
+    </SidebarManagerContext.Provider>
+  );
+}
+
+function SidebarManager({ children, name }: { children: React.ReactNode; name: string }) {
+  const sidebarContext = useSidebar();
+  const manager = useSidebarManager();
+
+  // Use refs to avoid infinite loops - we don't want changes to these
+  // objects to trigger re-registration, only changes to `name` should.
+  const sidebarContextRef = React.useRef(sidebarContext);
+  const managerRef = React.useRef(manager);
+
+  // Keep refs up to date
+  React.useLayoutEffect(() => {
+    sidebarContextRef.current = sidebarContext;
+    managerRef.current = manager;
+  });
+
+  // Register on mount / when name changes, unregister on unmount
+  React.useEffect(() => {
+    managerRef.current.register(name, sidebarContextRef.current);
+    return () => managerRef.current.unregister(name);
+  }, [name]);
+
+  // Keep the registry updated when sidebarContext changes (without causing loops)
+  React.useEffect(() => {
+    managerRef.current.register(name, sidebarContext);
+  }, [name, sidebarContext]);
+
+  return <>{children}</>;
+}
+
+function SidebarManagerTrigger({
+  name,
+  className,
+  onClick,
+  ...props
+}: React.ComponentProps<typeof Button> & { name: string }) {
+  const manager = useSidebarManager();
+  const sidebar = manager.use(name);
+
+  return (
+    <Button
+      data-sidebar="manager-trigger"
+      data-slot="sidebar-manager-trigger"
+      data-sidebar-name={name}
+      variant="ghost"
+      size="icon"
+      className={cn("size-7", className)}
+      onClick={(event) => {
+        onClick?.(event);
+        sidebar?.toggleSidebar();
+      }}
+      disabled={!sidebar}
+      {...props}
+    >
+      <PanelLeftIcon />
+      <span className="sr-only">Toggle {name} Sidebar</span>
+    </Button>
+  );
+}
+
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -309,7 +414,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "bg-background relative flex w-full flex-1 flex-col",
+        "bg-background relative flex min-w-0 w-full flex-1 flex-col",
         "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className
       )}
@@ -374,7 +479,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden scrollbar-sidebar",
         className
       )}
       {...props}
@@ -699,6 +804,10 @@ function SidebarMenuSubButton({
 }
 
 export {
+  SidebarManager,
+  SidebarManagerTrigger,
+  SidebarManagerContext,
+  SidebarManagerProvider,
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -722,5 +831,6 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  useSidebarManager,
   useSidebar,
 }

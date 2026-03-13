@@ -1,17 +1,16 @@
 import { useState, useRef, useCallback } from "react";
 import { Message } from "@/types/message.type";
-import { streamEvent, PhaseEvent, ThoughtEvent, AnalysisEvent } from "@/lib/stream";
-import { PaperSource } from "@/types/paper.type";
+import { streamEvent, StreamEventPayload } from "@/lib/stream/stream";
 import { useConversation } from "./use-conversation";
 import { useConversationStore } from "@/store/conversation-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useProgressStore } from "@/store/progress-store";
+import { MetadataEvent, ProgressEvent } from "@/lib/stream/event.types";
 
 interface UseChatOptions {
   apiEndpoint?: string;
   onConversationCreated?: (conversationId: string) => void;
-  onPhase?: (event: PhaseEvent) => void;
-  onThought?: (event: ThoughtEvent) => void;
-  onAnalysis?: (event: AnalysisEvent) => void;
+  onProgress?: (event: ProgressEvent) => void;
   onError?: () => void;
 }
 
@@ -19,36 +18,40 @@ interface StreamState {
   isStreaming: boolean;
   isError: boolean;
   lastFailedQuery: string | null;
+  lastClientMessageId: string | null;
 }
-
+// "/api/test/stream"
 export function useChat(options: UseChatOptions = {}) {
-  const { 
-    apiEndpoint = "/api/test/stream", 
+  const {
+    apiEndpoint = "/api/v1/chat/stream",
     onConversationCreated,
-    onPhase,
-    onThought,
-    onAnalysis,
+    onProgress,
     onError: onErrorCallback,
   } = options;
   const { createConversation } = useConversation();
 
   const messages = useConversationStore((state) => state.messages);
   const setMessages = useConversationStore((state) => state.setMessages);
+  const { startQuery, addProgress, completeQuery } = useProgressStore();
+
   const [streamState, setStreamState] = useState<StreamState>({
     isStreaming: false,
     isError: false,
     lastFailedQuery: null,
+    lastClientMessageId: null,
   });
 
   const accumulatedTextRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeConversationIdRef = useRef<string | null>(null);
+  const currentQueryIdRef = useRef<string | null>(null);
 
   const resetStreamState = useCallback(() => {
     setStreamState((prev) => ({
       ...prev,
       isError: false,
       lastFailedQuery: null,
+      lastClientMessageId: null,
     }));
   }, []);
 
@@ -57,56 +60,97 @@ export function useChat(options: UseChatOptions = {}) {
       const currentMessages = useConversationStore.getState().messages;
       setMessages([...currentMessages, { role: "user", text } as Message]);
     },
-    [setMessages]
+    [setMessages],
   );
 
   const addAssistantMessage = useCallback(() => {
     const currentMessages = useConversationStore.getState().messages;
-    console.log("Adding assistant message, current messages:", currentMessages.length);
-    setMessages([...currentMessages, { role: "assistant", text: "" } as Message]);
+    console.log(
+      "Adding assistant message, current messages:",
+      currentMessages.length,
+    );
+    setMessages([
+      ...currentMessages,
+      { role: "assistant", text: "" } as Message,
+    ]);
   }, [setMessages]);
 
   const updateLastMessage = useCallback(
     (updates: Partial<Message>) => {
-      // Only update if this is still the active conversation
-      const currentConvId = useConversationStore.getState().currentConversationId;
+      const currentConvId =
+        useConversationStore.getState().currentConversationId;
       if (currentConvId !== activeConversationIdRef.current) {
         console.log("Ignoring update for old conversation");
         return; // Ignore updates for old conversations
       }
-      
+
       const currentMessages = useConversationStore.getState().messages;
       const last = currentMessages[currentMessages.length - 1];
       console.log("Updating last message:", updates);
       setMessages([...currentMessages.slice(0, -1), { ...last, ...updates }]);
     },
-    [setMessages]
+    [setMessages],
   );
 
   const sendMessage = useCallback(
-    async (query: string, conversationId?: string | null) => {
-      // Abort any ongoing stream
+    async (payload: StreamEventPayload) => {
+      const {
+        query,
+        conversationId,
+        isRetry = false,
+        clientMessageId,
+        pipeline = "database",
+        useHybridPipeline,
+        model,
+      } = payload;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      
-      resetStreamState();
-      addUserMessage(query);
-      
-      // Only create conversation if user is authenticated and not using test endpoint
-      const isTestEndpoint = apiEndpoint.includes('/test');
+
+      if (!isRetry) {
+        resetStreamState();
+      }
+
+      // Generate or use existing client message ID
+      const messageId =
+        clientMessageId ||
+        `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Generate unique query ID for progress tracking
+      const queryId = `query-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      currentQueryIdRef.current = queryId;
+
+      // Initialize progress tracking for this query
+      startQuery(queryId, query, conversationId);
+
+      // Add user message with query ID in metadata (only if not retry)
+      if (!isRetry) {
+        const currentMessages = useConversationStore.getState().messages;
+        setMessages([
+          ...currentMessages,
+          {
+            role: "user",
+            text: query,
+            metadata: { query_id: queryId, client_message_id: messageId },
+          } as Message,
+        ]);
+      }
+
+      const isTestEndpoint = apiEndpoint.includes("/test");
       const { isAuthenticated } = useAuthStore.getState();
-      
+
       try {
         if (!conversationId && !isTestEndpoint && isAuthenticated) {
-          // Create conversation with user query as title
           const newConversation = await createConversation(query);
-          conversationId = newConversation.id;
-          onConversationCreated?.(conversationId);
+          const conversationId = newConversation.id;
+          if (conversationId) {
+            onConversationCreated?.(conversationId);
+            // Update query progress with conversation ID
+            startQuery(queryId, query, conversationId);
+          }
         }
       } catch (error) {
         console.error("Error creating conversation:", error);
-        // Continue even if conversation creation fails for test endpoint
         if (!isTestEndpoint) {
           throw error;
         }
@@ -114,16 +158,12 @@ export function useChat(options: UseChatOptions = {}) {
 
       // Track active conversation for this stream
       activeConversationIdRef.current = conversationId || null;
-      
+
       addAssistantMessage();
 
       setStreamState((prev) => ({ ...prev, isStreaming: true }));
       accumulatedTextRef.current = "";
-      
-      // Create new abort controller for this stream
       abortControllerRef.current = new AbortController();
-      
-      // Register abort callback with store
       useConversationStore.getState().setAbortStream(() => {
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
@@ -133,94 +173,160 @@ export function useChat(options: UseChatOptions = {}) {
       try {
         await streamEvent(
           apiEndpoint,
-          { query, conversation_id: conversationId || undefined },
           {
-            onConversation: (id) => {
-              onConversationCreated?.(id);
+            query: query,
+            conversationId: conversationId || undefined,
+            isRetry: isRetry,
+            clientMessageId: messageId,
+            pipeline: pipeline,
+            useHybridPipeline: useHybridPipeline, // Backward compatibility
+            model: model,
+          },
+          {
+            onMetadata: (event: MetadataEvent) => {
+              updateLastMessage({ paperSnapshots: event.papers });
             },
-            onMetadata: (papers: PaperSource[]) => {
-              updateLastMessage({ sources: papers });
-            },
-            onPhase: (event) => {
-              onPhase?.(event);
-            },
-            onThought: (event) => {
-              onThought?.(event);
-            },
-            onAnalysis: (event) => {
-              onAnalysis?.(event);
+            onProgress: (event: ProgressEvent) => {
+              console.log("Progress event:", event.type, event.content);
+              if (currentQueryIdRef.current) {
+                addProgress(currentQueryIdRef.current, event);
+              }
+              onProgress?.(event);
             },
             onChunk: (chunk) => {
               console.log("Received chunk:", chunk);
               accumulatedTextRef.current += chunk;
-              console.log("Accumulated text:", accumulatedTextRef.current);
               updateLastMessage({ text: accumulatedTextRef.current });
             },
             onDone: () => {
-              updateLastMessage({
-                text: accumulatedTextRef.current,
-                done: true,
-              });
+              if (currentQueryIdRef.current) {
+                const queryProgress = useProgressStore
+                  .getState()
+                  .getQueryProgress(currentQueryIdRef.current);
+                if (queryProgress && queryProgress.steps.length > 0) {
+                  updateLastMessage({
+                    text: accumulatedTextRef.current,
+                    done: true,
+                    progressEvents: queryProgress.steps,
+                  });
+                } else {
+                  updateLastMessage({
+                    text: accumulatedTextRef.current,
+                    done: true,
+                  });
+                }
+                completeQuery(currentQueryIdRef.current);
+              } else {
+                updateLastMessage({
+                  text: accumulatedTextRef.current,
+                  done: true,
+                });
+              }
             },
             onError: (error) => {
               console.error("Stream error:", error);
               updateLastMessage({
-                text: "Error: Failed to get response from server.",
+                text:
+                  error.message || "Error: Failed to get response from server.",
                 done: true,
+                isError: true,
               });
+
+              if (currentQueryIdRef.current) {
+                completeQuery(currentQueryIdRef.current);
+              }
+
               onErrorCallback?.();
               setStreamState({
                 isStreaming: false,
                 isError: true,
                 lastFailedQuery: query,
+                lastClientMessageId: messageId,
               });
             },
-          }
+          },
+          {
+            signal: abortControllerRef.current.signal,
+            heartbeatTimeout: 0,
+          },
         );
       } catch (error) {
         console.error("Streaming error:", error);
-        // Only show error if this is still the active conversation
-        if (useConversationStore.getState().currentConversationId === activeConversationIdRef.current) {
+        if (
+          useConversationStore.getState().currentConversationId ===
+          activeConversationIdRef.current
+        ) {
           updateLastMessage({
             text: "Error: Failed to get response from server.",
+            done: true,
+            isError: true,
           });
         }
+
+        if (currentQueryIdRef.current) {
+          completeQuery(currentQueryIdRef.current);
+        }
+
         onErrorCallback?.();
         setStreamState({
           isStreaming: false,
           isError: true,
           lastFailedQuery: query,
+          lastClientMessageId: messageId,
         });
       } finally {
         setStreamState((prev) => ({ ...prev, isStreaming: false }));
         abortControllerRef.current = null;
         activeConversationIdRef.current = null;
+        currentQueryIdRef.current = null;
         useConversationStore.getState().setAbortStream(null);
       }
     },
     [
       apiEndpoint,
       onConversationCreated,
-      onPhase,
-      onThought,
-      onAnalysis,
+      onProgress,
       onErrorCallback,
       resetStreamState,
       addUserMessage,
       addAssistantMessage,
       updateLastMessage,
       createConversation,
-    ]
+      startQuery,
+      addProgress,
+      completeQuery,
+    ],
   );
 
   const retry = useCallback(() => {
-    if (streamState.lastFailedQuery) {
-      // Remove last two messages (failed user message and error response)
+    if (streamState.lastFailedQuery && streamState.lastClientMessageId) {
+      // Remove only the error assistant message (last message)
       const currentMessages = useConversationStore.getState().messages;
-      setMessages(currentMessages.slice(0, -2));
-      sendMessage(streamState.lastFailedQuery);
+      const lastMsg = currentMessages[currentMessages.length - 1];
+
+      // Only remove if last message is an assistant error message
+      if (lastMsg && lastMsg.role === "assistant") {
+        setMessages(currentMessages.slice(0, -1));
+      }
+
+      // Get current conversation ID
+      const conversationId =
+        useConversationStore.getState().currentConversationId;
+
+      // Resend the message with the existing conversation ID and client message ID
+      sendMessage({
+        query: streamState.lastFailedQuery,
+        conversationId: conversationId || undefined,
+        isRetry: true,
+        clientMessageId: streamState.lastClientMessageId,
+      });
     }
-  }, [streamState.lastFailedQuery, setMessages, sendMessage]);
+  }, [
+    streamState.lastFailedQuery,
+    streamState.lastClientMessageId,
+    setMessages,
+    sendMessage,
+  ]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -231,7 +337,7 @@ export function useChat(options: UseChatOptions = {}) {
     (newMessages: Message[]) => {
       setMessages(newMessages);
     },
-    [setMessages]
+    [setMessages],
   );
 
   return {

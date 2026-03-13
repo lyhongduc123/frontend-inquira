@@ -11,26 +11,32 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const accessToken = searchParams.get("access_token");
-      const refreshToken = searchParams.get("refresh_token");
+      const success = searchParams.get("success");
       const error = searchParams.get("error");
 
       if (error) {
         console.error("Auth error:", error);
-        router.push("/?error=" + error);
+        router.push("/login?error=" + error);
         return;
       }
 
-      if (accessToken && refreshToken) {
+      if (success === "true") {
         try {
-          await login({ access_token: accessToken, refresh_token: refreshToken });
-          router.push("/");
+          // Both access and refresh tokens are now in HTTP-only cookies
+          // Just need to fetch user info to complete login
+          await login();
+          
+          // Get redirect URL from sessionStorage or default to home
+          const redirectTo = sessionStorage.getItem("auth_redirect") || "/";
+          sessionStorage.removeItem("auth_redirect");
+          
+          router.push(redirectTo);
         } catch (error) {
           console.error("Login failed:", error);
-          router.push("/?error=login_failed");
+          router.push("/login?error=login_failed");
         }
       } else {
-        router.push("/?error=missing_tokens");
+        router.push("/login?error=missing_tokens");
       }
     };
 

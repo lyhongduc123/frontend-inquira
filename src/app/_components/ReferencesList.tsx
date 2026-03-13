@@ -1,59 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import type { PaperSource } from "@/types/paper.type";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Button } from "@/components/ui/button";
-import { ArrowDownNarrowWide } from "lucide-react";
-import { PaperCard } from "./PaperCard";
+import type { PaperMetadata } from "@/types/paper.type";
+import { VStack } from "@/components/layout/vstack";
+import { TypographyP } from "@/components/global/typography";
+import { Separator } from "@/components/ui/separator";
+import { ReferenceItem } from "./ReferenceItem";
 
 interface ReferencesListProps {
-  sources: PaperSource[];
+  references: PaperMetadata[];
 }
 
-export function ReferencesList({ sources }: ReferencesListProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  if (!sources || sources.length === 0) {
+/**
+ * Displays a list of references cited in the assistant message
+ * Shows as a bibliography-style list at the end of the message
+ */
+export function ReferencesList({ references }: ReferencesListProps) {
+  if (!references || references.length === 0) {
     return null;
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-      <div className="mt-4 w-full">
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className="group h-auto w-fit cursor-pointer justify-between p-0 hover:bg-transparent"
-          >
-            <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground">
-              References ({sources.length})
-            </span>
-            <ArrowDownNarrowWide className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:text-foreground group-data-[state=open]:rotate-180" />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-2 space-y-2">
-            {sources.map((source, j) => (
-              <PaperCard
-                key={source.paper_id || j}
-                title={source.title}
-                authors={source.authors}
-                year={source.year}
-                venue={source.venue}
-                abstract={source.abstract}
-                url={source.pdf_url || source.url || ""}
-                citation_count={source.citation_count}
-                sjr_data={source.sjr_data}
-              />
-            ))}
-          </div>
-        </CollapsibleContent>
-      </div>
-    </Collapsible>
+    <VStack className="mt-6 gap-3 min-w-0">
+      <Separator className="my-2" />
+      <TypographyP weight="semibold" className="text-sm">
+        References
+      </TypographyP>
+      <VStack className="gap-3 min-w-0">
+        {references.map((reference, index) => (
+          <ReferenceItem
+            key={reference.paperId || index}
+            reference={reference}
+            number={index + 1}
+          />
+        ))}
+      </VStack>
+    </VStack>
   );
 }

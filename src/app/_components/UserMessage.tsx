@@ -1,13 +1,16 @@
+import { TypographyH1, TypographyH2, TypographyH3 } from "@/components/global/typography";
+import { Box } from "@/components/layout/box";
+
 interface UserMessageProps {
   text: string;
 }
 
 export function UserMessage({ text }: UserMessageProps) {
   return (
-    <div className="w-full">
-      <h2 className="text-xl font-semibold">
+    <Box className="w-full">
+      <TypographyH3>
         {text}
-      </h2>
-    </div>
+      </TypographyH3>
+    </Box>
   );
 }

@@ -1,50 +1,63 @@
 import { useCallback } from "react";
-import { Message } from "@/types/message.type";
+import { StreamEventPayload } from "@/lib/stream/stream";
+import { SearchFilters } from "@/app/_components/FilterPanel";
+import { transformFiltersForBackend } from "@/lib/filter-utils";
+
+// Support both legacy and event-driven payloads
+type SendMessagePayload = StreamEventPayload | {
+  query: string;
+  conversationId?: string;
+  filters?: Record<string, unknown>;
+  pipeline?: "database" | "hybrid" | "standard";
+  clientMessageId?: string;
+};
 
 interface ChatHandlersParams {
   currentConversationId: string | null;
-  sendMessage: (query: string, conversationId?: string | null) => Promise<void>;
-  loadConversation: (conversationId: string) => Promise<Message[]>;
+  sendMessage: (payload: SendMessagePayload) => Promise<void>;
   resetConversation: () => void;
-  deleteConversation: (conversationId: string) => Promise<boolean>;
   clearMessages: () => void;
-  resetProgress: () => void;
+  searchFilters?: SearchFilters;
+  pipeline?: "database" | "hybrid" | "standard";
+  // Deprecated - kept for backward compatibility
+  useHybridPipeline?: boolean;
 }
 
+/**
+ * Hook for creating chat message handlers without navigation logic.
+ * Components using these handlers should handle navigation themselves.
+ */
 export function useChatHandlers({
   currentConversationId,
   sendMessage,
-  loadConversation,
   resetConversation,
-  deleteConversation,
   clearMessages,
-  resetProgress,
+  searchFilters,
+  pipeline = "database",
+  useHybridPipeline,
 }: ChatHandlersParams) {
+  
   const handleNewConversation = useCallback(() => {
     resetConversation();
     clearMessages();
-    resetProgress();
-  }, [resetConversation, clearMessages, resetProgress]);
-  
-  const handleDeleteConversation = useCallback(async (conversationId: string) => {
-    const shouldReset = await deleteConversation(conversationId);
-    if (shouldReset) {
-      handleNewConversation();
-    }
-  }, [deleteConversation, handleNewConversation]);
+    // Navigation should be handled by the calling component
+  }, [resetConversation, clearMessages]);
   
   const handleSend = useCallback(async (query: string) => {
-    await sendMessage(query, currentConversationId);
-  }, [sendMessage, currentConversationId]);
-  
-  const handleSelectConversation = useCallback(async (conversationId: string) => {
-    await loadConversation(conversationId);
-  }, [loadConversation]);
+    // Transform filters to backend format (yearRange -> year_min/year_max, etc.)
+    const transformedFilters = transformFiltersForBackend(searchFilters);
+    
+    await sendMessage({ 
+      query, 
+      conversationId: currentConversationId || undefined,
+      filters: transformedFilters,
+      pipeline: pipeline,
+      useHybridPipeline: useHybridPipeline,
+    } as SendMessagePayload);
+  }, [sendMessage, currentConversationId, searchFilters, pipeline, useHybridPipeline]);
   
   return {
     handleSend,
-    handleSelectConversation,
     handleNewConversation,
-    handleDeleteConversation,
   };
 }

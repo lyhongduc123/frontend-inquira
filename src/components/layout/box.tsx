@@ -15,6 +15,7 @@ const boxVariants = cva('block', {
       sm: 'rounded-md',
       md: 'rounded-xl',
       lg: 'rounded-2xl',
+      full: 'rounded-full',
     },
     border: {
       none: '',
@@ -34,25 +35,27 @@ const boxVariants = cva('block', {
   },
 })
 
-export interface BoxProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof boxVariants> {}
+type BoxElement = React.ElementType;
 
-export function Box({
-  className,
-  padding,
-  rounded,
-  border,
-  tone,
-  ...props
-}: BoxProps) {
-  return (
-    <div
-      className={clsx(
-        boxVariants({ padding, rounded, border, tone }),
-        className
-      )}
-      {...props}
-    />
-  )
+export interface BoxProps
+  extends React.ComponentPropsWithoutRef<"div">,
+    VariantProps<typeof boxVariants> {
+  as?: BoxElement;
 }
+
+export const Box = React.forwardRef<HTMLElement, BoxProps>(
+  ({ as: Component = "div", className, padding, rounded, border, tone, ...props }, ref) => {
+    return (
+      <Component
+        ref={ref}
+        className={clsx(
+          boxVariants({ padding, rounded, border, tone }),
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+
+Box.displayName = "Box";

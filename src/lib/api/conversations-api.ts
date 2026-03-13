@@ -1,47 +1,52 @@
 import { apiClient } from "./api-client";
-import {
-  ConversationListResponse,
-  ConversationDetail,
-} from "../../types/conversation.type";
+import type {
+  ConversationCreate,
+  ConversationUpdate,
+  Conversation,
+  ConversationDelete
+} from "@/types/conversation.type";
+import type { PaginatedData } from "@/types/api.type";
+
+const CONVERSATIONS_BASE = "/api/v1/conversations";
 
 export const conversationsApi = {
   /**
    * List all conversations for the current user
    */
-  async list(
-    page: number = 1,
-    pageSize: number = 20,
-    archived?: boolean
-  ): Promise<ConversationListResponse> {
-    const params = new URLSearchParams({
+  async list(params: {
+    page?: number;
+    page_size?: number;
+    archived?: boolean;
+  } = {}): Promise<PaginatedData<Conversation>> {
+    const { page = 1, page_size = 20, archived } = params;
+
+    const queryParams = new URLSearchParams({
       page: page.toString(),
-      page_size: pageSize.toString(),
+      page_size: page_size.toString(),
     });
 
     if (archived !== undefined) {
-      params.append("archived", archived.toString());
+      queryParams.append("archived", archived.toString());
     }
 
-    return apiClient.get<ConversationListResponse>(
-      `/api/v1/conversations?${params}`
+    return apiClient.get<PaginatedData<Conversation>>(
+      `${CONVERSATIONS_BASE}?${queryParams}`
     );
   },
 
   /**
    * Create a new conversation
    */
-  async create(title?: string): Promise<ConversationDetail> {
-    return apiClient.post<ConversationDetail>("/api/v1/conversations", {
-      title,
-    });
+  async create(data: ConversationCreate = {}): Promise<Conversation> {
+    return apiClient.post<Conversation>(CONVERSATIONS_BASE, data);
   },
 
   /**
-   * Get a specific conversation by ID
+   * Get a specific conversation by ID with all messages
    */
-  async get(conversationId: string): Promise<ConversationDetail> {
-    return apiClient.get<ConversationDetail>(
-      `/api/v1/conversations/${conversationId}`
+  async get(conversationId: string): Promise<Conversation> {
+    return apiClient.get<Conversation>(
+      `${CONVERSATIONS_BASE}/${conversationId}`
     );
   },
 
@@ -50,18 +55,20 @@ export const conversationsApi = {
    */
   async update(
     conversationId: string,
-    updates: { title?: string; is_archived?: boolean }
-  ): Promise<ConversationDetail> {
-    return apiClient.patch<ConversationDetail>(
-      `/api/v1/conversations/${conversationId}`,
+    updates: ConversationUpdate
+  ): Promise<Conversation> {
+    return apiClient.put<Conversation>(
+      `${CONVERSATIONS_BASE}/${conversationId}`,
       updates
     );
   },
 
   /**
-   * Delete a conversation
+   * Delete a conversation and all its messages
    */
-  async delete(conversationId: string): Promise<void> {
-    return apiClient.delete(`/api/v1/conversations/${conversationId}`);
+  async delete(conversationId: string): Promise<ConversationDelete> {
+    return apiClient.delete<ConversationDelete>(
+      `${CONVERSATIONS_BASE}/${conversationId}`
+    );
   },
 };

@@ -13,29 +13,31 @@ export const authApi = {
 
   /**
    * Get current user info
+   * @param skipRetry - If true, skip automatic token refresh on 401 (useful for initial auth checks)
    */
-  async getMe(): Promise<User> {
-    return apiClient.get<User>("/api/auth/me");
+  async getMe(skipRetry = false): Promise<User> {
+    const response = await apiClient.get<User>("/api/auth/me", { skipRetry });
+    return response;
   },
 
   /**
-   * Refresh access token (uses skipRetry to avoid infinite loop)
+   * Refresh access token using httpOnly cookie (no body needed)
    */
-  async refreshToken(refreshToken: string): Promise<AuthTokens> {
+  async refreshToken(): Promise<AuthTokens> {
     return apiClient.post<AuthTokens>(
       "/api/auth/refresh",
-      { refresh_token: refreshToken },
+      {}, // Empty body, refresh token comes from httpOnly cookie
       { skipAuth: true, skipRetry: true }
     );
   },
 
   /**
-   * Logout and revoke refresh token
+   * Logout and revoke refresh token (from httpOnly cookie)
    */
-  async logout(refreshToken: string): Promise<void> {
-    return apiClient.post(
+  async logout(): Promise<void> {
+    return await apiClient.post(
       "/api/auth/logout",
-      { refresh_token: refreshToken }
+      {} // Empty body, refresh token comes from httpOnly cookie
     );
   },
 };

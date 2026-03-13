@@ -2,53 +2,59 @@ import { HStack } from "@/components/layout/hstack";
 import { VStack } from "@/components/layout/vstack";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Author, SJRData } from "@/types/paper.type";
+import { PaperMetadata } from "@/types/paper.type";
+import { AuthorMetadata } from "@/types/author.type";
 import { TypographyP } from "@/components/global/typography";
-import {
-  ExternalLink,
-  BookOpen,
-  Users,
-  Calendar,
-  Quote,
-  Zap,
-  Lock,
-  FileText,
-  Award,
-  TrendingUp,
-} from "lucide-react";
+import { BookOpen, Users, Quote, Zap } from "lucide-react";
+import { Box } from "@/components/layout/box";
+import { cn } from "@/lib/utils";
+import { AccessLinkButton } from "./_shared/AccessLinkButton";
+import { ActionButtonGroup } from "./_shared/ActionButtonGroup";
+import { IndexBadge } from "./_shared/IndexBadge";
+import { InfoItem } from "./_shared/InfoItem";
 
 interface PaperCardProps {
-  title: string;
-  url: string;
-  snippet?: string;
-  authors?: Author[];
-  year?: number;
-  venue?: string;
-  abstract?: string;
-  citation_count?: number;
-  influential_citation_count?: number;
-  rank?: number;
-  pdf_url?: string;
-  sjr_data?: SJRData;
+  idx?: number;
+  paperMetadata?: PaperMetadata;
+  isViewing?: boolean;
+  isSelected?: boolean;
+  onSelect?: (paperId: string) => void;
+  onView?: (paper: PaperMetadata) => void;
+
+  isLoading?: boolean;
 }
 
 export function PaperCard({
-  title,
-  url,
-  snippet,
-  authors,
-  year,
-  venue,
-  abstract,
-  citation_count,
-  influential_citation_count,
-  rank,
-  pdf_url,
-  sjr_data,
+  idx,
+  paperMetadata,
+  isViewing,
+  isSelected,
+  onSelect,
+  onView,
+  isLoading,
 }: PaperCardProps) {
-  const displayText = snippet || abstract;
+  if (!paperMetadata) {
+    return null;
+  }
 
-  const formatAuthors = (authorsArr: Author[]) => {
+  if (isLoading) {
+    return <PaperCardSkeleton />;
+  }
+  const {
+    title,
+    url,
+    authors,
+    year,
+    venue,
+    abstract,
+    citationCount,
+    influentialCitationCount,
+    pdfUrl,
+    sjrData,
+  } = paperMetadata;
+  const displayText = abstract;
+
+  const formatAuthors = (authorsArr: AuthorMetadata[]) => {
     if (!authorsArr?.length) return "";
     if (authorsArr.length <= 3) {
       return authorsArr.map((author) => author.name).join(", ");
@@ -57,92 +63,93 @@ export function PaperCard({
     const remainingCount = authorsArr.length - 3;
     const lastAuthor = authorsArr[authorsArr.length - 1].name;
     return `${authorsArray.join(
-      ", "
+      ", ",
     )} … ${lastAuthor} (+${remainingCount} more)`;
   };
 
   const citationLevel = () => {
-    if (citation_count === undefined || citation_count === 0) return null;
-    if (citation_count > 500) return "HIGHLY CITED";
-    if (citation_count > 100) return "MODERATELY CITED";
+    if (citationCount === undefined || citationCount === 0) return null;
+    if (citationCount > 500) return "HIGHLY CITED";
+    if (citationCount > 100) return "MODERATELY CITED";
     return null;
   };
 
   const influentialLevel = () => {
-    if (influential_citation_count === undefined || influential_citation_count === 0) return null;
-    if (influential_citation_count > 50) return "HIGHLY INFLUENTIAL";
-    if (influential_citation_count > 10) return "MODERATELY INFLUENTIAL";
+    if (!influentialCitationCount) return null;
+    if (influentialCitationCount > 50) return "HIGHLY INFLUENTIAL";
+    if (influentialCitationCount > 10) return "MODERATELY INFLUENTIAL";
     return null;
   };
 
+  const onCardView = (e: React.MouseEvent<HTMLDivElement>) => {
+    const selection = window.getSelection();
+    console.log("PaperCard clicked. Current selection:", selection?.toString());
+
+    if (selection && selection.toString().length > 0) {
+      return;
+    }
+    console.log("PaperCard clicked:", paperMetadata);
+    e.stopPropagation();
+    onView?.(paperMetadata);
+  };
+
   return (
-    <Card className="relative gap-1 p-3 transition">
-      {rank !== undefined && (
-        <div className="absolute left-0 top-0 h-full w-[4px] bg-linear-to-b from-primary to-primary/40" />
+    <Card
+      className={cn(
+        "group relative gap-2 p-3 transition hover:bg-accent-foreground hover:border-primary cursor-pointer min-w-0",
+        isViewing && "bg-accent-foreground border-primary",
+        isSelected && "ring-2 ring-primary ring-offset-2",
       )}
-
-      <CardHeader className="relative flex flex-row items-center justify-between space-y-0">
-        {rank !== undefined && (
-          <div className="absolute -left-2 -top-2 rounded-full bg-primary px-2 py-1 text-xs font-bold text-white shadow">
-            #{rank}
-          </div>
-        )}
-
-        <CardTitle className="flex-1 text-sm font-medium">
-          <HStack className="items-center gap-1">
+      onClick={onCardView}
+    >
+      <CardHeader className="relative flex flex-row items-center justify-between space-y-0 min-w-0">
+        <IndexBadge idx={idx} isSelected={isViewing} />
+        <CardTitle className="flex-1 text-sm font-medium min-w-0">
+          <HStack className="items-center gap-1 min-w-0">
             <a
-              href={url}
+              href={url ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 hover:underline line-clamp-1 pr-2"
+              className="flex-1 group-hover:underline line-clamp-1 pr-2 min-w-0 max-w-[90%]"
             >
               {title}
             </a>
-            
-            {/* Access Link Card */}
-            <a
-              href={pdf_url || url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex shrink-0 items-center gap-1.5 rounded bg-primary/10 px-2.5 py-1 transition-colors hover:bg-primary/20"
-            >
-              {pdf_url ? (
-                <>
-                  <FileText className="h-4 w-4" />
-                  <span className="text-xs font-semibold">PDF</span>
-                </>
-              ) : url.includes("semanticscholar") ? (
-                <>
-                  <Lock className="h-4 w-4 text-amber-600" />
-                  <span className="text-xs font-semibold">PDF</span>
-                </>
-              ) : (
-                <>
-                  <ExternalLink className="h-4 w-4" />
-                  <span className="text-xs font-semibold">PDF</span>
-                </>
-              )}
-            </a>
+            <Box className="absolute inset-3 flex items-center justify-end opacity-100 group-hover:opacity-0 transition-opacity duration-200 group-hover:pointer-events-none">
+              <AccessLinkButton
+                isIcon={true}
+                pdfUrl={pdfUrl || undefined}
+                url={url || undefined}
+              />
+            </Box>
           </HStack>
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="space-y-2">
-        <VStack className="w-full">
+      <CardContent className="relative">
+        <VStack className="w-full gap-2">
           <VStack className="flex-1 w-full">
-            {/* Authors and Year */}
             {authors && (
               <HStack className="flex-wrap items-center gap-3 text-sm text-accent">
                 <HStack className="min-w-0 items-center gap-1">
                   <Users className="h-4 w-4 shrink-0 -translate-y-0.5" />
-                  <span className="line-clamp-1">{formatAuthors(authors)}</span>
+                  <TypographyP
+                    variant="muted"
+                    size="xs"
+                    className="line-clamp-1"
+                  >
+                    {formatAuthors(authors)}
+                  </TypographyP>
                 </HStack>
               </HStack>
             )}
 
             {/* Abstract/Snippet */}
             {displayText ? (
-              <TypographyP variant="muted" size="xs" className="mt-1 line-clamp-3">
+              <TypographyP
+                variant="muted"
+                size="xs"
+                className="mt-1 line-clamp-3"
+              >
                 {displayText}
               </TypographyP>
             ) : (
@@ -150,108 +157,112 @@ export function PaperCard({
                 No abstract available.
               </TypographyP>
             )}
-
-            {/* Citation Levels */}
+          </VStack>
+          {/* Citation Levels */}
+          <Box className="min-h-4">
             {(citationLevel() || influentialLevel()) && (
-              <HStack className="mt-2">
-                {citationLevel() && (
-                  <Badge variant="secondary" className="h-6 px-2 text-xs font-bold">
-                    <Quote className="h-3 w-3 fill-green-600 text-green-600" />
-                    <span className="font-semibold">{citationLevel()}</span>{" "}
-                  </Badge>
-                )}
-                {influentialLevel() && (
-                  <Badge variant="default" className="h-6 px-2 text-xs font-bold">
-                    <Zap className="h-3 w-3 fill-amber-700 text-amber-700" />
-                    <span className="font-semibold">{influentialLevel()}</span>{" "}
-                  </Badge>
+              <HStack className="gap-2 min-h-4">
+                <SignalBadge
+                  text={citationLevel() || ""}
+                  icon={<Quote size={16} />}
+                  variant={
+                    citationLevel() === "HIGHLY CITED" ? "negative" : "positive"
+                  }
+                />
+                <SignalBadge
+                  text={influentialLevel() || ""}
+                  icon={<Zap size={16} />}
+                  variant={
+                    influentialLevel() === "HIGHLY INFLUENTIAL"
+                      ? "negative"
+                      : "positive"
+                  }
+                />
+                {sjrData && (
+                  <SignalBadge
+                    text={sjrData ? `${sjrData.quartile}` : ""}
+                    variant="positive"
+                  />
                 )}
               </HStack>
             )}
-
-            {/* SJR Journal Metrics */}
-            {sjr_data && (
-              <div className="mt-2 rounded-md border border-accent/30 bg-accent/20 p-2">
-                <HStack className="flex-wrap items-center gap-2">
-                  <Badge 
-                    variant={
-                      sjr_data.quartile === 'Q1' ? 'default' : 
-                      sjr_data.quartile === 'Q2' ? 'secondary' : 
-                      'outline'
-                    }
-                    className="h-6 px-2 font-bold"
-                  >
-                    <Award className="mr-1 h-3 w-3" />
-                    {sjr_data.quartile}
-                  </Badge>
-                  
-                  <span className="text-xs">
-                    <span className="font-semibold">SJR:</span>{" "}
-                    <span className="font-bold text-primary">{sjr_data.sjr_score.toFixed(2)}</span>
-                  </span>
-                  
-                  {sjr_data.percentile && (
-                    <Badge variant="outline" className="h-6 px-2">
-                      <TrendingUp className="mr-1 h-3 w-3" />
-                      Top {(100 - sjr_data.percentile).toFixed(1)}%
-                    </Badge>
-                  )}
-                  
-                  {sjr_data.impact_factor && (
-                    <span className="text-xs text-muted-foreground">
-                      IF: <span className="font-semibold">{sjr_data.impact_factor.toFixed(1)}</span>
-                    </span>
-                  )}
-                  
-                  {sjr_data.h_index && (
-                    <span className="text-xs text-muted-foreground">
-                      h-index: <span className="font-semibold">{sjr_data.h_index}</span>
-                    </span>
-                  )}
-                </HStack>
-              </div>
-            )}
-          </VStack>
-
-          {/* Bottom: Venue and Citation Text - Horizontal */}
-          {(year || venue || citation_count || influential_citation_count) && (
-            <HStack className="mt-2 w-full flex-wrap items-center gap-4 border-t pt-2 text-xs">
-              {year && (
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4 -translate-y-0.5" />
-                  <span className="font-semibold">{year}</span>
-                </span>
-              )}
-
-              {citation_count !== undefined && (
-                <span>
-                  <span className="font-semibold">{citation_count}</span>{" "}
-                  <span className="text-muted-foreground">citations</span>
-                </span>
-              )}
-
-              {influential_citation_count !== undefined &&
-                influential_citation_count > 0 && (
-                  <span>
-                    <span className="font-semibold">
-                      {influential_citation_count}
-                    </span>{" "}
-                    <span className="text-muted-foreground">
-                      influential citations
-                    </span>
-                  </span>
+          </Box>
+          <Box className="@container w-full mt-2">
+            <HStack className="w-full justify-between items-center gap-2 min-w-0">
+              <HStack className="items-center gap-2 @sm:gap-4 min-w-0 flex-1">
+                <InfoItem number={year || "n.d."} className="shrink-0" />
+                <InfoItem
+                  number={citationCount}
+                  label="citations"
+                  className="shrink-0"
+                  labelClassName="hidden @xs:block"
+                />
+                <InfoItem
+                  number={influentialCitationCount}
+                  label="influential citations"
+                  className="shrink-0"
+                  labelClassName="hidden @sm:block"
+                />
+                <Box className="hidden @md:block min-w-0 flex-1 group-hover:max-w-[40%] transition-all duration-200">
+                  <InfoItem
+                    icon={<BookOpen size={16} className="shrink-0" />}
+                    label={venue || "Unknown Venue"}
+                    className="w-full min-w-0"
+                  />
+                </Box>
+              </HStack>
+              <Box
+                className={cn(
+                  "shrink-0 flex justify-end overflow-hidden transition-all duration-300 ease-out",
+                  "max-w-0 opacity-0 group-hover:max-w-fit group-hover:opacity-100 group-hover:ml-2",
                 )}
-
-              {venue && (
-                <HStack className="text-muted-foreground items-center gap-1">
-                  <BookOpen className="h-4 w-4 shrink-0" />
-                  <span className="font-medium">{venue}</span>
-                </HStack>
-              )}
+              >
+                <Box className="w-max">
+                  <ActionButtonGroup paperMetadata={paperMetadata} />
+                </Box>
+              </Box>
             </HStack>
-          )}
+          </Box>
         </VStack>
       </CardContent>
     </Card>
   );
 }
+
+interface SignalBadgeProps {
+  text: string;
+  icon?: React.ReactNode;
+  variant?: "default" | "positive" | "medium" | "negative";
+}
+
+const SignalBadge = ({ text, icon, variant = "default" }: SignalBadgeProps) => {
+  const variantClasses =
+    variant === "positive"
+      ? "bg-primary/20 text-primary"
+      : variant === "medium"
+        ? "bg-warning/20 text-warning"
+        : variant === "negative"
+          ? "bg-destructive/20 text-destructive"
+          : "bg-secondary/20 text-secondary";
+  return (
+    <Badge className={`flex items-center gap-1 ${variantClasses}`}>
+      {icon}
+      <TypographyP size="xs" className="font-semibold">
+        {text}
+      </TypographyP>
+    </Badge>
+  );
+};
+
+const PaperCardSkeleton = () => {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 min-w-0">
+        <div className="h-4 w-16 rounded bg-muted" />
+        <CardTitle className="flex-1 text-sm font-medium min-w-0">
+          <div className="h-4 w-full rounded bg-muted" />
+        </CardTitle>
+      </CardHeader>
+    </Card>
+  );
+};

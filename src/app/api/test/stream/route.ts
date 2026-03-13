@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Call backend test streaming endpoint (no auth required)
-    const response = await fetch(`${API_BASE_URL}/api/v1/test/stream`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/test/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

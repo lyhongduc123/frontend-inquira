@@ -5,15 +5,14 @@ import { authApi } from "@/lib/api/auth-api";
 
 interface AuthState {
   user: User | null;
-  tokens: AuthTokens | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasCheckedAuth: boolean; // Track if we've checked auth already
 
   // Actions
   setUser: (user: User | null) => void;
-  setTokens: (tokens: AuthTokens | null) => void;
   setIsLoading: (isLoading: boolean) => void;
-  login: (tokens: AuthTokens) => Promise<void>;
+  login: () => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -23,84 +22,79 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      tokens: null,
       isAuthenticated: false,
       isLoading: true,
+      hasCheckedAuth: false, // Initialize to false
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
 
-      setTokens: (tokens) => set({ tokens }),
-
       setIsLoading: (isLoading) => set({ isLoading }),
 
-      login: async (tokens: AuthTokens) => {
+      login: async () => {
         try {
-          set({ tokens, isLoading: true });
+          set({ isLoading: true });
+          // Tokens are in HTTP-only cookies, just fetch user info
           const user = await authApi.getMe();
           set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
           console.error("Login failed:", error);
-          set({ tokens: null, user: null, isAuthenticated: false, isLoading: false });
+          set({ user: null, isAuthenticated: false, isLoading: false });
           throw error;
         }
       },
 
       logout: async () => {
-        const { tokens } = get();
         try {
-          if (tokens?.refresh_token) {
-            await authApi.logout(tokens.refresh_token);
+          // Only call logout endpoint if authenticated
+          const { isAuthenticated } = get();
+          if (isAuthenticated) {
+            await authApi.logout();
           }
         } catch (error) {
-          console.error("Logout error:", error);
+          // Silently handle logout errors - we're clearing state anyway
+          console.debug("Logout error (ignored):", error);
         } finally {
-          set({ user: null, tokens: null, isAuthenticated: false });
+          set({ user: null, isAuthenticated: false, isLoading: false, hasCheckedAuth: false });
         }
       },
 
       refreshAuth: async () => {
-        const { tokens } = get();
-        if (!tokens?.refresh_token) {
-          throw new Error("No refresh token available");
-        }
-
         try {
-          const newTokens = await authApi.refreshToken(tokens.refresh_token);
+          // Refresh token is in httpOnly cookie, just fetch new tokens
+          await authApi.refreshToken();
           const user = await authApi.getMe();
-          set({ tokens: newTokens, user, isAuthenticated: true });
+          set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
           console.error("Token refresh failed:", error);
-          set({ tokens: null, user: null, isAuthenticated: false });
+          set({ user: null, isAuthenticated: false, isLoading: false });
           throw error;
         }
       },
 
       checkAuth: async () => {
-        const { tokens } = get();
-        if (!tokens?.access_token) {
-          set({ isLoading: false, isAuthenticated: false });
+        // Skip if already checked to prevent duplicate calls
+        const { hasCheckedAuth } = get();
+        if (hasCheckedAuth) {
+          console.log("[checkAuth] Already checked, skipping");
           return;
         }
 
+        console.log("[checkAuth] Starting auth check with HTTP-only cookies");
+        
         try {
-          const user = await authApi.getMe();
-          set({ user, isAuthenticated: true, isLoading: false });
+          set({ isLoading: true });
+          const user = await authApi.getMe(false);
+          console.log("[checkAuth] User authenticated:", user.email);
+          set({ user, isAuthenticated: true, isLoading: false, hasCheckedAuth: true });
         } catch (error) {
-          console.error("Auth check failed:", error);
-          // Try to refresh token
-          try {
-            await get().refreshAuth();
-          } catch {
-            set({ tokens: null, user: null, isAuthenticated: false, isLoading: false });
-          }
+          console.log("[checkAuth] Not authenticated, clearing state");
+          set({ isLoading: false, isAuthenticated: false, user: null, hasCheckedAuth: true });
         }
       },
     }),
     {
       name: "auth-storage",
-      partialize: (state) => ({
-        tokens: state.tokens,
-      }),
+      partialize: () => ({}),
     }
   )
 );

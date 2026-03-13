@@ -34,9 +34,11 @@ const headingVariants = cva("scroll-m-20", {
 const paragraphVariants = cva("", {
   variants: {
     variant: {
-      default: "text-foreground",
+      default: "text-inherit",
       muted: "text-muted-foreground",
       primary: "text-primary",
+      secondary: "text-secondary",
+      black: "text-black",
       accent: "text-accent",
       destructive: "text-destructive",
     },
@@ -66,7 +68,33 @@ const paragraphVariants = cva("", {
       relaxed: "leading-relaxed",
       loose: "leading-loose",
     },
+    onHoverChange: {
+      true: "transition-colors",
+      false: "",
+    },
   },
+  compoundVariants: [
+    {
+      variant: "default",
+      onHoverChange: true,
+      class: "hover:text-accent-foreground group-hover/item:text-accent-foreground",
+    },
+    {
+      variant: "muted",
+      onHoverChange: true,
+      class: "hover:text-foreground group-hover:text-foreground",
+    },
+    {
+      variant: "primary",
+      onHoverChange: true,
+      class: "hover:text-primary/80 group-hover:text-primary/80",
+    },
+    {
+      variant: "destructive",
+      onHoverChange: true,
+      class: "hover:text-destructive/80 group-hover:text-destructive/80",
+    },
+  ],
   defaultVariants: {
     variant: "default",
     size: "base",

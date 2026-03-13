@@ -32,12 +32,19 @@ const tabsListVariants = cva(
       variant: {
         default: "bg-muted",
         line: "gap-1 bg-transparent",
+        pill: "bg-input/20 border border-border/40 p-1 rounded-full gap-1 backdrop-blur-sm",
       },
     },
     defaultVariants: {
       variant: "default",
     },
   }
+)
+
+const pillTriggerClasses = cn(
+  "group-data-[variant=pill]/tabs-list:rounded-full group-data-[variant=pill]/tabs-list:px-4",
+  "group-data-[variant=pill]/tabs-list:data-[state=active]:bg-primary group-data-[variant=pill]/tabs-list:data-[state=active]:text-primary-foreground group-data-[variant=pill]/tabs-list:data-[state=active]:shadow-md",
+  "group-data-[variant=pill]/tabs-list:after:hidden" // Disable the underline for pill
 )
 
 function TabsList({
@@ -68,6 +75,14 @@ function TabsTrigger({
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
         "data-[state=active]:bg-background dark:data-[state=active]:text-foreground dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 data-[state=active]:text-foreground",
         "after:bg-foreground after:absolute after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100",
+        "group-data-[variant=line]/tabs-list:data-[state=active]:text-primary", // Text becomes primary blue
+        "after:bg-primary after:absolute after:opacity-0 after:transition-all after:duration-300",
+        "group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-2px] group-data-[orientation=horizontal]/tabs:after:h-[2px]",
+        "group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100",
+        
+        // Added: Subtle Glow on active (optional but looks great on dark themes)
+        "group-data-[variant=line]/tabs-list:data-[state=active]:after:shadow-[0_0_8px_rgba(59,130,246,0.5)]",
+        pillTriggerClasses,
         className
       )}
       {...props}

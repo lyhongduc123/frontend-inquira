@@ -1,25 +1,20 @@
 import { Message } from "@/types/message.type";
 import { UserMessage } from "./UserMessage";
 import { AssistantMessage } from "./AssistantMessage";
-import { QueryProgress } from "./QueryProgress";
-import { ThoughtEvent } from "@/lib/stream";
+import { Box } from "@/components/layout/box";
 
 interface MessageSectionProps {
   isUserMessage: boolean;
-  showDivider: boolean;
-  progressSteps?: string[];
-  progressSubtopics?: [string, string][];
-  progressThoughts?: ThoughtEvent[];
+  showDivider?: boolean;
   message: Message;
+  onRetry?: () => void;
 }
 
 export function MessageSection({
   isUserMessage,
   showDivider,
-  progressSteps = [],
-  progressSubtopics = [],
-  progressThoughts = [],
   message: m,
+  onRetry,
 }: MessageSectionProps) {
   const renderUserMessage = () => {
     return <UserMessage text={m.text} />;
@@ -27,21 +22,22 @@ export function MessageSection({
 
   const renderAssistantMessage = () => {
     return (
-      <div>
+      <Box>
         <AssistantMessage
           isVisible={false}
           text={m.text}
-          sources={Array.isArray(m.sources) ? m.sources : []}
-          showDivider={showDivider}
+          sources={Array.isArray(m.paperSnapshots) ? m.paperSnapshots : []}
           isDone={m.done}
+          isError={m.isError}
+          onRetry={onRetry}
         />
-      </div>
+      </Box>
     );
   };
 
   return (
-    <div className="w-full space-y-4">
+    <Box className="w-full space-y-4 z-30">
       {isUserMessage ? renderUserMessage() : renderAssistantMessage()}
-    </div>
+    </Box>
   );
 }

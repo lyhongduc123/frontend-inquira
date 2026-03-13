@@ -1,45 +1,69 @@
 "use client";
 
 import React from "react";
-import { PaperSource } from "@/types/paper.type";
+import type { PaperMetadata } from "@/types/paper.type";
 import { CitationTrigger } from "./CitationTrigger";
 import { CitationCard } from "./CitationCard";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useCitationPosition } from "@/hooks/use-citation-position";
+import { useDetailSidebar } from "@/hooks/use-detail-sidebar";
+import { Box } from "@/components/layout/box";
 
 interface CitationProps {
   number: string;
   paperId: string;
-  source?: PaperSource;
+  source?: PaperMetadata;
 }
 
-export function Citation({ number, source }: Omit<CitationProps, 'paperId'> & { paperId?: string }) {
-  const [open, setOpen] = React.useState(false);
+export function Citation({
+  number,
+  source,
+}: Omit<CitationProps, "paperId"> & { paperId?: string }) {
+  const [showCard, setShowCard] = React.useState(false);
   const containerRef = React.useRef<HTMLSpanElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
+  const { openPaper } = useDetailSidebar();
 
-  useClickOutside(containerRef as React.RefObject<HTMLElement>, () => setOpen(false), open);
-  const position = useCitationPosition(triggerRef, cardRef, open);
+  useClickOutside(
+    containerRef as React.RefObject<HTMLElement>,
+    () => setShowCard(false),
+    showCard,
+  );
+  const position = useCitationPosition(triggerRef, cardRef, showCard);
 
   if (!source) {
     return <span>[{number}]</span>;
   }
 
+  const handleClick = () => {
+    setShowCard(false);
+    openPaper(source);
+  };
+
+  const handleMouseEnter = () => {
+    setShowCard(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowCard(false);
+  };
+
   return (
     <span
       ref={containerRef}
       style={{ position: "relative", display: "inline-block" }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <CitationTrigger
         ref={triggerRef}
         paperDetail={source}
         number={Number(number)}
-        isVisible={true}
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleClick}
       />
-      {open && (
-        <div
+      {showCard && (
+        <Box
           ref={cardRef}
           style={{
             position: "fixed",
@@ -51,14 +75,7 @@ export function Citation({ number, source }: Omit<CitationProps, 'paperId'> & { 
           }}
         >
           <CitationCard isVisible={true} paperDetail={source} />
-          <button
-            className="absolute top-1 right-2 w-5 h-5 flex items-center justify-center cursor-pointer text-xs bg-background border border-border rounded hover:bg-accent transition-colors"
-            onClick={() => setOpen(false)}
-            aria-label="Close citation"
-          >
-            ×
-          </button>
-        </div>
+        </Box>
       )}
     </span>
   );

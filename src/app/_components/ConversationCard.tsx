@@ -1,25 +1,30 @@
 "use client";
 
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { conversationsApi } from "@/lib/api/conversations-api";
 import { Conversation } from "@/types/conversation.type";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { EllipsisVerticalIcon } from "lucide-react";
+import { EllipsisVerticalIcon, Trash2 } from "lucide-react";
 import { TypographyP } from "@/components/global/typography";
 import { Box } from "@/components/layout/box";
+import { HStack } from "@/components/layout/hstack";
+import pluralize from "pluralize";
+import { DeleteConversationDialog } from "./DeleteConversationDialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ConversationCardProps {
   currentConversationId: string;
   conversation: Conversation;
   onClick: () => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => Promise<void>;
   isOpen?: boolean;
 }
 
@@ -30,86 +35,94 @@ export function ConversationCard({
   onDelete,
   isOpen,
 }: ConversationCardProps) {
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "just now";
-    
-    const date = new Date(dateString);
-    
-    // Check if date is invalid
-    if (isNaN(date.getTime())) {
-      return "just now";
-    }
-    
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-    if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  async function handleDeleteConversation(conversationId: string) {
-    try {
-      await conversationsApi.delete(conversationId);
-      onDelete?.(conversationId);
-    } catch (error) {
-      console.error("Delete conversation error:", error);
-      alert("Failed to delete conversation.");
+  async function handleDeleteConversation() {
+    if (onDelete) {
+      await onDelete(conversation.id);
     }
   }
 
+  const userMsgcount = conversation.messageCount % 2 === 0 ? conversation.messageCount / 2 : Math.ceil(conversation.messageCount / 2);
+
   return (
-    <div
-      className={cn(
-        "group flex items-center rounded-md p-3 hover:bg-muted cursor-pointer transition-opacity duration-300",
-        currentConversationId === conversation.id && "bg-muted",
-        typeof isOpen !== "undefined" && isOpen === false
-          ? "opacity-0 pointer-events-none"
-          : "opacity-100"
-      )}
-      onClick={onClick}
-    >
-      <Box className="flex-1 min-w-0 select-none p-0 bg-transparent">
-        <TypographyP size="sm" weight="medium" leading="none" className="line-clamp-1">
-          {conversation.title || "New Conversation"}
-        </TypographyP>
-        <TypographyP variant="muted" size="xs" leading="none">
-          {formatDate(conversation.last_updated)}
-          {/* {conversation.message_count} messages */}
-        </TypographyP>
-      </Box>
-      <div
+    <>
+      <HStack
         className={cn(
-          "transition-opacity duration-200 group-hover:opacity-100 opacity-0 flex pointer-events-auto"
+          "group/card relative items-center rounded-md gap-1 px-2 py-3 hover:bg-primary cursor-pointer transition-opacity duration-300",
+          currentConversationId === conversation.id && "bg-primary",
+          typeof isOpen !== "undefined" && isOpen === false
+            ? "opacity-0 pointer-events-none"
+            : "opacity-100",
         )}
+        onClick={onClick}
       >
+        <Box className="flex-1 min-w-0 select-none">
+          <TypographyP
+            size="sm"
+            weight="medium"
+            leading="none"
+            className="truncate"
+          >
+            {conversation.title || "New Conversation"}
+          </TypographyP>
+          <TypographyP variant="muted" size="xs" leading="none">
+            {userMsgcount} {" "}
+            {pluralize("query", userMsgcount)}
+          </TypographyP>
+        </Box>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="ghost"
+              variant="icon"
               size="icon-sm"
               onClick={(e) => e.stopPropagation()}
+              className="opacity-0 group-hover/card:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-white/10 transition-opacity duration-200"
             >
-              <EllipsisVerticalIcon />
+              <EllipsisVerticalIcon className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
+          <DropdownMenuContent
+            side="right"
+            align="start"
+            onClick={(e) => e.stopPropagation()}
+          >
             <DropdownMenuGroup>
+              <DropdownMenuLabel className="select-none text-xs text-muted-foreground">
+                Actions
+              </DropdownMenuLabel>
+              <DropdownMenuItem>Archive</DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={() => handleDeleteConversation(conversation.id)}
+                variant="destructive"
+                onSelect={() => {
+                  setShowDeleteDialog(true);
+                }}
               >
+                <Trash2 className="h-4 w-4" />
                 Delete
               </DropdownMenuItem>
-              <DropdownMenuItem>Archive</DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-    </div>
+      </HStack>
+      <DeleteConversationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleDeleteConversation}
+        conversationTitle={`"${conversation.title || "New Conversation"}"`}
+      />
+    </>
+  );
+}
+
+
+export function ConversationCardSkeleton({ isOpen }: { isOpen?: boolean }) {
+  return (
+    <HStack>
+      <Box className="flex-1 min-w-0 animate-pulse gap-1">
+        <Skeleton className="h-4 w-full mb-2" />
+        <Skeleton className="h-3 w-1/2" />
+      </Box>
+    </HStack>
   );
 }

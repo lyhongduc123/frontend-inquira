@@ -2,19 +2,19 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  avatar_url: string;
+  avatarUrl: string;
   provider: "google" | "github";
-  is_active: boolean;
-  created_at: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface OAuthUrlResponse {
-  authorization_url: string;
+  authorizationUrl: string;
 }
 
 export interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
+  // Both access and refresh tokens are now stored in secure httpOnly cookies
+  // This interface kept for backward compatibility but tokens should not be accessed from JS
 }
 
 export interface AuthState {
