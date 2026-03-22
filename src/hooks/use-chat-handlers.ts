@@ -18,6 +18,7 @@ interface ChatHandlersParams {
   resetConversation: () => void;
   clearMessages: () => void;
   searchFilters?: SearchFilters;
+  selectedScopedPaperIds?: string[];
   pipeline?: "database" | "hybrid" | "standard";
   // Deprecated - kept for backward compatibility
   useHybridPipeline?: boolean;
@@ -33,6 +34,7 @@ export function useChatHandlers({
   resetConversation,
   clearMessages,
   searchFilters,
+  selectedScopedPaperIds = [],
   pipeline = "database",
   useHybridPipeline,
 }: ChatHandlersParams) {
@@ -45,16 +47,20 @@ export function useChatHandlers({
   
   const handleSend = useCallback(async (query: string) => {
     // Transform filters to backend format (yearRange -> year_min/year_max, etc.)
-    const transformedFilters = transformFiltersForBackend(searchFilters);
+    const transformedFilters = transformFiltersForBackend(searchFilters) || {};
+
+    if (selectedScopedPaperIds.length > 0) {
+      transformedFilters.paperIds = selectedScopedPaperIds;
+    }
     
     await sendMessage({ 
       query, 
       conversationId: currentConversationId || undefined,
-      filters: transformedFilters,
+      filters: Object.keys(transformedFilters).length > 0 ? transformedFilters : undefined,
       pipeline: pipeline,
       useHybridPipeline: useHybridPipeline,
     } as SendMessagePayload);
-  }, [sendMessage, currentConversationId, searchFilters, pipeline, useHybridPipeline]);
+  }, [sendMessage, currentConversationId, searchFilters, selectedScopedPaperIds, pipeline, useHybridPipeline]);
   
   return {
     handleSend,

@@ -1,10 +1,10 @@
 import { AuthorMetadata } from './author.type'
 
-export interface SJRData {
-  journalTitle: string
+export interface JournalData {
+  title: string
   issn: string
   sjrScore: number
-  quartile: 'Q1' | 'Q2' | 'Q3' | 'Q4'
+  sjrBestQuartile: 'Q1' | 'Q2' | 'Q3' | 'Q4'
   hIndex: number
   impactFactor: number
   rank: number
@@ -24,6 +24,7 @@ export interface SJRData {
  */
 export interface PaperMetadata {
   paperId: string
+  externalIds?: Record<string, string> | null
   title: string
   abstract?: string | null
   tldr?: string
@@ -33,6 +34,7 @@ export interface PaperMetadata {
   venue?: string | null
   url?: string | null
   pdfUrl?: string | null
+  journal?: JournalData | null
   citationCount: number
   influentialCitationCount?: number
   citationStyles?: Record<string, string> | null
@@ -45,7 +47,6 @@ export interface PaperMetadata {
   isRetracted: boolean
   topics?: Array<Record<string, unknown>> | null
   keywords?: Array<Record<string, unknown>> | null
-  sjrData?: SJRData | null
 }
 
 /**
@@ -58,7 +59,7 @@ export interface PaperDetail {
   title: string
   abstract: string
   authors: AuthorMetadata[]
-  journal?: Record<string, unknown> | null
+  journal?: JournalData | null
   publicationDate?: string | null
   venue?: string | null
   issn?: string[] | null
@@ -94,7 +95,7 @@ export interface PaperDetail {
   createdAt: string
   updatedAt: string
   lastAccessedAt?: string | null
-  sjrData?: SJRData | null
+  sjrData?: JournalData | null
 }
 
 /**

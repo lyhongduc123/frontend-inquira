@@ -39,6 +39,7 @@ const paragraphVariants = cva("", {
       primary: "text-primary",
       secondary: "text-secondary",
       black: "text-black",
+      white: "text-white",
       accent: "text-accent",
       destructive: "text-destructive",
     },
@@ -199,7 +200,7 @@ export function TypographyH4({
   className = "",
   variant,
   size = "sm",
-  weight = "medium",
+  weight = "semibold",
   ...props
 }: TypographyH4Props) {
   return (

@@ -24,6 +24,7 @@ import {
 import { DiffView } from './TextHighlight'
 import type { ValidationInspection } from '@/types/validation.type'
 import { cn } from '@/lib/utils'
+import { normalizeCitationIssues } from '@/lib/validation/validation-issue-utils'
 
 interface ValidationResultCardProps {
   result: ValidationInspection
@@ -34,6 +35,11 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
   const [isExpanded, setIsExpanded] = React.useState(true)
 
   const { result: validationResult, summary } = result
+  const citationIssues = normalizeCitationIssues(validationResult.incorrect_citations)
+  const unsupportedFacts = validationResult.non_existent_facts ?? []
+  const potentiallyMisunderstoodClaims = validationResult.claims_checked.filter(
+    (claim) => claim.support_score >= 0.5 && claim.support_score < 0.75
+  )
 
   return (
     <Card className={cn('rounded-2xl', className)}>
@@ -86,6 +92,33 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
           )}
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <MetricCard
+            label="Grounding"
+            value={validationResult.component_scores.grounding_score}
+            icon={<CheckCircle className="h-4 w-4" />}
+          />
+          <MetricCard
+            label="Citation Faithfulness"
+            value={validationResult.component_scores.citation_faithfulness_score}
+            icon={<FileText className="h-4 w-4" />}
+          />
+          <MetricCard
+            label="Perspective Coverage"
+            value={validationResult.component_scores.perspective_coverage_score}
+            icon={<Sparkles className="h-4 w-4" />}
+          />
+          <MetricCard
+            label="Overall Score"
+            value={validationResult.component_scores.overall_score}
+            icon={<BarChart3 className="h-4 w-4" />}
+          />
+          <StatCard
+            label="Claims Checked"
+            value={validationResult.claims_checked.length}
+          />
+        </div>
+
         {/* Detailed Analysis Tabs */}
         <Tabs defaultValue="diff" className="w-full">
           <TabsList className="w-full justify-start">
@@ -133,11 +166,29 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
 
           {/* Issues Tab */}
           <TabsContent value="issues" className="space-y-4 mt-4">
-            {validationResult.has_hallucination && validationResult.non_existent_facts && validationResult.non_existent_facts.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <StatCard
+                label="Citation problems"
+                value={citationIssues.length}
+                color={citationIssues.length > 0 ? 'red' : 'green'}
+              />
+              <StatCard
+                label="Unsupported facts"
+                value={unsupportedFacts.length}
+                color={unsupportedFacts.length > 0 ? 'red' : 'green'}
+              />
+              <StatCard
+                label="Potential misunderstanding"
+                value={potentiallyMisunderstoodClaims.length}
+                color={potentiallyMisunderstoodClaims.length > 0 ? 'yellow' : 'green'}
+              />
+            </div>
+
+            {validationResult.has_hallucination && unsupportedFacts.length > 0 ? (
               <IssueSection
                 title="Potential Hallucinations"
                 icon={<AlertTriangle className="h-4 w-4 text-yellow-600" />}
-                items={validationResult.non_existent_facts}
+                items={unsupportedFacts}
                 details={validationResult.hallucination_details}
               />
             ) : null}
@@ -150,14 +201,14 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
               />
             ) : null}
 
-            {validationResult.incorrect_citations && validationResult.incorrect_citations.length > 0 ? (
+            {citationIssues.length > 0 ? (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold flex items-center gap-2">
                   <XCircle className="h-4 w-4 text-red-600" />
                   Incorrect Citations
                 </h4>
                 <div className="space-y-2">
-                  {validationResult.incorrect_citations.map((citation, idx) => (
+                  {citationIssues.map((citation, idx) => (
                     <div
                       key={idx}
                       className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-3"
@@ -165,9 +216,10 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
                       <div className="flex items-start justify-between gap-2">
                         <code className="text-xs font-mono">{citation.citation}</code>
                         <Badge variant="destructive" className="text-xs">
-                          {citation.reason}
+                          {formatCitationIssueType(citation.type)}
                         </Badge>
                       </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{citation.reason}</p>
                       {citation.expected_range && (
                         <p className="mt-1 text-xs text-muted-foreground">
                           Expected: {citation.expected_range}
@@ -179,9 +231,21 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
               </div>
             ) : null}
 
+            {potentiallyMisunderstoodClaims.length > 0 ? (
+              <IssueSection
+                title="Cited but potentially misunderstood"
+                icon={<AlertTriangle className="h-4 w-4 text-yellow-600" />}
+                items={potentiallyMisunderstoodClaims.map((claim) => claim.claim)}
+                details={potentiallyMisunderstoodClaims.map(
+                  (claim) => `Support score: ${(claim.support_score * 100).toFixed(1)}%`
+                )}
+              />
+            ) : null}
+
             {!validationResult.has_hallucination &&
               validationResult.text_match.suspicious_sentences.length === 0 &&
-              (!validationResult.incorrect_citations || validationResult.incorrect_citations.length === 0) && (
+              citationIssues.length === 0 &&
+              potentiallyMisunderstoodClaims.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <CheckCircle className="h-12 w-12 text-green-600 mb-4" />
                   <p className="text-lg font-semibold">No Issues Detected</p>
@@ -270,11 +334,52 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
                 </pre>
               </ScrollArea>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Paper IDs ({validationResult.context_evidence.total_papers})</h4>
+                <ScrollArea className="h-40 rounded-xl border bg-card p-4">
+                  <div className="space-y-1">
+                    {validationResult.context_evidence.paper_ids.length > 0 ? (
+                      validationResult.context_evidence.paper_ids.map((paperId) => (
+                        <code key={paperId} className="block text-xs">{paperId}</code>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No paper IDs detected in context.</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Chunk IDs ({validationResult.context_evidence.total_chunks})</h4>
+                <ScrollArea className="h-40 rounded-xl border bg-card p-4">
+                  <div className="space-y-1">
+                    {validationResult.context_evidence.chunk_ids.length > 0 ? (
+                      validationResult.context_evidence.chunk_ids.map((chunkId) => (
+                        <code key={chunkId} className="block text-xs">{chunkId}</code>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No chunk IDs detected in context.</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
   )
+}
+
+function formatCitationIssueType(type?: string): string {
+  if (!type || type === 'unknown') return 'Unknown citation issue'
+  if (type === 'citation_out_of_range') return 'Citation out of range'
+  if (type === 'citation_not_found') return 'Citation not found'
+  if (type === 'fact_not_supported') return 'Fact not supported'
+  if (type === 'misinterpreted_citation') return 'Misinterpreted citation'
+  return 'Citation issue'
 }
 
 // Helper Components

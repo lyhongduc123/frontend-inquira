@@ -1,4 +1,5 @@
 import type { PaperMetadata } from "@/types/paper.type";
+import { extractScopedCitationRefs } from "@/lib/scoped-citation-utils";
 
 /**
  * Extracts all paper IDs that are cited in the message text
@@ -9,10 +10,23 @@ import type { PaperMetadata } from "@/types/paper.type";
 export function extractCitedPaperIds(text: string): string[] {
   const citedIds = new Set<string>();
 
-  // Extract from (cite:paper_id) format
-  const citeMatches = text.matchAll(/\(cite:([^)]+)\)/g);
+  // Extract scoped markers first: (cite:paper_id|chunk_id|...)
+  const scopedRefs = extractScopedCitationRefs(text);
+  for (const ref of scopedRefs) {
+    citedIds.add(ref.paperId);
+  }
+
+  // Extract plain/grouped cite markers:
+  // - (cite:paper_id)
+  // - (cite:paper_id1, cite:paper_id2)
+  // - mixed with scoped tokens
+  const citeMatches = text.matchAll(/cite:([^,\)\s]+)/g);
   for (const match of citeMatches) {
-    citedIds.add(match[1]);
+    const token = match[1];
+    const paperId = token.split("|")[0]?.trim();
+    if (paperId) {
+      citedIds.add(paperId);
+    }
   }
 
   // Extract from [number](paper_id) format

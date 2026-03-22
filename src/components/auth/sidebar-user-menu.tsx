@@ -65,7 +65,7 @@ export function SidebarUserMenu() {
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton
             size="lg"
-            className="hover:text-accent-foreground transition-colors"
+            className="transition-colors"
           >
             <Avatar className="h-8 w-8 rounded-lg">
               <AvatarImage src={user.avatarUrl} alt={user.name} />

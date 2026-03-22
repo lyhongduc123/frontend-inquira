@@ -72,6 +72,7 @@ export function useConversation() {
           done: true,
           paperSnapshots: [...(msg.paperSnapshots || [])] as PaperMetadata[],
           progressEvents: msg.progressEvents || undefined,
+          scopedQuoteRefs: msg.scopedQuoteRefs || undefined,
         }));
 
         setMessages(loadedMessages);

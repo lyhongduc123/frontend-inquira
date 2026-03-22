@@ -1,4 +1,5 @@
 import { PaperMetadata } from "./paper.type";
+import { ScopedCitationRef } from "@/lib/scoped-citation-utils";
 
 /**
  * Message Types for Chat Interface
@@ -16,6 +17,7 @@ export interface Message {
   role: "user" | "assistant";
   text: string;
   paperSnapshots?: PaperMetadata[];
+  scopedQuoteRefs?: ScopedCitationRef[];
   progressEvents?: ProgressEvent[];
   done?: boolean;
   isError?: boolean;

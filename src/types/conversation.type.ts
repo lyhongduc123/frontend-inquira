@@ -1,4 +1,5 @@
 import { PaperMetadata } from "./paper.type";
+import { ScopedCitationRef } from "@/lib/scoped-citation-utils";
 
 /**
  * Conversation Types - Aligned with Backend Schemas
@@ -28,6 +29,7 @@ export interface Message {
     metadata?: Record<string, unknown>;
     timestamp: number;
   }> | null;
+  scopedQuoteRefs?: ScopedCitationRef[] | null;
   createdAt: string;
 }
 

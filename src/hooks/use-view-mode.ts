@@ -1,35 +1,31 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback } from "react";
 import { MessageAreaRef } from "@/app/_components/MessageArea";
+import { useQueryNavigatorStore } from "@/store/query-navigator-store";
 
 export function useViewMode() {
   const messageAreaRef = useRef<MessageAreaRef>(null);
-  const [activeQueryIndex, setActiveQueryIndex] = useState<number | null>(null);
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentActiveIndex = messageAreaRef.current?.activeQueryIndex;
-      if (currentActiveIndex !== undefined && currentActiveIndex !== activeQueryIndex) {
-        setActiveQueryIndex(currentActiveIndex);
-      }
-    }, 200);
 
-    return () => clearInterval(interval);
-  }, [activeQueryIndex]);
+  const handleActiveQueryIndexChange = useCallback((index: number | null) => {
+    const prev = useQueryNavigatorStore.getState().activeQueryIndex;
+    if (prev !== index) {
+      useQueryNavigatorStore.getState().setActiveQueryIndex(index);
+    }
+  }, []);
   
   const handleQueryClick = useCallback((index: number) => {
     messageAreaRef.current?.scrollToMessage(index);
-    setActiveQueryIndex(index);
+    useQueryNavigatorStore.getState().setActiveQueryIndex(index);
   }, []);
   
   const getActiveQueryIndex = useCallback(() => {
-    return messageAreaRef.current?.activeQueryIndex ?? null;
+    return useQueryNavigatorStore.getState().activeQueryIndex;
   }, []);
   
   return { 
     messageAreaRef, 
     handleQueryClick,
-    activeQueryIndex,
+    handleActiveQueryIndexChange,
     getActiveQueryIndex,
-    setActiveQueryIndex
+    setActiveQueryIndex: useQueryNavigatorStore.getState().setActiveQueryIndex,
   };
 }

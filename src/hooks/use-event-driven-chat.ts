@@ -22,6 +22,13 @@ import { useAuthStore } from "@/store/auth-store";
 import { useProgressStore } from "@/store/progress-store";
 import { ProgressEvent } from "@/lib/stream/event.types";
 import { chatApi } from "@/lib/api/chat-api";
+import { authApi } from "@/lib/api/auth-api";
+import { toast } from "sonner";
+import {
+  getScopedCitationKey,
+  mergeScopedCitationRefs,
+} from "@/lib/scoped-citation-utils";
+import type { ScopedCitationRef } from "@/lib/scoped-citation-utils";
 
 interface UseEventDrivenChatOptions {
   onConversationCreated?: (conversationId: string) => void;
@@ -44,6 +51,8 @@ interface TaskSubmitPayload {
   pipeline?: "database" | "hybrid" | "standard";
   clientMessageId?: string;
 }
+
+type RetryPayload = Omit<TaskSubmitPayload, "clientMessageId">;
 
 const ACTIVE_TASK_KEY = "exegent_active_task";
 const TASK_SEQUENCE_KEY = "exegent_task_sequence";
@@ -70,22 +79,53 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
 
   const accumulatedTextRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
+  const refreshInFlightRef = useRef<Promise<void> | null>(null);
   const activeConversationIdRef = useRef<string | null>(null);
   const currentQueryIdRef = useRef<string | null>(null);
+  const lastRetryPayloadRef = useRef<RetryPayload | null>(null);
+  const pendingAssistantChunkRef = useRef("");
+  const chunkFlushFrameRef = useRef<number | null>(null);
 
-  // Restore active task on mount (for page reload)
-  useEffect(() => {
-    const savedTaskId = localStorage.getItem(ACTIVE_TASK_KEY);
-    const savedSequence = localStorage.getItem(TASK_SEQUENCE_KEY);
-    
-    if (savedTaskId && savedSequence) {
-      console.log(`Resuming task ${savedTaskId} from sequence ${savedSequence}`);
-      // TODO: Implement resume logic
-      // For now, clear it - we'll implement resume in next iteration
-      localStorage.removeItem(ACTIVE_TASK_KEY);
-      localStorage.removeItem(TASK_SEQUENCE_KEY);
+  const ensureAccessToken = useCallback(async () => {
+    if (!refreshInFlightRef.current) {
+      refreshInFlightRef.current = authApi
+        .refreshToken()
+        .then(() => undefined)
+        .finally(() => {
+          refreshInFlightRef.current = null;
+        });
     }
+
+    await refreshInFlightRef.current;
   }, []);
+
+  const fetchWithAuthRetry = useCallback(
+    async (input: RequestInfo | URL, init: RequestInit): Promise<Response> => {
+      const requestInit: RequestInit = {
+        ...init,
+        credentials: "include",
+      };
+
+      let response = await fetch(input, requestInit);
+      if (response.status !== 401) {
+        return response;
+      }
+
+      try {
+        await ensureAccessToken();
+      } catch (refreshError) {
+        const { isAuthenticated, logout } = useAuthStore.getState();
+        if (isAuthenticated) {
+          await logout();
+        }
+        throw refreshError;
+      }
+
+      response = await fetch(input, requestInit);
+      return response;
+    },
+    [ensureAccessToken],
+  );
 
   const resetStreamState = useCallback(() => {
     setStreamState((prev) => ({
@@ -129,7 +169,62 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
 
       const currentMessages = useConversationStore.getState().messages;
       const last = currentMessages[currentMessages.length - 1];
+
+      if (!last || last.role !== "assistant") {
+        return;
+      }
+
       setMessages([...currentMessages.slice(0, -1), { ...last, ...updates }]);
+    },
+    [setMessages]
+  );
+
+  const flushAssistantChunks = useCallback(() => {
+    if (!pendingAssistantChunkRef.current) {
+      return;
+    }
+
+    accumulatedTextRef.current += pendingAssistantChunkRef.current;
+    pendingAssistantChunkRef.current = "";
+    updateLastMessage({ text: accumulatedTextRef.current });
+  }, [updateLastMessage]);
+
+  const scheduleChunkFlush = useCallback(() => {
+    if (chunkFlushFrameRef.current !== null) {
+      return;
+    }
+
+    chunkFlushFrameRef.current = window.requestAnimationFrame(() => {
+      chunkFlushFrameRef.current = null;
+      flushAssistantChunks();
+    });
+  }, [flushAssistantChunks]);
+
+  const appendScopedQuoteRef = useCallback(
+    (ref: ScopedCitationRef) => {
+      const currentConvId =
+        useConversationStore.getState().currentConversationId;
+
+      if (currentConvId !== activeConversationIdRef.current) {
+        return;
+      }
+
+      const currentMessages = useConversationStore.getState().messages;
+      const last = currentMessages[currentMessages.length - 1];
+
+      if (!last || last.role !== "assistant") {
+        return;
+      }
+
+      const mergedRefs = mergeScopedCitationRefs(last.scopedQuoteRefs, ref);
+
+      setMessages([
+        ...currentMessages.slice(0, -1),
+        {
+          ...last,
+          scopedQuoteRefs: mergedRefs,
+        },
+      ]);
     },
     [setMessages]
   );
@@ -159,8 +254,7 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
 
       try {
         const url = chatApi.getEventDrivenStreamUrl(taskId, fromSequence);
-        const response = await fetch(url, {
-          credentials: "include",
+        const response = await fetchWithAuthRetry(url, {
           signal: abortControllerRef.current.signal,
           headers: {
             Accept: "text/event-stream",
@@ -168,7 +262,26 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+          const rawErrorText = await response.text();
+          let errorDetail = rawErrorText;
+
+          try {
+            const parsed = JSON.parse(rawErrorText) as Record<string, unknown>;
+            errorDetail = String(
+              parsed.detail
+              || parsed.message
+              || parsed.error
+              || rawErrorText,
+            );
+          } catch {
+            // keep raw text fallback
+          }
+
+          const message = errorDetail?.trim()
+            ? errorDetail
+            : `Unable to stream response (HTTP ${response.status})`;
+
+          throw new Error(message);
         }
 
         const reader = response.body?.getReader();
@@ -178,128 +291,218 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
         let buffer = "";
         let currentSequence = fromSequence;
 
+        const handleParsedEvent = async (
+          eventType: string,
+          parsed: Record<string, unknown>,
+        ) => {
+          const sequenceValue = Number(parsed.sequence);
+          currentSequence = Number.isFinite(sequenceValue)
+            ? sequenceValue
+            : currentSequence;
+
+          // Update stored sequence
+          localStorage.setItem(TASK_SEQUENCE_KEY, currentSequence.toString());
+          setStreamState((prev) => ({
+            ...prev,
+            lastSequence: currentSequence,
+          }));
+
+          // Handle event types
+          switch (eventType) {
+            case "step": // Progress update
+              if (currentQueryIdRef.current) {
+                const progressType = String(
+                  parsed.type || parsed.phase || "reasoning",
+                );
+                const progressEvent: ProgressEvent = {
+                  type: progressType as ProgressEvent["type"],
+                  content: String(parsed.content || parsed.message || ""),
+                  metadata:
+                    typeof parsed.metadata === "object" && parsed.metadata !== null
+                      ? (parsed.metadata as Record<string, unknown>)
+                      : undefined,
+                };
+                addProgress(currentQueryIdRef.current, progressEvent);
+                onProgress?.(progressEvent);
+              }
+              break;
+
+            case "metadata": // Paper metadata
+              if (parsed.type === "papers_metadata" && Array.isArray(parsed.papers)) {
+                updateLastMessage({
+                  paperSnapshots: parsed.papers as Message["paperSnapshots"],
+                });
+              } else if (parsed.type === "quote_ref") {
+                const paperId = String(parsed.paper_id || "").trim();
+                const chunkId = String(parsed.chunk_id || "").trim();
+                const marker = String(parsed.marker || "").trim();
+
+                if (paperId && chunkId) {
+                  const quoteRef: ScopedCitationRef = {
+                    paperId,
+                    chunkId,
+                    marker:
+                      marker
+                      || `(cite:${paperId}|${chunkId}${parsed.char_start !== undefined && parsed.char_end !== undefined ? `|${parsed.char_start}|${parsed.char_end}` : ""})`,
+                    quote:
+                      typeof parsed.quote === "string"
+                        ? parsed.quote
+                        : null,
+                    section:
+                      typeof parsed.section === "string"
+                        ? parsed.section
+                        : null,
+                    charStart:
+                      typeof parsed.char_start === "number"
+                        ? parsed.char_start
+                        : null,
+                    charEnd:
+                      typeof parsed.char_end === "number"
+                        ? parsed.char_end
+                        : null,
+                  };
+
+                  const normalizedMarker = quoteRef.marker
+                    || getScopedCitationKey(quoteRef);
+
+                  appendScopedQuoteRef({
+                    ...quoteRef,
+                    marker: normalizedMarker,
+                  });
+                }
+              }
+              break;
+
+            case "chunk": // Response text
+              if (parsed.content) {
+                pendingAssistantChunkRef.current += String(parsed.content);
+                scheduleChunkFlush();
+              }
+              break;
+
+            case "reasoning":
+              break;
+
+            case "ping":
+              break;
+
+            case "done": // Completion
+              flushAssistantChunks();
+
+              if (currentQueryIdRef.current) {
+                const queryProgress = useProgressStore
+                  .getState()
+                  .getQueryProgress(currentQueryIdRef.current);
+
+                if (queryProgress && queryProgress.steps.length > 0) {
+                  updateLastMessage({
+                    text: accumulatedTextRef.current,
+                    done: true,
+                    progressEvents: queryProgress.steps,
+                  });
+                } else {
+                  updateLastMessage({
+                    text: accumulatedTextRef.current,
+                    done: true,
+                  });
+                }
+                completeQuery(currentQueryIdRef.current);
+              }
+
+              localStorage.removeItem(ACTIVE_TASK_KEY);
+              localStorage.removeItem(TASK_SEQUENCE_KEY);
+
+              setStreamState((prev) => ({
+                ...prev,
+                isStreaming: false,
+                activeTaskId: null,
+              }));
+              return true;
+
+            case "error":
+              throw new Error(String(parsed.message || "Pipeline failed"));
+
+            default:
+              console.warn("Unknown event type:", eventType, parsed);
+          }
+
+          return false;
+        };
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+          buffer = buffer.replace(/\r\n/g, "\n");
 
-          let eventType = "";
-          let eventData = "";
+          let separatorIdx = buffer.indexOf("\n\n");
+          while (separatorIdx !== -1) {
+            const rawEvent = buffer.slice(0, separatorIdx);
+            buffer = buffer.slice(separatorIdx + 2);
 
-          for (const line of lines) {
-            if (line.startsWith("event:")) {
-              eventType = line.slice(6).trim();
-            } else if (line.startsWith("data:")) {
-              eventData = line.slice(5).trim();
-            } else if (line === "" && eventType && eventData) {
-              // Process complete event
-              try {
-                let parsed: any;
-                try {
-                  parsed = JSON.parse(eventData);
-                } catch {
-                  parsed = { content: eventData };
+            if (rawEvent.trim()) {
+              let eventType = "";
+              const dataLines: string[] = [];
+
+              for (const rawLine of rawEvent.split("\n")) {
+                const line = rawLine.trimEnd();
+
+                if (line.startsWith("event:")) {
+                  eventType = line.slice(6).trim();
+                } else if (line.startsWith("data:")) {
+                  let content = line.slice(5);
+                  if (content.startsWith(" ")) {
+                    content = content.slice(1);
+                  }
+                  dataLines.push(content);
                 }
-                currentSequence = parsed.sequence || currentSequence;
-                
-                // Update stored sequence
-                localStorage.setItem(TASK_SEQUENCE_KEY, currentSequence.toString());
-                setStreamState((prev) => ({
-                  ...prev,
-                  lastSequence: currentSequence,
-                }));
-
-                // Handle event types
-                switch (eventType) {
-                  case "step": // Progress update
-                    if (currentQueryIdRef.current) {
-                      const progressType = parsed.type || parsed.phase || "reasoning";
-                      const progressEvent: ProgressEvent = {
-                        type: progressType,
-                        content: parsed.content || parsed.message || "",
-                        metadata: parsed.metadata,
-                      };
-                      addProgress(currentQueryIdRef.current, progressEvent);
-                      onProgress?.(progressEvent);
-                    }
-                    break;
-
-                  case "metadata": // Paper metadata
-                    if (parsed.papers) {
-                      updateLastMessage({ paperSnapshots: parsed.papers });
-                    }
-                    break;
-
-                  case "chunk": // Response text
-                    if (parsed.content) {
-                      accumulatedTextRef.current += parsed.content;
-                      updateLastMessage({ text: accumulatedTextRef.current });
-                    }
-                    break;
-
-                  case "reasoning": // LLM reasoning
-                    // Optional: handle reasoning display
-                    break;
-
-                  case "done": // Completion
-                    if (currentQueryIdRef.current) {
-                      const queryProgress = useProgressStore
-                        .getState()
-                        .getQueryProgress(currentQueryIdRef.current);
-                      
-                      if (queryProgress && queryProgress.steps.length > 0) {
-                        updateLastMessage({
-                          text: accumulatedTextRef.current,
-                          done: true,
-                          progressEvents: queryProgress.steps,
-                        });
-                      } else {
-                        updateLastMessage({
-                          text: accumulatedTextRef.current,
-                          done: true,
-                        });
-                      }
-                      completeQuery(currentQueryIdRef.current);
-                    }
-                    
-                    // Clear stored task
-                    localStorage.removeItem(ACTIVE_TASK_KEY);
-                    localStorage.removeItem(TASK_SEQUENCE_KEY);
-                    
-                    setStreamState((prev) => ({
-                      ...prev,
-                      isStreaming: false,
-                      activeTaskId: null,
-                    }));
-                    return; // Exit loop
-
-                  case "error": // Error occurred
-                    throw new Error(parsed.message || "Pipeline failed");
-
-                  default:
-                    console.warn("Unknown event type:", eventType, parsed);
-                }
-              } catch (parseError) {
-                console.error("Failed to parse event data:", parseError);
               }
 
-              // Reset for next event
-              eventType = "";
-              eventData = "";
+              if (eventType && dataLines.length > 0) {
+                const eventDataRaw = dataLines.join("\n");
+                try {
+                  let parsed: Record<string, unknown>;
+                  try {
+                    const parsedJson: unknown = JSON.parse(eventDataRaw);
+                    parsed =
+                      typeof parsedJson === "object" && parsedJson !== null
+                        ? (parsedJson as Record<string, unknown>)
+                        : { content: String(parsedJson) };
+                  } catch {
+                    parsed = { content: eventDataRaw };
+                  }
+
+                  const shouldStop = await handleParsedEvent(eventType, parsed);
+                  if (shouldStop) {
+                    return;
+                  }
+                } catch (parseError) {
+                  console.error("Failed to parse event data:", parseError);
+                }
+              }
             }
+
+            separatorIdx = buffer.indexOf("\n\n");
           }
         }
       } catch (error: unknown) {
-        console.error("Stream error:", error);
-        
         if (error instanceof Error && error.name !== "AbortError") {
+          console.error("Stream error:", error);
+          const failedQuery = lastRetryPayloadRef.current?.query ?? null;
+          flushAssistantChunks();
+
+          const streamErrorMessage =
+            error.message || "Error: Failed to get response from server.";
+
           updateLastMessage({
-            text: error.message || "Error: Failed to get response from server.",
+            text: streamErrorMessage,
             done: true,
             isError: true,
+          });
+
+          toast.error("Streaming failed", {
+            description: streamErrorMessage,
           });
 
           if (currentQueryIdRef.current) {
@@ -311,14 +514,44 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
             ...prev,
             isStreaming: false,
             isError: true,
+            lastFailedQuery: failedQuery,
           }));
         }
       } finally {
+        if (chunkFlushFrameRef.current !== null) {
+          window.cancelAnimationFrame(chunkFlushFrameRef.current);
+          chunkFlushFrameRef.current = null;
+        }
         abortControllerRef.current = null;
       }
     },
-    [updateLastMessage, addProgress, completeQuery, onProgress, onErrorCallback]
+    [
+      appendScopedQuoteRef,
+      flushAssistantChunks,
+      updateLastMessage,
+      addProgress,
+      completeQuery,
+      fetchWithAuthRetry,
+      onProgress,
+      onErrorCallback,
+      scheduleChunkFlush,
+    ]
   );
+
+  // Restore active task on mount (for page reload)
+  useEffect(() => {
+    const savedTaskId = localStorage.getItem(ACTIVE_TASK_KEY);
+    const savedSequenceRaw = localStorage.getItem(TASK_SEQUENCE_KEY);
+
+    if (!savedTaskId || !savedSequenceRaw || streamState.isStreaming) {
+      return;
+    }
+
+    const parsedSequence = Number.parseInt(savedSequenceRaw, 10);
+    const fromSequence = Number.isNaN(parsedSequence) ? 0 : parsedSequence + 1;
+
+    void streamTaskEvents(savedTaskId, fromSequence);
+  }, [streamState.isStreaming, streamTaskEvents]);
 
   /**
    * Submit a new chat message
@@ -333,8 +566,15 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
         clientMessageId,
       } = payload;
 
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      lastRetryPayloadRef.current = {
+        query,
+        conversationId,
+        filters,
+        pipeline,
+      };
+
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        abortControllerRef.current.abort("replaced-by-new-request");
       }
 
       resetStreamState();
@@ -344,6 +584,10 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
         clientMessageId ||
         `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const queryId = `query-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Reset accumulated stream text for this request to avoid leaking text
+      // from previous assistant responses.
+      accumulatedTextRef.current = "";
       
       currentQueryIdRef.current = queryId;
 
@@ -380,9 +624,8 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
 
       try {
         // Submit task to backend
-        const response = await fetch(chatApi.getEventDrivenSubmitUrl(), {
+        const response = await fetchWithAuthRetry(chatApi.getEventDrivenSubmitUrl(), {
           method: "POST",
-          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
@@ -419,6 +662,10 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
           isError: true,
         });
 
+        toast.error("Message failed", {
+          description: errorMessage,
+        });
+
         if (currentQueryIdRef.current) {
           completeQuery(currentQueryIdRef.current);
         }
@@ -443,6 +690,7 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
       createConversation,
       onConversationCreated,
       streamTaskEvents,
+      fetchWithAuthRetry,
       updateLastMessage,
       completeQuery,
       onErrorCallback,
@@ -450,7 +698,9 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
   );
 
   const retry = useCallback(() => {
-    if (streamState.lastFailedQuery) {
+    const retryPayload = lastRetryPayloadRef.current;
+
+    if (retryPayload?.query || streamState.lastFailedQuery) {
       // Remove error assistant message
       const currentMessages = useConversationStore.getState().messages;
       const lastMsg = currentMessages[currentMessages.length - 1];
@@ -459,12 +709,15 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
         setMessages(currentMessages.slice(0, -1));
       }
 
-      const conversationId =
+      const currentConversationId =
         useConversationStore.getState().currentConversationId;
 
-      sendMessage({
-        query: streamState.lastFailedQuery,
-        conversationId: conversationId || undefined,
+      void sendMessage({
+        query: retryPayload?.query || streamState.lastFailedQuery || "",
+        conversationId:
+          currentConversationId || retryPayload?.conversationId || undefined,
+        filters: retryPayload?.filters,
+        pipeline: retryPayload?.pipeline || "database",
       });
     }
   }, [streamState.lastFailedQuery, setMessages, sendMessage]);

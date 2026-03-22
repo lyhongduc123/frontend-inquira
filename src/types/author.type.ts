@@ -12,7 +12,7 @@ export interface CoAuthor {
   authorId: string;
   name: string;
   hIndex: number | null;
-  totalCitations: number | null;
+  totalCitations: number;
   collaborationCount: number;
 }
 
@@ -37,6 +37,8 @@ export interface AuthorDetail {
     id: string;
     name: string;
     country: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
   }> | null;
   fieldWeightedCitationImpact: number | null;
   collaborationDiversityScore: number | null;
@@ -45,11 +47,18 @@ export interface AuthorDetail {
   retractedPapersCount: number | null;
   hasRetractedPapers: boolean;
   selfCitationRate: number | null;
+  isProcessed: boolean;
+  isConflict: boolean;
   homepageUrl: string | null;
   createdAt: string;
   updatedAt: string;
   lastPaperIndexedAt: string | null;
   isEnriched: boolean;
+  enrichmentStatus: {
+    status: 'needs_enrichment' | 'enriching' | 'completed' | 'failed' | string;
+    taskId?: string;
+    message?: string;
+  } | null;
 }
 
 export interface AuthorDetailWithPapers extends AuthorDetail {
