@@ -26,7 +26,6 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { TypographyP } from "@/components/global/typography";
-import { Scroll, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export interface SearchFilters {
@@ -115,12 +114,12 @@ export function FilterPanel({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md flex h-full flex-col">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-md flex h-full flex-col"
+      >
         <SheetHeader className="shrink-0">
           <SheetTitle>Search Filters</SheetTitle>
-          <SheetDescription>
-            Refine your search results with advanced filters
-          </SheetDescription>
         </SheetHeader>
 
         <ScrollArea className="flex-1 min-h-0">
@@ -136,12 +135,7 @@ export function FilterPanel({
                 orientation="vertical"
                 className="h-auto self-stretch"
               />
-              <Box className="flex-1">
-                <CategoryFilter
-                  category={localFilters.category}
-                  onCategoryChange={updateCategory}
-                />
-              </Box>
+              <Box className="flex-1"></Box>
             </HStack>
 
             <Separator />
@@ -153,6 +147,11 @@ export function FilterPanel({
               onOpenAccessChange={updateOpenAccess}
               onExcludePreprintsChange={updateExcludePreprints}
               onTopJournalsChange={updateTopJournals}
+            />
+
+            <CategoryFilter
+              category={localFilters.category}
+              onCategoryChange={updateCategory}
             />
           </VStack>
         </ScrollArea>
@@ -249,7 +248,7 @@ const YearFilter = ({
           size="sm"
           className="h-auto p-1 text-xs"
           onClick={handleClear}
-          style={{ visibility: hasYearFilter ? 'visible' : 'hidden' }}
+          style={{ visibility: hasYearFilter ? "visible" : "hidden" }}
         >
           Clear
         </Button>
@@ -388,13 +387,13 @@ const CategoryFilter = ({
           size="sm"
           className="h-auto p-1 text-xs"
           onClick={handleClear}
-          style={{ visibility: hasCategory ? 'visible' : 'hidden' }}
+          style={{ visibility: hasCategory ? "visible" : "hidden" }}
         >
           Clear
         </Button>
       </HStack>
       <ScrollArea className="h-full w-full">
-        <VStack className="max-h-64 gap-2 pl-1 pr-2">
+        <VStack className="gap-2 pl-1 pr-2">
           {CATEGORY_OPTIONS.map((field) => (
             <HStack key={field} className="items-start gap-2">
               <Checkbox

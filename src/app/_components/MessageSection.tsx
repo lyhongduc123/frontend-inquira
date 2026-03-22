@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Message } from "@/types/message.type";
 import { UserMessage } from "./UserMessage";
 import { AssistantMessage } from "./AssistantMessage";
@@ -8,13 +9,17 @@ interface MessageSectionProps {
   showDivider?: boolean;
   message: Message;
   onRetry?: () => void;
+  selectedPaperIds?: string[];
+  onTogglePaperSelection?: (paperId: string) => void;
 }
 
-export function MessageSection({
+function MessageSectionComponent({
   isUserMessage,
   showDivider,
   message: m,
   onRetry,
+  selectedPaperIds = [],
+  onTogglePaperSelection,
 }: MessageSectionProps) {
   const renderUserMessage = () => {
     return <UserMessage text={m.text} />;
@@ -27,9 +32,16 @@ export function MessageSection({
           isVisible={false}
           text={m.text}
           sources={Array.isArray(m.paperSnapshots) ? m.paperSnapshots : []}
+          scopedQuoteRefs={m.scopedQuoteRefs}
           isDone={m.done}
           isError={m.isError}
           onRetry={onRetry}
+          selectedPaperIds={selectedPaperIds}
+          onTogglePaperSelection={(paper) => {
+            if (paper.paperId) {
+              onTogglePaperSelection?.(paper.paperId)
+            }
+          }}
         />
       </Box>
     );
@@ -41,3 +53,6 @@ export function MessageSection({
     </Box>
   );
 }
+
+export const MessageSection = memo(MessageSectionComponent);
+MessageSection.displayName = "MessageSection";

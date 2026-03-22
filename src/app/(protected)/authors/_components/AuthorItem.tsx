@@ -1,3 +1,4 @@
+import { InfoItem } from "@/app/_components/_shared/InfoItem";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Item,
@@ -6,6 +7,8 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
+import { Skeleton } from "@/components/ui/skeleton";
+import { C_BULLET } from "@/core";
 import { CoAuthor } from "@/types/author.type";
 import Link from "next/link";
 import pluralize from "pluralize";
@@ -39,12 +42,37 @@ export function AuthorItem({ author }: AuthorCardProps) {
           <ItemTitle className="group-hover:text-secondary transition-colors">
             {author.name}
           </ItemTitle>
-          <ItemDescription className="flex gap-3">
-              {author.totalCitations} {pluralize("citation", author.totalCitations || 0)} 
-              {author.hIndex} h-index
+          <ItemDescription className="flex gap-1 text-card-foreground">
+              <InfoItem
+                number={author.totalCitations}
+                label={pluralize("citation", author.totalCitations || 0)}
+              />
+              {C_BULLET}
+              <InfoItem
+                number={author.hIndex || 0}
+                label="h-index"
+              />
           </ItemDescription>
         </ItemContent>
       </Link>
+    </Item>
+  );
+}
+
+export function AuthorItemSkeleton() {
+  return (
+    <Item variant={"outline"} className="border-2 animate-pulse group w-full">
+      <ItemMedia>
+        <Skeleton className="size-10 shrink-0 rounded-full" />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle>
+          <Skeleton className="h-4 w-1/2 rounded-md" />
+        </ItemTitle>
+        <ItemDescription className="flex gap-3">
+          <Skeleton className="h-3 w-3/4 rounded-md" />
+        </ItemDescription>
+      </ItemContent>
     </Item>
   );
 }

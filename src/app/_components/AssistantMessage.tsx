@@ -2,8 +2,9 @@
 
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, ClipboardIcon, ClipboardPasteIcon, RefreshCw } from "lucide-react";
 import type { PaperMetadata } from "@/types/paper.type";
+import type { ScopedCitationRef } from "@/lib/scoped-citation-utils";
 import { AssistantMessageBody } from "./AssistantMessageBody";
 import { Box } from "@/components/layout/box";
 import { getCitedPapers } from "@/lib/citation-utils";
@@ -13,35 +14,59 @@ import { PaperCard } from "./PaperCard";
 import { useDetailSidebar } from "@/hooks/use-detail-sidebar";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem,  DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface AssistantMessageProps {
   text: string;
   sources?: PaperMetadata[];
+  scopedQuoteRefs?: ScopedCitationRef[];
   showDivider?: boolean;
   isVisible?: boolean;
   isDone?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  selectedPaperIds?: string[];
+  onTogglePaperSelection?: (paper: PaperMetadata) => void;
 }
 
 export function AssistantMessage({
   text,
   sources,
+  scopedQuoteRefs,
   showDivider = false,
   isDone = false,
   isError = false,
   onRetry,
+  selectedPaperIds = [],
+  onTogglePaperSelection,
 }: AssistantMessageProps) {
   const citedPapers = getCitedPapers(text, sources);
-  const { openPaper, content, contentType } = useDetailSidebar();
+  const { openPaper, closeSidebar, content, contentType } = useDetailSidebar();
   const [tabsValue, setTabsValue] = useState<string | null>(null);
+
+  const handleOpenPaper = (paper: PaperMetadata) => {
+    const isSamePaperOpen =
+      !!content && contentType === "paper" && content.paperId === paper.paperId;
+
+    if (isSamePaperOpen) {
+      closeSidebar();
+      return;
+    }
+
+    openPaper(paper);
+  };
 
   const handleTabChange = (value: string) => {
     setTabsValue((prev) => (prev === value ? null : value));
   };
   return (
     <Box className="min-w-0">
-      <AssistantMessageBody text={text} sources={sources} isDone={isDone} />
+      <AssistantMessageBody
+        text={text}
+        sources={sources}
+        scopedQuoteRefs={scopedQuoteRefs}
+        isDone={isDone}
+      />
 
       {isError && onRetry && (
         <Box className="mt-4">
@@ -81,10 +106,9 @@ export function AssistantMessage({
                 <ChevronUp className="ml-1 h-3 w-3" />
               )}
             </TabsTrigger>
+            <ExportDropdown />
           </TabsList>
-
-          {/* <ExportButton sources={sources} /> */}
-          {/* </HStack> */}
+          
           <AnimatePresence mode="wait">
             {tabsValue === "results" && (
               <motion.div
@@ -107,7 +131,9 @@ export function AssistantMessage({
                             contentType === "paper" &&
                             content.paperId === source.paperId
                           }
-                          onView={openPaper}
+                          isSelected={selectedPaperIds.includes(source.paperId)}
+                          onSelect={() => onTogglePaperSelection?.(source)}
+                          onView={handleOpenPaper}
                         />
                       ))}
                     </VStack>
@@ -136,7 +162,9 @@ export function AssistantMessage({
                             contentType === "paper" &&
                             content.paperId === source.paperId
                           }
-                          onView={openPaper}
+                          isSelected={selectedPaperIds.includes(source.paperId)}
+                          onSelect={() => onTogglePaperSelection?.(source)}
+                          onView={handleOpenPaper}
                         />
                       ))}
                     </VStack>
@@ -151,4 +179,28 @@ export function AssistantMessage({
       {showDivider && <Separator className="my-8" />}
     </Box>
   );
+}
+
+
+const ExportDropdown = () => {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <ClipboardIcon className="size-4" />
+          <ChevronRight className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right">
+        <DropdownMenuItem>
+          <ClipboardPasteIcon className="size-4" />
+          Copy text
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          <ClipboardPasteIcon className="size-4" />
+          Copy with citations
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }

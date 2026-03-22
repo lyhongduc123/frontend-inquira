@@ -6,7 +6,6 @@ import {
   useRef,
   forwardRef,
   useImperativeHandle,
-  useState,
 } from "react";
 import { Message } from "@/types/message.type";
 import { VStack } from "@/components/layout/vstack";
@@ -23,6 +22,7 @@ import { QueryProgress } from "./QueryProgress";
 import { Box } from "@/components/layout/box";
 import { useProgressStore } from "@/store/progress-store";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 export interface MessageAreaRef {
   scrollToMessage: (index: number) => void;
@@ -31,20 +31,35 @@ export interface MessageAreaRef {
 }
 
 interface MessageAreaProps {
+  conversationKey?: string;
   messages: Message[];
   isStreaming: boolean;
   onRetry?: () => void;
+  selectedPaperIds?: string[];
+  onTogglePaperSelection?: (paperId: string) => void;
+  onActiveQueryIndexChange?: (index: number | null) => void;
 }
 
 export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
-  function MessageArea({ messages, isStreaming, onRetry }, ref) {
+  function MessageArea(
+    {
+      conversationKey,
+      messages,
+      isStreaming,
+      onRetry,
+      selectedPaperIds = [],
+      onTogglePaperSelection,
+      onActiveQueryIndexChange,
+    },
+    ref,
+  ) {
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const isAtBottomRef = useRef(true);
     const messageRefs = useRef<(HTMLElement | null)[]>([]);
+    const previousLastUserMessageIndex = useRef<number>(-1);
+    const previousMessagesLengthRef = useRef<number>(0);
+    const activeQueryIndexRef = useRef<number | null>(null);
     const activeQueryId = useProgressStore((state) => state.activeQueryId);
-    const [activeQueryIndex, setActiveQueryIndex] = useState<number | null>(
-      null,
-    );
 
     // Expose scrollToMessage function and activeQueryIndex to parent
     useImperativeHandle(ref, () => ({
@@ -84,7 +99,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
           }
         }
       },
-      activeQueryIndex,
+      activeQueryIndex: activeQueryIndexRef.current,
     }));
 
     useEffect(() => {
@@ -99,11 +114,37 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
           viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
 
         isAtBottomRef.current = distance < 100;
+
+        const currentTop = viewport.scrollTop + 100;
+        let currentActiveIndex: number | null = null;
+
+        for (let i = 0; i < messageRefs.current.length; i += 1) {
+          if (messages[i]?.role !== "user") continue;
+          const messageElement = messageRefs.current[i];
+          if (!messageElement) continue;
+
+          if (messageElement.offsetTop <= currentTop) {
+            currentActiveIndex = i;
+          } else {
+            break;
+          }
+        }
+
+        if (currentActiveIndex === null) {
+          currentActiveIndex = messages.findIndex((m) => m.role === "user");
+          if (currentActiveIndex === -1) currentActiveIndex = null;
+        }
+
+        if (currentActiveIndex !== activeQueryIndexRef.current) {
+          activeQueryIndexRef.current = currentActiveIndex;
+          onActiveQueryIndexChange?.(currentActiveIndex);
+        }
       };
 
       viewport.addEventListener("scroll", onScroll);
+      onScroll();
       return () => viewport.removeEventListener("scroll", onScroll);
-    }, []);
+    }, [messages, onActiveQueryIndexChange]);
 
     useEffect(() => {
       const viewport = scrollAreaRef.current?.querySelector(
@@ -120,8 +161,21 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
     }, [messages, isStreaming]);
 
     useEffect(() => {
-      const last = messages[messages.length - 1];
-      if (last?.role !== "user") return;
+      const prevLength = previousMessagesLengthRef.current;
+      const currentLength = messages.length;
+      previousMessagesLengthRef.current = currentLength;
+
+      if (currentLength !== prevLength + 1) {
+        return;
+      }
+
+      const last = messages[currentLength - 1];
+      if (!last || last.role !== "user") {
+        return;
+      }
+
+      const lastUserMessageIndex = currentLength - 1;
+      if (lastUserMessageIndex === previousLastUserMessageIndex.current) return;
 
       const viewport = scrollAreaRef.current?.querySelector(
         "[data-radix-scroll-area-viewport]",
@@ -129,11 +183,11 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
 
       if (!viewport) return;
 
-      // Find the last user message index
-      const lastUserMessageIndex = messages.length - 1;
       const messageElement = messageRefs.current[lastUserMessageIndex];
 
       if (messageElement) {
+        previousLastUserMessageIndex.current = lastUserMessageIndex;
+        isAtBottomRef.current = true;
         requestAnimationFrame(() => {
           const offsetTop = messageElement.offsetTop;
           viewport.scrollTo({ 
@@ -144,43 +198,21 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       }
     }, [messages]);
 
-    // Intersection observer to detect which query is currently in view
     useEffect(() => {
       const viewport = scrollAreaRef.current?.querySelector(
         "[data-radix-scroll-area-viewport]",
       ) as HTMLElement | null;
 
-      if (!viewport || messages.length === 0) return;
+      if (!viewport) return;
 
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
-              const index = messageRefs.current.indexOf(
-                entry.target as HTMLElement,
-              );
-              if (index !== -1 && messages[index]?.role === "user") {
-                setActiveQueryIndex(index);
-              } 
-            }
-          });
-        },
-        {
-          root: viewport,
-          threshold: [0.5],
-          rootMargin: "-20% 0px -70% 0px",
-        },
-      );
+      previousLastUserMessageIndex.current = -1;
+      activeQueryIndexRef.current = null;
+      onActiveQueryIndexChange?.(null);
 
-      // Observe all user message elements
-      messageRefs.current.forEach((ref, index) => {
-        if (ref && messages[index]?.role === "user") {
-          observer.observe(ref);
-        }
+      requestAnimationFrame(() => {
+        viewport.scrollTo({ top: 0, behavior: "auto" });
       });
-
-      return () => observer.disconnect();
-    }, [messages]);
+    }, [conversationKey, onActiveQueryIndexChange]);
 
     if (!messages || messages.length === 0) {
       return (
@@ -216,7 +248,6 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
             const shouldShowProgress =
               isUserMessage && nextMessage?.role === "assistant";
             const shouldShowGradient = nextMessage?.role === "user";
-            console.log("Message:", m);
 
             const messageQueryId =
               (m.metadata?.query_id as string | undefined) ||
@@ -226,8 +257,10 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
             const progressData = hasStoredProgress ? {
               steps: nextMessage.progressEvents!,
               isComplete: true,
-              // eslint-disable-next-line react-hooks/purity
-              startedAt: nextMessage.progressEvents![0]?.timestamp || Date.now(),
+              startedAt:
+                nextMessage.progressEvents![0]?.timestamp
+                || nextMessage.progressEvents![nextMessage.progressEvents!.length - 1]?.timestamp
+                || 0,
               completedAt: nextMessage.progressEvents![nextMessage.progressEvents!.length - 1]?.timestamp,
               currentPhase: null,
             } : undefined;
@@ -235,7 +268,10 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
             return (
               <Box key={i}>
                 <Box
-                  className="mx-auto max-w-4xl p-4 pb-6 min-w-0 overflow-hidden"
+                  className={cn(
+                    "mx-auto max-w-4xl p-4 pb-6 min-w-0 overflow-hidden",
+                    isUserMessage && "pb-0"
+                  )}
                   ref={(el) => {
                     messageRefs.current[i] = el;
                   }}
@@ -244,11 +280,14 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
                     isUserMessage={isUserMessage} 
                     message={m} 
                     onRetry={onRetry}
+                    selectedPaperIds={selectedPaperIds}
+                    onTogglePaperSelection={onTogglePaperSelection}
                   />
                   {shouldShowProgress && (
-                    <Box className="mt-4">
+                    <Box className="mt-2">
                       <QueryProgress 
                         queryId={!hasStoredProgress ? messageQueryId : undefined} 
+                        sourceCount={Array.isArray(nextMessage?.paperSnapshots) ? nextMessage.paperSnapshots.length : undefined}
                         progressData={progressData}
                       />
                     </Box>

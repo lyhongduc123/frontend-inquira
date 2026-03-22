@@ -1,82 +1,132 @@
 "use client";
 
-import React from "react";
 import type { PaperMetadata } from "@/types/paper.type";
+import type { ScopedCitationRef } from "@/lib/scoped-citation-utils";
+
 import { CitationTrigger } from "./CitationTrigger";
 import { CitationCard } from "./CitationCard";
-import { useClickOutside } from "@/hooks/use-click-outside";
-import { useCitationPosition } from "@/hooks/use-citation-position";
+import { ScopedCitationCard } from "./ScopedCitationCard";
 import { useDetailSidebar } from "@/hooks/use-detail-sidebar";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { useCitationSelectionStore } from "@/store/citation-selection-store";
 import { Box } from "@/components/layout/box";
 
 interface CitationProps {
   number: string;
   paperId: string;
   source?: PaperMetadata;
+  variant?: "default" | "scoped";
+  scopedRef?: ScopedCitationRef;
 }
 
 export function Citation({
   number,
   source,
+  variant = "default",
+  scopedRef,
 }: Omit<CitationProps, "paperId"> & { paperId?: string }) {
-  const [showCard, setShowCard] = React.useState(false);
-  const containerRef = React.useRef<HTMLSpanElement>(null);
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const cardRef = React.useRef<HTMLDivElement>(null);
-  const { openPaper } = useDetailSidebar();
-
-  useClickOutside(
-    containerRef as React.RefObject<HTMLElement>,
-    () => setShowCard(false),
-    showCard,
-  );
-  const position = useCitationPosition(triggerRef, cardRef, showCard);
+  const { openPaper, closeSidebar, content, contentType, isOpen } =
+    useDetailSidebar();
+  const {
+    activePaperId,
+    activeChunkId,
+    setActiveCitation,
+    clearActiveCitation,
+  } = useCitationSelectionStore();
 
   if (!source) {
     return <span>[{number}]</span>;
   }
 
+  const clickedChunkId =
+    variant === "scoped" ? (scopedRef?.chunkId ?? null) : null;
+  const isSameSelectedCitation =
+    activePaperId === source.paperId &&
+    (activeChunkId ?? null) === (clickedChunkId ?? null);
+
+  const isSelectedByPaper = activePaperId === source.paperId;
+  const isScopedChunkSelected =
+    variant === "scoped" && !!activeChunkId
+      ? (scopedRef?.chunkId ?? null) === activeChunkId
+      : true;
+
+  const isSelected = isSelectedByPaper && isScopedChunkSelected;
+
   const handleClick = () => {
-    setShowCard(false);
-    openPaper(source);
-  };
+    if (isSameSelectedCitation) {
+      clearActiveCitation();
 
-  const handleMouseEnter = () => {
-    setShowCard(true);
-  };
+      if (
+        isOpen &&
+        contentType === "paper" &&
+        content?.paperId === source.paperId
+      ) {
+        closeSidebar();
+      }
+      return;
+    }
 
-  const handleMouseLeave = () => {
-    setShowCard(false);
+    setActiveCitation(source.paperId, clickedChunkId);
+
+    if (
+      !(
+        isOpen &&
+        contentType === "paper" &&
+        content?.paperId === source.paperId
+      )
+    ) {
+      openPaper(source);
+    }
   };
 
   return (
-    <span
-      ref={containerRef}
-      style={{ position: "relative", display: "inline-block" }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <CitationTrigger
-        ref={triggerRef}
-        paperDetail={source}
-        number={Number(number)}
-        onClick={handleClick}
-      />
-      {showCard && (
-        <Box
-          ref={cardRef}
-          style={{
-            position: "fixed",
-            zIndex: 9999,
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-            minWidth: 300,
-            maxWidth: 400,
-          }}
-        >
-          <CitationCard isVisible={true} paperDetail={source} />
+    <HoverCard>
+      <HoverCardTrigger>
+        <CitationTrigger
+          isSelected={isSelected}
+          paperDetail={source}
+          number={Number(number)}
+          onClick={handleClick}
+        />
+      </HoverCardTrigger>
+      <HoverCardContent sideOffset={8} className="w-80">
+        {variant === "scoped" ? (
+          <ScopedCitationCard
+            isVisible={true}
+            idx={Number(number)}
+            paperDetail={source}
+            scopedRef={scopedRef}
+            handleClick={handleClick}
+          />
+        ) : (
+          <CitationCard
+            isVisible={true}
+            idx={Number(number)}
+            paperDetail={source}
+            handleClick={handleClick}
+          />
+        )}
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
+export function MissingCitation() {
+  return (
+    <HoverCard>
+      <HoverCardTrigger>
+        <CitationTrigger />
+      </HoverCardTrigger>
+      <HoverCardContent sideOffset={8} className="w-80">
+        <Box className="p-4">
+          This info source are missing, this could be a hallucinated info, be
+          careful when interpreting the content.
         </Box>
-      )}
-    </span>
+      </HoverCardContent>
+    </HoverCard>
   );
 }

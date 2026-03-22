@@ -5,13 +5,22 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PaperMetadata } from "@/types/paper.type";
 import { AuthorMetadata } from "@/types/author.type";
 import { TypographyP } from "@/components/global/typography";
-import { BookOpen, Users, Quote, Zap } from "lucide-react";
+import {
+  BookOpen,
+  Users,
+  Quote,
+  Zap,
+  Circle,
+  CircleCheckBig,
+} from "lucide-react";
 import { Box } from "@/components/layout/box";
 import { cn } from "@/lib/utils";
 import { AccessLinkButton } from "./_shared/AccessLinkButton";
 import { ActionButtonGroup } from "./_shared/ActionButtonGroup";
 import { IndexBadge } from "./_shared/IndexBadge";
 import { InfoItem } from "./_shared/InfoItem";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface PaperCardProps {
   idx?: number;
@@ -50,7 +59,6 @@ export function PaperCard({
     citationCount,
     influentialCitationCount,
     pdfUrl,
-    sjrData,
   } = paperMetadata;
   const displayText = abstract;
 
@@ -83,26 +91,41 @@ export function PaperCard({
 
   const onCardView = (e: React.MouseEvent<HTMLDivElement>) => {
     const selection = window.getSelection();
-    console.log("PaperCard clicked. Current selection:", selection?.toString());
-
     if (selection && selection.toString().length > 0) {
       return;
     }
-    console.log("PaperCard clicked:", paperMetadata);
+    if (e.ctrlKey) {
+      onToggleSelect(e);
+      return;
+    }
     e.stopPropagation();
     onView?.(paperMetadata);
+  };
+
+  const onToggleSelect = (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.stopPropagation();
+    if (paperMetadata.paperId) {
+      onSelect?.(paperMetadata.paperId);
+    }
   };
 
   return (
     <Card
       className={cn(
-        "group relative gap-2 p-3 transition hover:bg-accent-foreground hover:border-primary cursor-pointer min-w-0",
-        isViewing && "bg-accent-foreground border-primary",
+        "group relative gap-2 p-3 transition hover:bg-card/40 hover:border-primary cursor-pointer min-w-0",
+        isViewing && "bg-card/40 border-primary",
         isSelected && "ring-2 ring-primary ring-offset-2",
       )}
       onClick={onCardView}
+      
     >
       <CardHeader className="relative flex flex-row items-center justify-between space-y-0 min-w-0">
+        <Checkbox
+          checked={isSelected}
+          onClick={onToggleSelect}
+          onChange={() => {}}
+          className="absolute -left-1"
+        />
         <IndexBadge idx={idx} isSelected={isViewing} />
         <CardTitle className="flex-1 text-sm font-medium min-w-0">
           <HStack className="items-center gap-1 min-w-0">
@@ -133,7 +156,6 @@ export function PaperCard({
                 <HStack className="min-w-0 items-center gap-1">
                   <Users className="h-4 w-4 shrink-0 -translate-y-0.5" />
                   <TypographyP
-                    variant="muted"
                     size="xs"
                     className="line-clamp-1"
                   >
@@ -178,12 +200,6 @@ export function PaperCard({
                       : "positive"
                   }
                 />
-                {sjrData && (
-                  <SignalBadge
-                    text={sjrData ? `${sjrData.quartile}` : ""}
-                    variant="positive"
-                  />
-                )}
               </HStack>
             )}
           </Box>
@@ -233,9 +249,15 @@ interface SignalBadgeProps {
   text: string;
   icon?: React.ReactNode;
   variant?: "default" | "positive" | "medium" | "negative";
+  hidden?: boolean;
 }
 
-const SignalBadge = ({ text, icon, variant = "default" }: SignalBadgeProps) => {
+const SignalBadge = ({
+  text,
+  icon,
+  variant = "default",
+  hidden,
+}: SignalBadgeProps) => {
   const variantClasses =
     variant === "positive"
       ? "bg-primary/20 text-primary"
@@ -244,6 +266,8 @@ const SignalBadge = ({ text, icon, variant = "default" }: SignalBadgeProps) => {
         : variant === "negative"
           ? "bg-destructive/20 text-destructive"
           : "bg-secondary/20 text-secondary";
+
+  if (!text || hidden) return null;
   return (
     <Badge className={`flex items-center gap-1 ${variantClasses}`}>
       {icon}

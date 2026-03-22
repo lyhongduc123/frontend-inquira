@@ -45,7 +45,7 @@ export function PaperDetailContent({ paper }: PaperDetailContentProps) {
                   href={`/authors/${authors[0]?.authorId || "#"}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-secondary hover:underline"
+                  className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
                 >
                   {mainAuthor}
                 </Link>
@@ -72,7 +72,7 @@ export function PaperDetailContent({ paper }: PaperDetailContentProps) {
             />
           </VStack>
           <VStack className="gap-2 justify-start">
-            <QuartileBadge quartile={"Q1"} />
+            <QuartileBadge quartile={paper.journal?.sjrBestQuartile} />
           </VStack>
         </HStack>
       </VStack>
@@ -81,7 +81,6 @@ export function PaperDetailContent({ paper }: PaperDetailContentProps) {
         <TabsList variant={"line"} className="justify-start">
           <TabsTrigger value="abstract">Abstract</TabsTrigger>
           <TabsTrigger value="authors">Authors</TabsTrigger>
-          <TabsTrigger value="venue">Venue</TabsTrigger>
           <TabsTrigger value="summary">Tags</TabsTrigger>
         </TabsList>
 
@@ -93,12 +92,6 @@ export function PaperDetailContent({ paper }: PaperDetailContentProps) {
 
         <TabsContent value="authors" className="mt-2 flex-1 overflow-y-auto min-h-0">
           {AuthorList(authors)}
-        </TabsContent>
-
-        <TabsContent value="venue" className="mt-2 flex-1 overflow-y-auto min-h-0">
-          <TypographyP className="text-sm">
-            {paper.venue || "No venue available."}
-          </TypographyP>
         </TabsContent>
 
         <TabsContent value="summary" className="mt-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { Message } from "@/types/message.type";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useQueryNavigatorStore } from "@/store/query-navigator-store";
 
 interface QueryNavigatorProps {
   messages: Message[];
@@ -34,21 +36,31 @@ interface QueryNavigatorProps {
   activeQueryIndex?: number;
 }
 
-export function QueryNavigator({
+function QueryNavigatorComponent({
   messages,
   onQueryClick,
   activeQueryIndex,
 }: QueryNavigatorProps) {
-  const userQueries = messages
-    .map((msg, idx) => ({ ...msg, originalIndex: idx }))
-    .filter((msg) => msg.role === "user");
+  const activeQueryIndexFromStore = useQueryNavigatorStore(
+    (state) => state.activeQueryIndex,
+  );
+  const currentActiveQueryIndex =
+    activeQueryIndex ?? activeQueryIndexFromStore ?? undefined;
+
+  const userQueries = useMemo(
+    () =>
+      messages
+        .map((msg, idx) => ({ ...msg, originalIndex: idx }))
+        .filter((msg) => msg.role === "user"),
+    [messages],
+  );
 
   if (userQueries.length === 0) {
     return null;
   }
 
   const activeQuery = userQueries.find(
-    (q) => q.originalIndex === activeQueryIndex
+    (q) => q.originalIndex === currentActiveQueryIndex
   );
 
   const displayQuery = activeQuery || userQueries[0];
@@ -68,7 +80,9 @@ export function QueryNavigator({
             <Item
               key={query.originalIndex}
               variant={
-                activeQueryIndex === query.originalIndex ? "primary" : "outline"
+                currentActiveQueryIndex === query.originalIndex
+                  ? "primary"
+                  : "outline"
               }
               className=""
             >
@@ -117,3 +131,6 @@ export function QueryNavigator({
     </Dialog>
   );
 }
+
+export const QueryNavigator = memo(QueryNavigatorComponent);
+QueryNavigator.displayName = "QueryNavigator";

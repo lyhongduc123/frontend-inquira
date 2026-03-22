@@ -20,7 +20,7 @@ import {
   CartesianGrid,
   LabelList,
 } from "recharts";
-import AuthorMetricCard from "./AuthorMetricCard";
+import { AuthorMetricCard } from "./AuthorMetricCard";
 
 interface PublicationTimelineProps {
   papersByYear: Record<number, number>;

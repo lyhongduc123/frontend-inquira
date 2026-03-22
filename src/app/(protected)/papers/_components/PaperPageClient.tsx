@@ -130,7 +130,7 @@ export function PaperPageClient() {
   }
 
   return (
-    <HStack className="h-full w-full relative overflow-hidden">
+    <HStack className="h-full w-full relative">
       {/* Main Paper Content */}
       <Box
         className={`h-full transition-all duration-500 ease-in-out ${
@@ -138,7 +138,7 @@ export function PaperPageClient() {
         }`}
       >
         <ScrollArea className="h-full w-full">
-          <VStack className="p-4 sm:p-6 lg:p-8 pb-32">
+          <VStack className="p-4 sm:p-6 lg:p-8">
             <Box className="max-w-3xl w-full mx-auto space-y-6">
               {isLoading ? (
                 <>

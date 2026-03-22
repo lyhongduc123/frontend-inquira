@@ -5,6 +5,8 @@ import { BookmarkList } from "./BookmarkList";
 import {
   Empty,
   EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
@@ -12,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { bookmarksApi } from "@/lib/api/bookmarks-api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { TriangleAlert } from "lucide-react";
 
 interface BookmarkAreaProps {
   data?: Bookmark[];
@@ -46,24 +49,33 @@ export function BookmarkArea({
   if (isError) {
     return (
       <Empty>
-        <EmptyContent>
-          <EmptyTitle className="text-center">
-            Failed to load bookmarks. Please try again later.
-          </EmptyTitle>
+        <EmptyHeader>
           <EmptyMedia>
+            <TriangleAlert className="size-16 text-destructive" />
+          </EmptyMedia>
+          <EmptyTitle className="text-center">
+            Oops! Something went wrong.
+          </EmptyTitle>
+        </EmptyHeader>
+        <EmptyContent className="max-w-lg">
+          <EmptyDescription className="text-center">
+            Something went wrong while fetching your bookmarks. Please try again
+            later.
+          </EmptyDescription>
+          <EmptyMedia className="gap-2">
             <Button
               onClick={() => router.back()}
               variant="outline"
               className="mx-auto mt-4"
             >
-              Back previous page
+              Back to previous page
             </Button>
             <Button
               onClick={() => refetch?.()}
-              variant="outline"
+              variant="default"
               className="mx-auto mt-4"
             >
-              Retry
+              Refresh
             </Button>
           </EmptyMedia>
         </EmptyContent>
@@ -71,13 +83,12 @@ export function BookmarkArea({
     );
   }
 
-  if (isEmpty || data?.length === 0) {
+  if (isEmpty && !isLoading) {
     return (
       <Empty>
         <EmptyContent>
           <EmptyTitle className="text-center">
-            Seem like your bookmarks list is empty. Start adding papers to your
-            bookmarks to see them here!
+            Your bookmark list is empty.
           </EmptyTitle>
         </EmptyContent>
       </Empty>

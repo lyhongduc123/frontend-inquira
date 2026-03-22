@@ -10,8 +10,6 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    
-    // Forward cookies from request to backend
     const cookies = request.headers.get('cookie');
 
     const headers: HeadersInit = {

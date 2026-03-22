@@ -24,7 +24,7 @@ import {
   PaperDetailFooter,
 } from "@/app/_components/PaperDetailContent";
 import { Separator } from "@/components/ui/separator";
-import { X } from "lucide-react";
+import { Box } from "@/components/layout/box";
 
 interface BookmarkListProps {
   isLoading?: boolean;
@@ -57,8 +57,6 @@ export function BookmarkList({
     try {
       await bookmarksApi.update(selectedBookmark.id, { notes: editedNotes });
       toast.success("Notes updated successfully");
-
-      // Update local state
       if (selectedBookmark) {
         setSelectedBookmark({ ...selectedBookmark, notes: editedNotes });
       }
@@ -213,17 +211,7 @@ export function BookmarkList({
             <>
               {/* Header */}
               <SheetHeader className="border-b px-4 py-3 bg-background">
-                <HStack className="justify-between items-center">
-                  <SheetTitle className="capitalize">Paper Details</SheetTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsSheetOpen(false)}
-                    className="shrink-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </HStack>
+                <SheetTitle className="capitalize">Paper Details</SheetTitle>
               </SheetHeader>
 
               {/* Content - Reuse PaperDetailContent */}
@@ -243,7 +231,7 @@ export function BookmarkList({
                     onChange={(e) => setEditedNotes(e.target.value)}
                     placeholder="Add your notes about this paper..."
                     className="min-h-[150px]"
-                  />
+                  />  
                   <HStack className="gap-2 justify-end">
                     <Button
                       variant="outline"
@@ -268,9 +256,9 @@ export function BookmarkList({
               </div>
 
               {/* Footer - Reuse PaperDetailFooter */}
-              <div className="border-t p-4 bg-background">
+              <Box className="border-t p-4 bg-background">
                 <PaperDetailFooter paperMetadata={selectedBookmark.paper} />
-              </div>
+              </Box>
             </>
           )}
         </SheetContent>

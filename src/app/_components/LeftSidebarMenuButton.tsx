@@ -8,6 +8,7 @@ export function LeftSidebarMenuButton({
   children,
   variant,
   className,
+  ...props
 }: {
   isOpen: boolean;
   onClick: () => void;
@@ -15,13 +16,14 @@ export function LeftSidebarMenuButton({
   variant?: "outline" | "default";
   className?: string;
   children?: React.ReactNode;
-}) {
+} & React.ComponentProps<typeof SidebarMenuButton>) {
   return (
     <SidebarMenuButton
       onClick={onClick}
       tooltip={!isOpen ? text : undefined}
       variant={variant}
       className={cn("w-full", className)}
+      {...props}
     >
       {children}
       {isOpen && <span>{text}</span>}

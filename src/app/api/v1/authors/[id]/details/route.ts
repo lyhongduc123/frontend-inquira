@@ -1,36 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { API_BASE_URL } from '@/core';
+import { NextRequest, NextResponse } from "next/server";
+import { API_BASE_URL } from "@/core";
 
 /**
  * GET /api/v1/admin/authors/[author_id]/details - Get author with papers
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ author_id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { author_id } = await params;
-
-    // Forward cookies from request to backend
-    const cookies = request.headers.get('cookie');
+    const { id } = await params;
+    const cookies = request.headers.get("cookie");
 
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(cookies ? { 'Cookie': cookies } : {}),
+      "Content-Type": "application/json",
+      ...(cookies ? { Cookie: cookies } : {}),
     };
 
     // Keep Authorization header for backward compatibility
-    const authHeader = request.headers.get('Authorization');
+    const authHeader = request.headers.get("Authorization");
     if (authHeader) {
-      headers['Authorization'] = authHeader;
+      headers["Authorization"] = authHeader;
     }
 
     const response = await fetch(
-      `${API_BASE_URL}/api/v1/admin/authors/${author_id}/details`,
+      `${API_BASE_URL}/api/v1/admin/authors/${id}/details`,
       {
         headers,
-        credentials: 'include',
-      }
+        credentials: "include",
+      },
     );
 
     const data = await response.json();
@@ -41,10 +39,10 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching author details:', error);
+    console.error("Error fetching author details:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

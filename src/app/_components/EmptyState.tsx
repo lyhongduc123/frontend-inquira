@@ -2,6 +2,7 @@ import { ChatInputMain } from "./ChatInputMain";
 import { TypographyP } from "@/components/global/typography";
 import { VStack } from "@/components/layout/vstack";
 import { SearchFilters } from "./FilterPanel";
+import { PaperMetadata } from "@/types/paper.type";
 
 interface EmptyStateProps {
   onSend: (query: string) => void;
@@ -10,6 +11,8 @@ interface EmptyStateProps {
   onFiltersChange: (filters: SearchFilters) => void;
   pipeline?: "database" | "hybrid" | "standard";
   onPipelineChange?: (pipeline: "database" | "hybrid" | "standard") => void;
+  selectedScopedPapers?: PaperMetadata[];
+  onRemoveScopedPaper?: (paperId: string) => void;
   // Deprecated - kept for backward compatibility
   useHybridPipeline?: boolean;
   setUseHybridPipeline?: (value: boolean) => void;
@@ -22,6 +25,8 @@ export function EmptyState({
   onFiltersChange,
   pipeline,
   onPipelineChange,
+  selectedScopedPapers,
+  onRemoveScopedPaper,
   useHybridPipeline,
   setUseHybridPipeline,
 }: EmptyStateProps) {
@@ -43,6 +48,8 @@ export function EmptyState({
           isAtBottom={false}
           filters={filters}
           onFiltersChange={onFiltersChange}
+          selectedScopedPapers={selectedScopedPapers}
+          onRemoveScopedPaper={onRemoveScopedPaper}
           useHybridPipeline={useHybridPipeline}
           setUseHybridPipeline={setUseHybridPipeline}
         />

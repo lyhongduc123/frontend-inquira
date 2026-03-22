@@ -2,24 +2,39 @@
 
 import { useState } from "react";
 import { useProgressStore } from "@/store/progress-store";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
-  History,
   Search,
   ListOrdered,
-  ListTodoIcon,
+  ListTodo,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from "lucide-react";
 import { TypographyP } from "@/components/global/typography";
 import { HStack } from "@/components/layout/hstack";
 import { VStack } from "@/components/layout/vstack";
-import { Box } from "@/components/layout/box";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { EventType } from "@/lib/stream/event.types";
 import { Streamdown } from "streamdown";
+import { Separator } from "@/components/ui/separator";
+import { Box } from "@/components/layout/box";
+import { cn } from "@/lib/utils";
+import { pl } from "date-fns/locale";
+import pluralize from "pluralize";
 
 interface ProgressStep {
   type: string;
@@ -30,6 +45,7 @@ interface ProgressStep {
 
 interface QueryProgressProps {
   queryId?: string | null;
+  sourceCount?: number;
   progressData?: {
     steps: ProgressStep[];
     isComplete: boolean;
@@ -39,8 +55,13 @@ interface QueryProgressProps {
   };
 }
 
-export function QueryProgress({ queryId, progressData }: QueryProgressProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export function QueryProgress({
+  queryId,
+  sourceCount,
+  progressData,
+}: QueryProgressProps) {
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
   const queryProgressFromStore = useProgressStore((state) =>
     queryId ? state.getQueryProgress(queryId) : undefined,
   );
@@ -57,7 +78,24 @@ export function QueryProgress({ queryId, progressData }: QueryProgressProps) {
   }
 
   const displayThoughts = queryProgress.steps || [];
-  const hasThoughts = displayThoughts.length > 0;
+  const stepsCount = displayThoughts.length;
+  const hasSteps = stepsCount > 0;
+  const latestStep = hasSteps ? displayThoughts[stepsCount - 1] : null;
+
+  const rankingStep = [...displayThoughts]
+    .reverse()
+    .find((step) => step.type === EventType.RANKING);
+
+  const rankingSourceCount =
+    typeof rankingStep?.metadata?.total_papers === "number"
+      ? rankingStep.metadata.total_papers
+      : null;
+
+  const completedSourceCount =
+    typeof sourceCount === "number" ? sourceCount : rankingSourceCount;
+
+  const currentLabel =
+    queryProgress.currentPhase || latestStep?.type || "processing";
 
   const formatDuration = (start: number, end: number) => {
     const duration = end - start;
@@ -93,123 +131,128 @@ export function QueryProgress({ queryId, progressData }: QueryProgressProps) {
     return step.content || "";
   };
 
+  const toggleStep = (stepKey: string) => {
+    setOpenSteps((prev) => ({
+      ...prev,
+      [stepKey]: !prev[stepKey],
+    }));
+  };
+
   return (
-    <Box className="bg-muted border border-border rounded-lg">
-      {/* Header */}
+    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
       <Button
-        asChild
-        onClick={() => hasThoughts && setIsExpanded(!isExpanded)}
-        disabled={!hasThoughts}
-        variant="outline"
-        className="flex-1 justify-between disabled:cursor-default min-w-0 w-full rounded-lg hover:text-secondary"
+        onClick={() => hasSteps && setIsSheetOpen(true)}
+        disabled={!hasSteps}
+        variant="ghost"
+        className="max-w-[50%] w-fit justify-between rounded-lg"
       >
-        <Box>
-          <HStack className="flex items-center gap-2">
-            <HStack className="gap-1 items-center">
-            </HStack>
-            {queryProgress.isComplete ? (
-              <>
-                <History size={14} className="text-secondary shrink-0" />
-                <TypographyP size="xs" weight="medium" className="truncate">
-                  Completed
-                </TypographyP>
-              </>
-            ) : (
-              <>
-                <Loader2
-                  size={14}
-                  className="animate-spin text-secondary shrink-0"
-                />
-                <TypographyP
-                  size="xs"
-                  weight="medium"
-                  className="truncate capitalize"
-                >
-                  {queryProgress.currentPhase || "Processing..."}
-                </TypographyP>
-              </>
-            )}
+        <>
+          <HStack className="items-center gap-2 min-w-0">
+            <ListTodo size={14} className="text-secondary shrink-0" />
+            <TypographyP size="xs" weight="medium" className="truncate">
+              {pluralize("step", stepsCount, true)}
+            </TypographyP>
           </HStack>
-          <HStack className="gap-1 items-center">
-            {queryProgress.isComplete && queryProgress.completedAt && (
-              <TypographyP size="xs" variant="muted">
-                {formatDuration(
-                  queryProgress.startedAt,
-                  queryProgress.completedAt,
-                )}
-              </TypographyP>
+          <Separator orientation="vertical" className="relative mx-2 h-4 max-w-4" />
+          <HStack className="items-center gap-1 min-w-0">
+            {!queryProgress.isComplete && (
+              <Loader2
+                size={12}
+                className="animate-spin text-secondary shrink-0"
+              />
             )}
-            {hasThoughts && (
-              <TypographyP size="xs" variant="muted">
-                {displayThoughts.length} step
-                {displayThoughts.length !== 1 ? "s" : ""}
-              </TypographyP>
-            )}
-            {hasThoughts && (
-              <Box className="ml-1">
-                {isExpanded ? (
-                  <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                )}
-              </Box>
-            )}
+            <TypographyP
+              size="xs"
+              className="truncate"
+            >
+              {queryProgress.isComplete
+                ? `${pluralize("source", completedSourceCount ?? 0, true)}`
+                : `${currentLabel}`}
+            </TypographyP>
           </HStack>
-        </Box>
+        </>
       </Button>
 
-      {/* Expanded thoughts */}
-      <AnimatePresence>
-        {isExpanded && displayThoughts.length > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <VStack className="gap-2 p-4">
-              <AnimatePresence mode="popLayout">
-                {displayThoughts.map((thought, idx) => (
-                  <motion.div
-                    key={`${thought.type}-${idx}`}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    transition={{ duration: 0.2 }}
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-md flex h-full flex-col"
+      >
+        <SheetHeader className="shrink-0">
+          <SheetTitle>Query Steps</SheetTitle>
+          <SheetDescription>
+            {pluralize("step", stepsCount, true)}
+            {queryProgress.isComplete && queryProgress.completedAt
+              ? ` in ${formatDuration(queryProgress.startedAt, queryProgress.completedAt)}`
+              : ""}
+          </SheetDescription>
+        </SheetHeader>
+
+        <ScrollArea className="flex-1 min-h-0">
+          <VStack className="gap-2 px-4">
+            {displayThoughts.map((thought, idx) => {
+              const stepKey = `${thought.type}-${idx}`;
+              const isOpen =
+                openSteps[stepKey] ?? idx === displayThoughts.length - 1;
+
+              const isLastStep = idx === displayThoughts.length - 1;
+
+              return (
+                <Box key={stepKey} className="w-full">
+                  <Collapsible
+                    key={stepKey}
+                    open={isOpen}
+                    onOpenChange={() => toggleStep(stepKey)}
+                    className=""
                   >
-                    <HStack className="gap-2 items-start">
-                      <TypeIcon type={thought.type} />
-                      <VStack className="gap-0.5 flex-1 min-w-0">
-                        <TypographyP
-                          size="xs"
-                          weight="medium"
-                          className="text-foreground/80 capitalize"
-                        >
-                          {thought.type}
-                        </TypographyP>
-                        {thought.type === EventType.REASONING ? (
-                          <ReasoningRenderer>
-                            {parseContent(thought)}
-                          </ReasoningRenderer>
-                        ) : (
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-auto justify-between rounded-md"
+                      >
+                        <HStack className="gap-2 items-center min-w-0">
+                          <TypeIcon type={thought.type} />
                           <TypographyP
                             size="xs"
-                            variant="muted"
-                            className="leading-relaxed"
+                            weight="medium"
+                            className="text-foreground/80 capitalize truncate"
                           >
-                            {parseContent(thought)}
+                            Step {idx + 1}: {thought.type}
                           </TypographyP>
-                        )}
-                      </VStack>
-                    </HStack>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </VStack>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </Box>
+                        </HStack>
+                        <TypographyP size="xs" variant="muted">
+                          <ChevronRightIcon
+                            className={cn(
+                              "size-4 transition-transform",
+                              isOpen && "rotate-90",
+                            )}
+                          />
+                        </TypographyP>
+                      </Button>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent className="p-4">
+                      {thought.type === EventType.REASONING ? (
+                        <ReasoningRenderer>
+                          {parseContent(thought)}
+                        </ReasoningRenderer>
+                      ) : (
+                        <TypographyP
+                          size="xs"
+                          variant="muted"
+                          className="leading-relaxed"
+                        >
+                          {parseContent(thought)}
+                        </TypographyP>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </Box>
+              );
+            })}
+          </VStack>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -228,7 +271,7 @@ const TypeIcon = ({ type }: { type: string }) => {
   }
 };
 
-const ReasoningRenderer = ({children}: {children?: string}) => {
+const ReasoningRenderer = ({ children }: { children?: string }) => {
   return (
     <Streamdown
       className="text-xs text-muted-foreground leading-relaxed"

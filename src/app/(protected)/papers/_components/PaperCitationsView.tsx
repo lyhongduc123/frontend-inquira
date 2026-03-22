@@ -1,15 +1,11 @@
 "use client";
 
-import { useState } from "react";
-
 import { VStack } from "@/components/layout/vstack";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  TypographyP,
-} from "@/components/global/typography";
+import { TypographyP } from "@/components/global/typography";
 import type { PaperDetail, CitingPaper } from "@/types/paper.type";
 import { Skeleton } from "@/components/ui/skeleton";
-import PaperCard from "./PaperCard";
+import { PaperCard } from "./PaperCard";
 
 interface PaperCitationsViewProps {
   paper: PaperDetail;
@@ -47,11 +43,7 @@ export function PaperCitationsView({
           ) : (
             <VStack className="gap-4">
               {citations.map((citation, idx) => (
-                <PaperCard
-                  key={idx}
-                  paper={citation.citingPaper!}
-                  idx={idx}
-                />
+                <PaperCard key={idx} paper={citation.citingPaper!} idx={idx} />
               ))}
             </VStack>
           )}

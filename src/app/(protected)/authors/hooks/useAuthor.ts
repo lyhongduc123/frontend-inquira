@@ -24,7 +24,22 @@ export function useAuthorDetails(authorId: string, enabled: boolean = true) {
     queryKey: ['author', authorId, 'details'],
     queryFn: () => authorApi.getDetails(authorId),
     enabled: !!authorId && enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: (query) => {
+      const data = query.state.data
+      if (!data) return false
+
+      const status = data.enrichmentStatus?.status
+      const hasTerminalStatus = status === 'completed' || status === 'failed'
+      const isEnriching = status === 'enriching'
+      const isFirstProcessing =
+        !hasTerminalStatus &&
+        data.isProcessed === false &&
+        data.isEnriched === false
+
+      return isEnriching || isFirstProcessing ? 3000 : false
+    },
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
   })

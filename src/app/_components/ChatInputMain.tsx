@@ -2,9 +2,9 @@
 
 /**
  * ChatInput Components - Reusable chat input components with composable addons
- * 
+ *
  * Usage:
- * 
+ *
  * 1. ChatInput (Base component) - Core input with customizable addons
  *    ```tsx
  *    <ChatInput
@@ -14,7 +14,7 @@
  *      blockEnd={<MyCustomBottomAddon />}
  *    />
  *    ```
- * 
+ *
  * 2. ChatInputMain - Full-featured input with filters and pipeline options
  *    ```tsx
  *    <ChatInputMain
@@ -28,10 +28,8 @@
  */
 
 import { useState } from "react";
-import {
-  InputGroupButton,
-} from "@/components/ui/input-group";
-import { Filter } from "lucide-react";
+import { InputGroupButton } from "@/components/ui/input-group";
+import { Filter, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -41,6 +39,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { HStack } from "@/components/layout/hstack";
 import { BaseChatInputProps, ChatInput } from "./_shared/ChatInput";
+import { PaperMetadata } from "@/types/paper.type";
+import { TypographyP } from "@/components/global/typography";
+import { Button } from "@/components/ui/button";
 
 export interface ChatInputMainProps extends BaseChatInputProps {
   isAtBottom?: boolean;
@@ -48,6 +49,8 @@ export interface ChatInputMainProps extends BaseChatInputProps {
   onFiltersChange?: (filters: SearchFilters) => void;
   pipeline?: "database" | "hybrid" | "standard";
   onPipelineChange?: (pipeline: "database" | "hybrid" | "standard") => void;
+  selectedScopedPapers?: PaperMetadata[];
+  onRemoveScopedPaper?: (paperId: string) => void;
   // Deprecated - kept for backward compatibility
   useHybridPipeline?: boolean;
   setUseHybridPipeline?: (value: boolean) => void;
@@ -64,6 +67,8 @@ export function ChatInputMain({
   onFiltersChange,
   pipeline = "database",
   onPipelineChange,
+  selectedScopedPapers = [],
+  onRemoveScopedPaper,
   useHybridPipeline,
   setUseHybridPipeline,
   blockStart,
@@ -85,10 +90,12 @@ export function ChatInputMain({
   // Cycle through pipeline options: database -> hybrid -> standard -> database
   const handlePipelineToggle = () => {
     if (onPipelineChange) {
-      const nextPipeline = 
-        pipeline === "database" ? "hybrid" : 
-        pipeline === "hybrid" ? "standard" : 
-        "database";
+      const nextPipeline =
+        pipeline === "database"
+          ? "hybrid"
+          : pipeline === "hybrid"
+            ? "standard"
+            : "database";
       onPipelineChange(nextPipeline);
     } else if (setUseHybridPipeline) {
       // Backward compatibility
@@ -105,6 +112,39 @@ export function ChatInputMain({
   };
 
   const isPipelineActive = pipeline !== "database" || useHybridPipeline;
+
+  const scopedBlockStart =
+    selectedScopedPapers.length > 0 ? (
+      <HStack className="items-center gap-2 px-1 py-0.5">
+        <Badge variant="outline" className="text-sm">
+          Scoped to {selectedScopedPapers.length} paper
+          {selectedScopedPapers.length > 1 ? "s" : ""}
+        </Badge>
+        <HStack className="flex-1 flex-wrap gap-1">
+          {selectedScopedPapers.map((paper) => (
+            <Badge
+              key={paper.paperId}
+              variant="secondary"
+              className="max-w-[220px] pr-1"
+            >
+              <TypographyP size="xs" className="truncate">
+                {paper.title}
+              </TypographyP>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="ml-1 h-4 w-4"
+                aria-label={`Remove ${paper.title} from scoped papers`}
+                onClick={() => onRemoveScopedPaper?.(paper.paperId)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </Badge>
+          ))}
+        </HStack>
+      </HStack>
+    ) : null;
 
   // Default block-end addon with filters and send button
   const defaultBlockEnd = (
@@ -158,7 +198,7 @@ export function ChatInputMain({
         onFocus={onFocus}
         isDisabled={isDisabled}
         placeholder={placeholder}
-        blockStart={blockStart}
+        blockStart={blockStart || scopedBlockStart}
         blockEnd={defaultBlockEnd}
       />
 

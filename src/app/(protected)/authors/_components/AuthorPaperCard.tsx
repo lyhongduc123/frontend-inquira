@@ -52,21 +52,57 @@ export function AuthorPaperCard({
     citationCount,
     influentialCitationCount,
     pdfUrl,
-    sjrData,
+    journal,
   } = paperMetadata;
   const displayText = abstract;
 
   const formatAuthors = (authorsArr: AuthorMetadata[]) => {
-    if (!authorsArr?.length) return "";
-    if (authorsArr.length <= 3) {
-      return authorsArr.map((author) => author.name).join(", ");
+    if (!authorsArr?.length) return null;
+
+    const renderName = (name: string, index: number, hasComma: boolean = true) => {
+      const isMatch =
+        currentAuthorName &&
+        name.toLowerCase() === currentAuthorName.toLowerCase();
+      return (
+        <span key={`${name}-${index}`} className={cn(isMatch && "font-bold text-secondary")}>
+          {name}{hasComma && ", "}
+        </span>
+      );
+    };
+
+    if (authorsArr.length <= 4) {
+      return (
+        <>{authorsArr.map((a, i) => renderName(a.name, i, i < authorsArr.length - 1))}</>
+      );
     }
-    const authorsArray = authorsArr.slice(0, 3).map((author) => author.name);
-    const remainingCount = authorsArr.length - 3;
-    const lastAuthor = authorsArr[authorsArr.length - 1].name;
-    return `${authorsArray.join(
-      ", ",
-    )} … ${lastAuthor} (+${remainingCount} more)`;
+
+    const matchIndex = currentAuthorName 
+      ? authorsArr.findIndex(a => a.name.toLowerCase() === currentAuthorName.toLowerCase())
+      : -1;
+
+    const lastIdx = authorsArr.length - 1;
+
+    if (matchIndex <= 2 || matchIndex === lastIdx || matchIndex === -1) {
+      return (
+        <>
+          {authorsArr.slice(0, 3).map((a, i) => renderName(a.name, i))}
+          <span>… </span>
+          {renderName(authorsArr[lastIdx].name, lastIdx, false)}
+          <span> (+{authorsArr.length - 4} more)</span>
+        </>
+      );
+    }
+    // Case: First1, First2 ... Target ... Last (+X more)
+    return (
+      <>
+        {authorsArr.slice(0, 2).map((a, i) => renderName(a.name, i))}
+        <span>… </span>
+        {renderName(authorsArr[matchIndex].name, matchIndex)}
+        <span>… </span>
+        {renderName(authorsArr[lastIdx].name, lastIdx, false)}
+        <span> (+{authorsArr.length - 4} more)</span>
+      </>
+    );
   };
 
   const citationLevel = () => {
@@ -98,8 +134,8 @@ export function AuthorPaperCard({
   return (
     <Card
       className={cn(
-        "group relative gap-2 p-3 transition hover:bg-accent-foreground hover:border-primary cursor-pointer min-w-0",
-        isViewing && "bg-accent-foreground border-primary",
+        "group relative gap-2 p-3 transition hover:bg-card/40 hover:border-primary cursor-pointer min-w-0",
+        isViewing && "bg-card/40 border-primary",
         isSelected && "ring-2 ring-primary ring-offset-2",
       )}
       onClick={onCardView}
@@ -134,7 +170,6 @@ export function AuthorPaperCard({
                 <HStack className="min-w-0 items-center gap-1">
                   <Users className="h-4 w-4 shrink-0 -translate-y-0.5" />
                   <TypographyP
-                    variant="muted"
                     size="xs"
                     className="line-clamp-1"
                   >
@@ -179,12 +214,6 @@ export function AuthorPaperCard({
                       ? "default"
                       : "positive"
                   }
-                />
-
-                <SignalBadge
-                  text={sjrData?.quartile || undefined}
-                  variant="positive"
-                  hidden={!sjrData}
                 />
               </HStack>
             )}

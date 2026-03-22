@@ -3,7 +3,7 @@ import { VStack } from "@/components/layout/vstack";
 import { HStack } from "@/components/layout/hstack";
 import { Label } from "@/components/ui/label";
 import { TypographyP } from "@/components/global/typography";
-import AuthorMetricCard from "./AuthorMetricCard";
+import { AuthorMetricCard } from "./AuthorMetricCard";
 
 interface QuartileChartProps {
   quartileBreakdown: QuartileBreakdown;

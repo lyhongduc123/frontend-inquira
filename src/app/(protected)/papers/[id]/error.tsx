@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -6,9 +8,13 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { refresh } from "next/cache";
-
-export default function PaperError({ error }: { error: unknown }) {
+export default function PaperError({
+  error,
+  reset,
+}: {
+  error: unknown;
+  reset: () => void;
+}) {
   return (
     <Empty>
       <EmptyHeader>
@@ -20,7 +26,13 @@ export default function PaperError({ error }: { error: unknown }) {
             ? error.message
             : "Some error occurred while fetching the paper details."}
         </EmptyDescription>
-        <Button onClick={() => refresh()}>Retry</Button>
+        <Button
+          onClick={() => {
+            reset();
+          }}
+        >
+          Retry
+        </Button>
       </EmptyContent>
     </Empty>
   );

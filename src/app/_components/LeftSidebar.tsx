@@ -39,8 +39,6 @@ export function LeftSidebar() {
 
   const {
     currentConversationId,
-    loadConversation,
-    resetConversation,
     deleteConversation: deleteConversationAction,
   } = useConversation();
 
@@ -78,13 +76,11 @@ export function LeftSidebar() {
   }, [newConversationId, setNewConversationId, addConversationOptimistically]);
 
   const handleNewConversation = () => {
-    resetConversation();
     router.push("/");
   };
 
   const handleSelectConversation = async (conversationId: string) => {
-    await loadConversation(conversationId);
-    router.push("/");
+    router.push(`/conversation/${conversationId}`);
   };
 
   const handleDeleteConversation = async (conversationId: string) => {
@@ -137,7 +133,6 @@ export function LeftSidebar() {
           <LeftSidebarMenuButton
             isOpen={isOpen}
             onClick={() => {
-              resetConversation();
               router.push("/bookmarks");
             }}
             text="Bookmarks"
