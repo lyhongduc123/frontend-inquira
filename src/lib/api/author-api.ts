@@ -6,31 +6,11 @@ import { apiClient } from "./api-client";
 import type { AuthorDetail, AuthorDetailWithPapers } from "@/types/author.type";
 import {
   type PaginatedData,
-  type DeleteResponse,
   HttpStatus,
   ApiError,
 } from "@/types/api.type";
 
-const AUTHORS_BASE = "/api/v1/admin/authors";
-
-export interface AuthorCreateRequest {
-  name: string;
-  displayName?: string;
-  orcid?: string;
-  openalexId?: string;
-  url?: string;
-  homepageUrl?: string;
-}
-
-export interface AuthorUpdateRequest {
-  name?: string;
-  displayName?: string;
-  orcid?: string;
-  openalexId?: string;
-  url?: string;
-  homepageUrl?: string;
-  verified?: boolean;
-}
+const AUTHORS_BASE = "/api/v1/authors";
 
 export interface AuthorListParams {
   page?: number;
@@ -106,35 +86,6 @@ export const authorApi = {
       }
       throw error;
     }
-  },
-
-  /**
-   * Create a new author
-   */
-  async create(authorData: AuthorCreateRequest): Promise<AuthorDetail> {
-    return await apiClient.post<AuthorDetail>(AUTHORS_BASE, authorData);
-  },
-
-  /**
-   * Update an author's metadata
-   */
-  async update(
-    authorId: string,
-    updateData: AuthorUpdateRequest,
-  ): Promise<AuthorDetail> {
-    return await apiClient.patch<AuthorDetail>(
-      `${AUTHORS_BASE}/${authorId}`,
-      updateData,
-    );
-  },
-
-  /**
-   * Delete an author
-   */
-  async delete(authorId: string): Promise<DeleteResponse> {
-    return await apiClient.delete<DeleteResponse>(
-      `${AUTHORS_BASE}/${authorId}`,
-    );
   },
 
   /**

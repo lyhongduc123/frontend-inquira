@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/core';
 
 /**
- * GET /api/v1/admin/authors/[author_id]/details - Get author with papers
+ * GET /api/v1/authors/[author_id]/details - Get author with papers
  */
 export async function GET(
   request: NextRequest,
@@ -26,7 +26,7 @@ export async function GET(
     }
 
     const response = await fetch(
-      `${API_BASE_URL}/api/v1/admin/authors/${author_id}/details`,
+      `${API_BASE_URL}/api/v1/authors/${author_id}/details`,
       {
         headers,
         credentials: 'include',

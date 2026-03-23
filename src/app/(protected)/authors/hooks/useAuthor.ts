@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { authorApi, type AuthorListParams, type AuthorCreateRequest, type AuthorUpdateRequest } from '@/lib/api/author-api'
-import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from '@/lib/utils/react-query-utils'
+import { useQuery } from '@tanstack/react-query'
+import { authorApi, type AuthorListParams } from '@/lib/api/author-api'
+import { defaultRetry, defaultRetryDelay } from '@/lib/utils/react-query-utils'
 
 /**
  * Fetch a single author by ID
@@ -68,62 +68,5 @@ export function useAuthorStats() {
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
-  })
-}
-
-/**
- * Create a new author
- */
-export function useCreateAuthor() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: AuthorCreateRequest) => authorApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['authors'] })
-      handleMutationSuccess('Author created successfully')
-    },
-    onError: (error) => {
-      handleMutationError(error, 'create author')
-    },
-  })
-}
-
-/**
- * Update an author
- */
-export function useUpdateAuthor() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ authorId, data }: { authorId: string; data: AuthorUpdateRequest }) =>
-      authorApi.update(authorId, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['author', variables.authorId] })
-      queryClient.invalidateQueries({ queryKey: ['authors'] })
-      handleMutationSuccess('Author updated successfully')
-    },
-    onError: (error) => {
-      handleMutationError(error, 'update author')
-    },
-  })
-}
-
-/**
- * Delete an author
- */
-export function useDeleteAuthor() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (authorId: string) => authorApi.delete(authorId),
-    onSuccess: (_, authorId) => {
-      queryClient.removeQueries({ queryKey: ['author', authorId] })
-      queryClient.invalidateQueries({ queryKey: ['authors'] })
-      handleMutationSuccess('Author deleted successfully')
-    },
-    onError: (error) => {
-      handleMutationError(error, 'delete author')
-    },
   })
 }

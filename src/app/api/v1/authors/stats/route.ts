@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/core';
 
 /**
- * GET /api/v1/institutions/stats - Get institution statistics
+ * GET /api/v1/authors/stats - Get author statistics
  */
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      ...(cookies ? { 'Cookie': cookies } : {}),
+      ...(cookies ? { Cookie: cookies } : {}),
     };
 
     // Keep Authorization header for backward compatibility
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       headers['Authorization'] = authHeader;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/institutions/stats`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/authors/stats`, {
       headers,
       credentials: 'include',
     });
@@ -33,10 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching institution stats:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error fetching author stats:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

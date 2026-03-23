@@ -4,11 +4,10 @@ import { apiClient } from "./api-client";
 export const authApi = {
   /**
    * Get OAuth URL for provider
-   * This goes directly to backend since it's used for OAuth redirect
+   * Route through frontend API so callback can forward auth cookies to this domain
    */
   getOAuthUrl(provider: "google" | "github"): string {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    return `${backendUrl}/api/v1/auth/${provider}`;
+    return `/api/auth/${provider}`;
   },
 
   /**
