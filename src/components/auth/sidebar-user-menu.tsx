@@ -41,11 +41,13 @@ export function SidebarUserMenu() {
   if (!user) return null;
 
   const initials = user.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "U";
 
   const handleLogout = async () => {
     try {
@@ -63,12 +65,12 @@ export function SidebarUserMenu() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton
-            size="lg"
-            className="transition-colors"
-          >
+          <SidebarMenuButton size="lg" className="transition-colors">
             <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage src={user.avatarUrl} alt={user.name} />
+              <AvatarImage
+                src={user.avatarUrl || undefined}
+                alt={user.name || user.email || "User"}
+              />
               <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
             </Avatar>
             <VStack className="gap-0 leading-none flex-1 text-left">
