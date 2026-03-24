@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/core';
 
 /**
- * GET /api/v1/admin/institutions - List all institutions with pagination
+ * GET /api/v1/institutions - List all institutions with pagination
  */
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       headers['Authorization'] = authHeader;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/institutions?${params}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/institutions?${params}`, {
       headers,
       credentials: 'include',
     });
@@ -50,50 +50,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching institutions:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * POST /api/v1/admin/institutions - Create a new institution
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-
-    // Forward cookies from request to backend
-    const cookies = request.headers.get('cookie');
-
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(cookies ? { 'Cookie': cookies } : {}),
-    };
-
-    // Keep Authorization header for backward compatibility
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader) {
-      headers['Authorization'] = authHeader;
-    }
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/institutions`, {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
-    }
-
-    return NextResponse.json(data, { status: 201 });
-  } catch (error) {
-    console.error('Error creating institution:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

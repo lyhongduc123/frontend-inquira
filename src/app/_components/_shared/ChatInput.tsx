@@ -84,9 +84,9 @@ export function ChatInput({
           }}
         />
         {blockStart && (
-          <InputGroupAddon align="block-start">{blockStart}</InputGroupAddon>
+          <InputGroupAddon align="block-start" className="cursor-auto" >{blockStart}</InputGroupAddon>
         )}
-        <InputGroupAddon align="block-end">
+        <InputGroupAddon align="block-end" className="cursor-auto">
           {blockEnd}
           <InputGroupButton
             variant="default"

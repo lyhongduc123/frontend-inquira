@@ -11,7 +11,7 @@ export interface ChatMessageRequest {
   filter?: Record<string, unknown>;
   model?: string | null;
   stream?: boolean;
-  pipeline?: "database" | "hybrid" | "standard";
+  pipeline?: "database" | "hybrid";
   use_hybrid_pipeline?: boolean; // Deprecated: use pipeline field
 }
 

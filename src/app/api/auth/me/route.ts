@@ -1,3 +1,4 @@
+import { normalizeCookieForFrontendDomain } from '@/lib/utils/cookie';
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -7,6 +8,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
  */
 export async function GET(request: NextRequest) {
   try {
+    if (!API_BASE_URL) {
+      return NextResponse.json({ error: 'Missing NEXT_PUBLIC_API_URL' }, { status: 500 });
+    }
+
     // Forward cookies from request to backend
     const cookies = request.headers.get('cookie');
 
@@ -26,7 +31,10 @@ export async function GET(request: NextRequest) {
       credentials: 'include',
     });
 
-    const data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? await response.json()
+      : { error: await response.text() };
 
     if (!response.ok) {
       return NextResponse.json(data, { status: response.status });
@@ -36,7 +44,7 @@ export async function GET(request: NextRequest) {
     const nextResponse = NextResponse.json(data);
     const setCookieHeaders = response.headers.getSetCookie();
     setCookieHeaders.forEach(cookie => {
-      nextResponse.headers.append('Set-Cookie', cookie);
+      nextResponse.headers.append('Set-Cookie', normalizeCookieForFrontendDomain(cookie));
     });
 
     return nextResponse;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/core';
 
 /**
- * GET /api/v1/admin/institutions/stats - Get institution statistics
+ * GET /api/v1/institutions/stats - Get institution statistics
  */
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       headers['Authorization'] = authHeader;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/institutions/stats`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/institutions/stats`, {
       headers,
       credentials: 'include',
     });

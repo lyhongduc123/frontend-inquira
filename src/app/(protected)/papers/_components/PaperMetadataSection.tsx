@@ -1,10 +1,5 @@
 import {
-  CalendarIcon,
   UserIcon,
-  BuildingIcon,
-  QuoteIcon,
-  BookOpenIcon,
-  SquareArrowUpRightIcon,
   ArrowUpRightFromSquare,
   InfoIcon,
 } from "lucide-react";
@@ -14,18 +9,12 @@ import { HStack } from "@/components/layout/hstack";
 import { Badge } from "@/components/ui/badge";
 import {
   TypographyH1,
-  TypographyH2,
   TypographyH3,
   TypographyP,
 } from "@/components/global/typography";
 import type { JournalData, PaperDetail } from "@/types/paper.type";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatter } from "@/lib/utils/date-formatter";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { formatter } from "@/lib/utils/date";
 import {
   HoverCard,
   HoverCardContent,
@@ -261,11 +250,11 @@ function JournalRankBar({ quartile }: JournalMetrics) {
 const BadgeSection = ({ paper }: { paper: PaperDetail }) => {
   return (
     <HStack className="gap-2 flex-wrap">
-      {paper.source && (
+      {/* {paper.source && (
         <Badge variant="outline" className="capitalize">
           {paper.source}
         </Badge>
-      )}
+      )} */}
 
       {paper.isOpenAccess ? (
         <Badge variant="secondary">Open Access</Badge>

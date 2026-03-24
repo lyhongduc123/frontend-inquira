@@ -48,7 +48,7 @@ interface TaskSubmitPayload {
   query: string;
   conversationId?: string;
   filters?: Record<string, unknown>;
-  pipeline?: "database" | "hybrid" | "standard";
+  pipeline?: "database" | "hybrid";
   clientMessageId?: string;
 }
 
@@ -67,7 +67,7 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
   const { createConversation } = useConversation();
   const messages = useConversationStore((state) => state.messages);
   const setMessages = useConversationStore((state) => state.setMessages);
-  const { startQuery, addProgress, completeQuery } = useProgressStore();
+  const { startQuery, setStepCount, addProgress, completeQuery } = useProgressStore();
 
   const [streamState, setStreamState] = useState<StreamState>({
     isStreaming: false,
@@ -310,17 +310,38 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
           // Handle event types
           switch (eventType) {
             case "step": // Progress update
+              if (String(parsed.type || "") === "step_count") {
+                if (currentQueryIdRef.current) {
+                  const totalStepsValue = Number(parsed.total_steps);
+                  if (Number.isFinite(totalStepsValue) && totalStepsValue >= 0) {
+                    setStepCount(currentQueryIdRef.current, totalStepsValue);
+                  }
+                }
+                break;
+              }
+
               if (currentQueryIdRef.current) {
                 const progressType = String(
                   parsed.type || parsed.phase || "reasoning",
                 );
+                const metadata: Record<string, unknown> = {
+                  ...(typeof parsed.metadata === "object" && parsed.metadata !== null
+                    ? (parsed.metadata as Record<string, unknown>)
+                    : {}),
+                };
+
+                if (typeof parsed.current_step === "number") {
+                  metadata.current_step = parsed.current_step;
+                }
+
+                if (typeof parsed.total_steps === "number") {
+                  metadata.total_steps = parsed.total_steps;
+                }
+
                 const progressEvent: ProgressEvent = {
                   type: progressType as ProgressEvent["type"],
                   content: String(parsed.content || parsed.message || ""),
-                  metadata:
-                    typeof parsed.metadata === "object" && parsed.metadata !== null
-                      ? (parsed.metadata as Record<string, unknown>)
-                      : undefined,
+                  metadata,
                 };
                 addProgress(currentQueryIdRef.current, progressEvent);
                 onProgress?.(progressEvent);

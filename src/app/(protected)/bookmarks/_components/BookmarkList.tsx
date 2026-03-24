@@ -5,7 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpDown, Trash2 } from "lucide-react";
+import { ArrowUpDown, MessageSquarePlus, Trash2 } from "lucide-react";
 import { Bookmark, bookmarksApi } from "@/lib/api";
 import {
   Sheet,
@@ -25,24 +25,65 @@ import {
 } from "@/app/_components/PaperDetailContent";
 import { Separator } from "@/components/ui/separator";
 import { Box } from "@/components/layout/box";
+import { useRouter } from "next/navigation";
+import { saveChatLaunchPayload } from "@/lib/scoped-chat-selection";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface BookmarkListProps {
   isLoading?: boolean;
   data?: Bookmark[];
   onRemoveBookmark: (paperId: string) => void;
+  selectedScopedPaperIds?: string[];
+  onToggleScopedPaper?: (paperId: string, checked: boolean) => void;
+  onSetAllScopedPapers?: (paperIds: string[], checked: boolean) => void;
 }
 
 export function BookmarkList({
   isLoading,
   data = [],
   onRemoveBookmark,
+  selectedScopedPaperIds = [],
+  onToggleScopedPaper,
+  onSetAllScopedPapers,
 }: BookmarkListProps) {
+  const router = useRouter();
   const [selectedBookmark, setSelectedBookmark] = useState<Bookmark | null>(
     null,
   );
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editedNotes, setEditedNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  const selectablePaperIds = data
+    .map((bookmark) => bookmark.paper?.paperId)
+    .filter((paperId): paperId is string => Boolean(paperId));
+
+  const selectedCount = selectablePaperIds.filter((paperId) =>
+    selectedScopedPaperIds.includes(paperId),
+  ).length;
+
+  const allSelected = selectablePaperIds.length > 0 && selectedCount === selectablePaperIds.length;
+  const someSelected = selectedCount > 0 && selectedCount < selectablePaperIds.length;
+
+  const handleAddToChat = (bookmark: Bookmark) => {
+    if (!bookmark.paper) {
+      toast.error("Paper metadata is unavailable for this bookmark");
+      return;
+    }
+
+    const launchId = saveChatLaunchPayload({
+      query: "",
+      scopedPapers: [bookmark.paper],
+      source: "bookmarks",
+    });
+
+    if (!launchId) {
+      toast.error("Unable to open chat right now");
+      return;
+    }
+
+    router.push(`/?launch=${encodeURIComponent(launchId)}`);
+  };
 
   const handleViewPaper = (bookmark: Bookmark) => {
     setSelectedBookmark(bookmark);
@@ -69,6 +110,35 @@ export function BookmarkList({
   };
 
   const columns: ColumnDef<Bookmark>[] = [
+    {
+      id: "scoped",
+      header: () => (
+        <Checkbox
+          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+          onCheckedChange={(checked) => {
+            onSetAllScopedPapers?.(selectablePaperIds, Boolean(checked));
+          }}
+          aria-label="Select all visible papers for scoped chat"
+        />
+      ),
+      cell: ({ row }) => {
+        const paperId = row.original.paper?.paperId;
+        if (!paperId) return null;
+
+        const checked = selectedScopedPaperIds.includes(paperId);
+
+        return (
+          <Checkbox
+            checked={checked}
+            onCheckedChange={(value) => {
+              onToggleScopedPaper?.(paperId, Boolean(value));
+            }}
+            aria-label={`Select ${row.original.paper?.title || "paper"} for scoped chat`}
+            onClick={(e) => e.stopPropagation()}
+          />
+        );
+      },
+    },
     {
       id: "index",
       header: "#",
@@ -173,18 +243,35 @@ export function BookmarkList({
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemoveBookmark(row.original.paperId);
-          }}
-        >
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const bookmark = row.original;
+        return (
+          <HStack className="gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddToChat(bookmark);
+              }}
+              aria-label="Add paper to chat"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveBookmark(bookmark.paperId);
+              }}
+              aria-label="Remove bookmark"
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </HStack>
+        );
+      },
     },
   ];
 
@@ -257,7 +344,10 @@ export function BookmarkList({
 
               {/* Footer - Reuse PaperDetailFooter */}
               <Box className="border-t p-4 bg-background">
-                <PaperDetailFooter paperMetadata={selectedBookmark.paper} />
+                <PaperDetailFooter
+                  paperMetadata={selectedBookmark.paper}
+                  onAddToChat={() => handleAddToChat(selectedBookmark)}
+                />
               </Box>
             </>
           )}

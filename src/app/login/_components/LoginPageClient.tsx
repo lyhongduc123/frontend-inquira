@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
 import {
   Card,
   CardContent,
@@ -9,26 +16,54 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Icon } from "@iconify/react";
-import { authApi } from "@/lib/api/auth-api";
-import { useAuth } from "@/hooks/use-auth";
-import { TypographyP } from "@/components/global/typography";
-import { VStack } from "@/components/layout/vstack";
-import { HStack } from "@/components/layout/hstack";
 import { Box } from "@/components/layout/box";
 import { Header } from "@/components/global/header";
-import { Loader2 } from "lucide-react";
+import { TypographyP } from "@/components/global/typography";
+import { VStack } from "@/components/layout/vstack";
+import { authApi } from "@/lib/api/auth-api";
+import { useAuth } from "@/hooks/use-auth";
+import { useAuthStore } from "@/store/auth-store";
+import { ApiError } from "@/types/api.type";
+
+import { EmailStepForm } from "./EmailStepForm";
+import { OtpStepForm } from "./OtpStepForm";
+import { OAuthContinueSection } from "./OAuthContinueSection";
+
+type LoginStep = "email" | "otp";
+
+const emailFormSchema = z.object({
+  email: z.string().trim().email("Please enter a valid email address."),
+});
+
+type EmailFormValues = z.infer<typeof emailFormSchema>;
+type OtpFormValues = { otp: string };
 
 export function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useAuth();
 
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<LoginStep>("email");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+
   const redirectTo = searchParams.get("redirect") || "/";
+
+  const emailForm = useForm<EmailFormValues>({
+    resolver: zodResolver(emailFormSchema),
+    mode: "onSubmit",
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const otpForm = useForm<OtpFormValues>({
+    mode: "onSubmit",
+    defaultValues: {
+      otp: "",
+    },
+  });
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -36,22 +71,99 @@ export function LoginPageClient() {
     }
   }, [isAuthenticated, isLoading, router, redirectTo]);
 
-  const handleOAuthLogin = (provider: "google" | "github") => {
-    sessionStorage.setItem("auth_redirect", redirectTo);
-
-    const url = authApi.getOAuthUrl(provider);
-    window.location.href = url;
+  const clearMessages = () => {
+    setErrorMessage(null);
+    setInfoMessage(null);
   };
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
+  const handleRequestOtp = emailForm.handleSubmit(async (values) => {
+    const normalizedEmail = values.email.trim().toLowerCase();
+    setIsSubmitting(true);
+    clearMessages();
+
+    try {
+      const response = await authApi.requestEmailOtp({
+        email: normalizedEmail,
+        mode: "login",
+      });
+
+      setStep("otp");
+      setInfoMessage(values.email || response.message);
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Could not send verification code. Please try again.";
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  const handleResendOtp = async () => {
+    const normalizedEmail = emailForm.getValues("email").trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return;
+    }
 
     setIsSubmitting(true);
-    sessionStorage.setItem("auth_redirect", redirectTo);
-    const googleUrl = authApi.getOAuthUrl("google");
-    const urlWithEmail = `${googleUrl}?login_hint=${encodeURIComponent(email)}`;
-    window.location.href = urlWithEmail;
+    clearMessages();
+
+    try {
+      const response = await authApi.requestEmailOtp({
+        email: normalizedEmail,
+        mode: "login",
+      });
+      setInfoMessage(
+        response.message || "Verification code sent to your email.",
+      );
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Could not resend verification code. Please try again.";
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = otpForm.handleSubmit(async (values) => {
+    const normalizedEmail = emailForm.getValues("email").trim().toLowerCase();
+    const normalizedOtp = (values.otp || "").trim();
+
+    if (normalizedOtp.length !== 6) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    clearMessages();
+
+    try {
+      await authApi.verifyEmailOtp({
+        email: normalizedEmail,
+        otp: normalizedOtp,
+        mode: "login",
+      });
+
+      sessionStorage.setItem("auth_redirect", redirectTo);
+      await useAuthStore.getState().login();
+      router.push(redirectTo);
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Verification failed. Please try again.";
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  const handleBack = () => {
+    setStep("email");
+    clearMessages();
   };
 
   if (isLoading) {
@@ -67,94 +179,98 @@ export function LoginPageClient() {
       <Header />
 
       <VStack className="flex-1 items-center justify-center p-8">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-3xl font-bold">
-              Welcome to Exegent
-            </CardTitle>
-            <CardDescription className="text-base">
-              Sign in to access your conversations and explore academic papers
-            </CardDescription>
-          </CardHeader>
+        <div className="relative w-full max-w-md overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            {step === "email" ? (
+              <motion.div
+                key="login-email-card"
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -24 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                <Card className="w-full">
+                  <CardHeader className="space-y-1 text-center">
+                    <CardTitle className="text-3xl font-bold">
+                      Sign in
+                    </CardTitle>
+                    <CardDescription className="text-base">
+                      Sign in your existing account to continue your researches.
+                    </CardDescription>
+                  </CardHeader>
 
-          <CardContent className="space-y-4">
-            {/* Email Input */}
-            <form onSubmit={handleEmailSubmit} className="space-y-3">
-              <VStack className="gap-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isSubmitting}
-                  className="w-full"
+                  <CardContent className="space-y-4">
+                    <EmailStepForm
+                      emailForm={emailForm}
+                      isSubmitting={isSubmitting}
+                      errorMessage={errorMessage}
+                      onSubmit={handleRequestOtp}
+                      onClearMessages={clearMessages}
+                    />
+
+                    {infoMessage && (
+                      <TypographyP
+                        size="sm"
+                        align="center"
+                        className="text-primary"
+                      >
+                        {infoMessage}
+                      </TypographyP>
+                    )}
+
+                    <OAuthContinueSection
+                      redirectTo={redirectTo}
+                      isSubmitting={isSubmitting}
+                    />
+
+                    <TypographyP variant="muted" size="sm" align="center">
+                      Don&apos;t have an account?{" "}
+                      <Link href="/signup" className="underline">
+                        Sign up
+                      </Link>
+                    </TypographyP>
+
+                    <TypographyP
+                      variant="muted"
+                      size="xs"
+                      align="center"
+                      className="pt-2"
+                    >
+                      By continuing, you agree to our{" "}
+                      <span className="underline cursor-pointer">
+                        Terms of Service
+                      </span>{" "}
+                      and{" "}
+                      <span className="underline cursor-pointer">
+                        Privacy Policy
+                      </span>
+                    </TypographyP>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="login-otp-card"
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -24 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                <OtpStepForm
+                  otpForm={otpForm}
+                  isSubmitting={isSubmitting}
+                  errorMessage={errorMessage}
+                  onSubmit={handleVerifyOtp}
+                  onBack={handleBack}
+                  onResend={handleResendOtp}
+                  onClearMessages={clearMessages}
+                  infoMessage={infoMessage}
+                  submitLabel="Verify and Continue"
                 />
-              </VStack>
-              <Button
-                type="submit"
-                variant="outline"
-                className="w-full h-11"
-                disabled={!email || isSubmitting}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Icon icon="mdi:email-outline" className="h-5 w-5 mr-2" />
-                )}
-                Continue with Email
-              </Button>
-            </form>
-
-            {/* Divider */}
-            <div className="relative">
-              <HStack className="absolute inset-0 items-center">
-                <span className="w-full border-t" />
-              </HStack>
-              <HStack className="relative justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </HStack>
-            </div>
-
-            {/* OAuth Providers */}
-            <VStack className="gap-2">
-              <Button
-                variant="outline"
-                className="w-full h-11"
-                onClick={() => handleOAuthLogin("google")}
-              >
-                <Icon icon="logos:google-icon" className="h-5 w-5 mr-2" />
-                Continue with Google
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full h-11"
-                onClick={() => handleOAuthLogin("github")}
-              >
-                <Icon icon="octicon:mark-github-16" className="h-5 w-5 mr-2" />
-                Continue with GitHub
-              </Button>
-            </VStack>
-
-            <TypographyP
-              variant="muted"
-              size="xs"
-              align="center"
-              className="pt-2"
-            >
-              By continuing, you agree to our{" "}
-              <span className="underline cursor-pointer">Terms of Service</span>{" "}
-              and{" "}
-              <span className="underline cursor-pointer">Privacy Policy</span>
-            </TypographyP>
-          </CardContent>
-        </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </VStack>
     </VStack>
   );

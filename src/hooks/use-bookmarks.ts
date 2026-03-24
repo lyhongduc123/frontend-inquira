@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { bookmarksApi, type Bookmark, type CreateBookmarkRequest, type UpdateBookmarkRequest } from "@/lib/api";
-import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from "@/lib/utils/react-query-utils";
+import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from "@/lib/react-query/react-query-utils";
 import { useBookmarkStore } from "@/store/bookmark-store";
 
 export function useBookmarks(skip: number = 0, limit: number = 50) {

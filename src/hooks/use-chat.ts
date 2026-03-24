@@ -14,13 +14,35 @@ interface UseChatOptions {
   onError?: () => void;
 }
 
-interface StreamState {
+interface ChatStreamState {
   isStreaming: boolean;
   isError: boolean;
   lastFailedQuery: string | null;
   lastClientMessageId: string | null;
 }
-// "/api/test/stream"
+
+const ABORT_REASON = "stream_cancelled";
+
+function isAbortError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+
+  if (error instanceof Error) {
+    return (
+      error.name === "AbortError" ||
+      error.message.toLowerCase().includes("aborted") ||
+      error.message.toLowerCase().includes("stream_cancelled")
+    );
+  }
+
+  return false;
+}
+
 export function useChat(options: UseChatOptions = {}) {
   const {
     apiEndpoint = "/api/v1/chat/stream",
@@ -31,10 +53,16 @@ export function useChat(options: UseChatOptions = {}) {
   const { createConversation } = useConversation();
 
   const messages = useConversationStore((state) => state.messages);
+  const latestMetadataEvent = useConversationStore(
+    (state) => state.latestMetadataEvent,
+  );
   const setMessages = useConversationStore((state) => state.setMessages);
+  const setLatestMetadataEvent = useConversationStore(
+    (state) => state.setLatestMetadataEvent,
+  );
   const { startQuery, addProgress, completeQuery } = useProgressStore();
 
-  const [streamState, setStreamState] = useState<StreamState>({
+  const [streamState, setStreamState] = useState<ChatStreamState>({
     isStreaming: false,
     isError: false,
     lastFailedQuery: null,
@@ -55,20 +83,8 @@ export function useChat(options: UseChatOptions = {}) {
     }));
   }, []);
 
-  const addUserMessage = useCallback(
-    (text: string) => {
-      const currentMessages = useConversationStore.getState().messages;
-      setMessages([...currentMessages, { role: "user", text } as Message]);
-    },
-    [setMessages],
-  );
-
   const addAssistantMessage = useCallback(() => {
     const currentMessages = useConversationStore.getState().messages;
-    console.log(
-      "Adding assistant message, current messages:",
-      currentMessages.length,
-    );
     setMessages([
       ...currentMessages,
       { role: "assistant", text: "" } as Message,
@@ -80,13 +96,11 @@ export function useChat(options: UseChatOptions = {}) {
       const currentConvId =
         useConversationStore.getState().currentConversationId;
       if (currentConvId !== activeConversationIdRef.current) {
-        console.log("Ignoring update for old conversation");
-        return; // Ignore updates for old conversations
+        return;
       }
 
       const currentMessages = useConversationStore.getState().messages;
       const last = currentMessages[currentMessages.length - 1];
-      console.log("Updating last message:", updates);
       setMessages([...currentMessages.slice(0, -1), { ...last, ...updates }]);
     },
     [setMessages],
@@ -103,27 +117,26 @@ export function useChat(options: UseChatOptions = {}) {
         useHybridPipeline,
         model,
       } = payload;
+      let finalConversationId = conversationId;
       if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+        abortControllerRef.current.abort(ABORT_REASON);
       }
 
       if (!isRetry) {
         resetStreamState();
       }
 
-      // Generate or use existing client message ID
+      setLatestMetadataEvent(null);
+
       const messageId =
         clientMessageId ||
         `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      // Generate unique query ID for progress tracking
       const queryId = `query-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       currentQueryIdRef.current = queryId;
 
-      // Initialize progress tracking for this query
       startQuery(queryId, query, conversationId);
 
-      // Add user message with query ID in metadata (only if not retry)
       if (!isRetry) {
         const currentMessages = useConversationStore.getState().messages;
         setMessages([
@@ -140,13 +153,12 @@ export function useChat(options: UseChatOptions = {}) {
       const { isAuthenticated } = useAuthStore.getState();
 
       try {
-        if (!conversationId && !isTestEndpoint && isAuthenticated) {
+        if (!finalConversationId && !isTestEndpoint && isAuthenticated) {
           const newConversation = await createConversation(query);
-          const conversationId = newConversation.id;
-          if (conversationId) {
-            onConversationCreated?.(conversationId);
-            // Update query progress with conversation ID
-            startQuery(queryId, query, conversationId);
+          finalConversationId = newConversation.id;
+          if (finalConversationId) {
+            onConversationCreated?.(finalConversationId);
+            startQuery(queryId, query, finalConversationId);
           }
         }
       } catch (error) {
@@ -156,8 +168,7 @@ export function useChat(options: UseChatOptions = {}) {
         }
       }
 
-      // Track active conversation for this stream
-      activeConversationIdRef.current = conversationId || null;
+      activeConversationIdRef.current = finalConversationId || null;
 
       addAssistantMessage();
 
@@ -166,7 +177,7 @@ export function useChat(options: UseChatOptions = {}) {
       abortControllerRef.current = new AbortController();
       useConversationStore.getState().setAbortStream(() => {
         if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
+          abortControllerRef.current.abort(ABORT_REASON);
         }
       });
 
@@ -175,26 +186,25 @@ export function useChat(options: UseChatOptions = {}) {
           apiEndpoint,
           {
             query: query,
-            conversationId: conversationId || undefined,
+            conversationId: finalConversationId || undefined,
             isRetry: isRetry,
             clientMessageId: messageId,
             pipeline: pipeline,
-            useHybridPipeline: useHybridPipeline, // Backward compatibility
+            useHybridPipeline: useHybridPipeline,
             model: model,
           },
           {
             onMetadata: (event: MetadataEvent) => {
+              setLatestMetadataEvent(event);
               updateLastMessage({ paperSnapshots: event.papers });
             },
             onProgress: (event: ProgressEvent) => {
-              console.log("Progress event:", event.type, event.content);
               if (currentQueryIdRef.current) {
                 addProgress(currentQueryIdRef.current, event);
               }
               onProgress?.(event);
             },
             onChunk: (chunk) => {
-              console.log("Received chunk:", chunk);
               accumulatedTextRef.current += chunk;
               updateLastMessage({ text: accumulatedTextRef.current });
             },
@@ -224,6 +234,10 @@ export function useChat(options: UseChatOptions = {}) {
               }
             },
             onError: (error) => {
+              if (isAbortError(error)) {
+                return;
+              }
+
               console.error("Stream error:", error);
               updateLastMessage({
                 text:
@@ -251,6 +265,10 @@ export function useChat(options: UseChatOptions = {}) {
           },
         );
       } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+
         console.error("Streaming error:", error);
         if (
           useConversationStore.getState().currentConversationId ===
@@ -288,13 +306,13 @@ export function useChat(options: UseChatOptions = {}) {
       onProgress,
       onErrorCallback,
       resetStreamState,
-      addUserMessage,
       addAssistantMessage,
       updateLastMessage,
       createConversation,
       startQuery,
       addProgress,
       completeQuery,
+      setLatestMetadataEvent,
     ],
   );
 
@@ -342,6 +360,7 @@ export function useChat(options: UseChatOptions = {}) {
 
   return {
     messages,
+    latestMetadataEvent,
     isStreaming: streamState.isStreaming,
     isError: streamState.isError,
     sendMessage,

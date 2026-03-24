@@ -9,6 +9,17 @@ import type { PaginatedData } from "@/types/api.type";
 
 const CONVERSATIONS_BASE = "/api/v1/conversations";
 
+type RawConversation = Conversation & {
+  conversationId?: string;
+};
+
+function normalizeConversation(raw: RawConversation): Conversation {
+  return {
+    ...raw,
+    id: raw.id || raw.conversationId || "",
+  };
+}
+
 export const conversationsApi = {
   /**
    * List all conversations for the current user
@@ -29,25 +40,35 @@ export const conversationsApi = {
       queryParams.append("archived", archived.toString());
     }
 
-    return apiClient.get<PaginatedData<Conversation>>(
+    const response = await apiClient.get<PaginatedData<RawConversation>>(
       `${CONVERSATIONS_BASE}?${queryParams}`
     );
+
+    return {
+      ...response,
+      items: (response.items || []).map(normalizeConversation),
+    };
   },
 
   /**
    * Create a new conversation
    */
   async create(data: ConversationCreate = {}): Promise<Conversation> {
-    return apiClient.post<Conversation>(CONVERSATIONS_BASE, data);
+    const response = await apiClient.post<RawConversation>(
+      CONVERSATIONS_BASE,
+      data,
+    );
+    return normalizeConversation(response);
   },
 
   /**
    * Get a specific conversation by ID with all messages
    */
   async get(conversationId: string): Promise<Conversation> {
-    return apiClient.get<Conversation>(
+    const response = await apiClient.get<RawConversation>(
       `${CONVERSATIONS_BASE}/${conversationId}`
     );
+    return normalizeConversation(response);
   },
 
   /**
@@ -57,10 +78,11 @@ export const conversationsApi = {
     conversationId: string,
     updates: ConversationUpdate
   ): Promise<Conversation> {
-    return apiClient.put<Conversation>(
+    const response = await apiClient.put<RawConversation>(
       `${CONVERSATIONS_BASE}/${conversationId}`,
       updates
     );
+    return normalizeConversation(response);
   },
 
   /**

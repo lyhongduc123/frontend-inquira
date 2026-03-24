@@ -8,7 +8,7 @@ type SendMessagePayload = StreamEventPayload | {
   query: string;
   conversationId?: string;
   filters?: Record<string, unknown>;
-  pipeline?: "database" | "hybrid" | "standard";
+  pipeline?: "database" | "hybrid";
   clientMessageId?: string;
 };
 
@@ -19,7 +19,7 @@ interface ChatHandlersParams {
   clearMessages: () => void;
   searchFilters?: SearchFilters;
   selectedScopedPaperIds?: string[];
-  pipeline?: "database" | "hybrid" | "standard";
+  pipeline?: "database" | "hybrid";
   // Deprecated - kept for backward compatibility
   useHybridPipeline?: boolean;
 }

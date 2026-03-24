@@ -31,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useConversation } from "@/hooks/use-conversation";
+import { TypographyP } from "@/components/global/typography";
 
 export function LeftSidebar() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export function LeftSidebar() {
   const {
     currentConversationId,
     deleteConversation: deleteConversationAction,
+    resetConversation,
   } = useConversation();
 
   const newConversationId = useConversationStore(
@@ -48,12 +50,19 @@ export function LeftSidebar() {
   const setNewConversationId = useConversationStore(
     (state) => state.setNewConversationId,
   );
+  const pendingConversationDraft = useConversationStore(
+    (state) => state.pendingConversationDraft,
+  );
+  const setPendingConversationDraft = useConversationStore(
+    (state) => state.setPendingConversationDraft,
+  );
 
   const {
     conversations,
     isLoading,
     addConversationOptimistically,
     deleteConversation,
+    refetch,
   } = useConversations({
     enabled: isAuthenticated,
   });
@@ -66,16 +75,26 @@ export function LeftSidebar() {
             await conversationsApi.get(newConversationId);
 
           addConversationOptimistically(conversationDetail);
-          setTimeout(() => setNewConversationId(null), 500);
         } catch (error) {
           console.error("Failed to fetch new conversation:", error);
+          await refetch();
+        } finally {
+          setTimeout(() => setNewConversationId(null), 500);
         }
       };
       fetchNewConversation();
     }
-  }, [newConversationId, setNewConversationId, addConversationOptimistically]);
+  }, [
+    newConversationId,
+    setNewConversationId,
+    addConversationOptimistically,
+    refetch,
+  ]);
 
   const handleNewConversation = () => {
+    resetConversation();
+    setNewConversationId(null);
+    setPendingConversationDraft(null);
     router.push("/");
   };
 
@@ -149,8 +168,16 @@ export function LeftSidebar() {
               Your conversations
             </SidebarGroupLabel>
             {!isAuthenticated ? (
-              <Box className="py-4 px-2 text-center text-sm text-muted-foreground">
-                Log in to save your history and customize your experience
+              <Box className="py-4 px-2">
+                <VStack className="w-full gap-2">
+                  <TypographyP>
+                    You are currently in read-only mode.
+                  </TypographyP>
+                  <TypographyP className="text-sm text-muted-foreground">
+                    Sign in to start your own session for researching papers,
+                    asking questions, and more.
+                  </TypographyP>
+                </VStack>
               </Box>
             ) : isLoading ? (
               <Box>
@@ -158,12 +185,24 @@ export function LeftSidebar() {
                   <ConversationCardSkeleton key={i} />
                 ))}
               </Box>
-            ) : conversations.length === 0 ? (
+            ) : conversations.length === 0 && !pendingConversationDraft ? (
               <Box className="py-4 text-center text-sm text-muted-foreground">
                 No conversations yet
               </Box>
             ) : (
               <AnimatePresence mode="popLayout">
+                {pendingConversationDraft && (
+                  <motion.div
+                    key={pendingConversationDraft.id}
+                    layout
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: -20, scale: 0.95 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                  >
+                    <ConversationCardSkeleton />
+                  </motion.div>
+                )}
                 {conversations.map((conversation) => {
                   const isNew = conversation.id === newConversationId;
                   return (
@@ -203,9 +242,11 @@ export function LeftSidebar() {
           <SidebarUserMenu />
         ) : (
           <VStack className="w-full gap-2">
-            <SidebarMenuButton className="bg-primary text-primary-foreground items-center justify-center cursor-pointer">
-              Sign Up
-            </SidebarMenuButton>
+            <Link href="/signup" className="w-full">
+              <SidebarMenuButton className="bg-primary text-primary-foreground items-center justify-center cursor-pointer">
+                Sign Up
+              </SidebarMenuButton>
+            </Link>
             <Link href="/login">
               <SidebarMenuButton
                 variant={"outline"}

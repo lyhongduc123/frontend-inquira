@@ -9,10 +9,11 @@ interface EmptyStateProps {
   isDisabled: boolean;
   filters: SearchFilters;
   onFiltersChange: (filters: SearchFilters) => void;
-  pipeline?: "database" | "hybrid" | "standard";
-  onPipelineChange?: (pipeline: "database" | "hybrid" | "standard") => void;
+  pipeline?: "database" | "hybrid";
+  onPipelineChange?: (pipeline: "database" | "hybrid") => void;
   selectedScopedPapers?: PaperMetadata[];
   onRemoveScopedPaper?: (paperId: string) => void;
+  onClearScopedPapers?: () => void;
   // Deprecated - kept for backward compatibility
   useHybridPipeline?: boolean;
   setUseHybridPipeline?: (value: boolean) => void;
@@ -27,6 +28,7 @@ export function EmptyState({
   onPipelineChange,
   selectedScopedPapers,
   onRemoveScopedPaper,
+  onClearScopedPapers,
   useHybridPipeline,
   setUseHybridPipeline,
 }: EmptyStateProps) {
@@ -48,8 +50,11 @@ export function EmptyState({
           isAtBottom={false}
           filters={filters}
           onFiltersChange={onFiltersChange}
+          pipeline={pipeline}
+          onPipelineChange={onPipelineChange}
           selectedScopedPapers={selectedScopedPapers}
           onRemoveScopedPaper={onRemoveScopedPaper}
+          onClearScopedPapers={onClearScopedPapers}
           useHybridPipeline={useHybridPipeline}
           setUseHybridPipeline={setUseHybridPipeline}
         />

@@ -23,6 +23,37 @@ class ApiClient {
   private isRefreshing = false;
   private refreshSubscribers: ((error?: Error) => void)[] = [];
 
+  private normalizeErrorCode(rawCode?: string): ErrorCode {
+    if (!rawCode) {
+      return ErrorCode.INTERNAL_ERROR;
+    }
+
+    const normalized = rawCode.replace(/\s+/g, "_").toUpperCase();
+
+    const knownCodes = new Set<string>(Object.values(ErrorCode));
+    if (knownCodes.has(normalized)) {
+      return normalized as ErrorCode;
+    }
+
+    return ErrorCode.INTERNAL_ERROR;
+  }
+
+  private getDefaultMessageForCode(code: ErrorCode, status: number): string {
+    if (status === 401 || code === ErrorCode.UNAUTHORIZED) {
+      return "Invalid or expired verification code. Please try again.";
+    }
+
+    if (status === 400 || code === ErrorCode.BAD_REQUEST) {
+      return "Invalid request. Please check your input and try again.";
+    }
+
+    if (status >= 500) {
+      return "Server error. Please try again in a moment.";
+    }
+
+    return "Request failed. Please try again.";
+  }
+
   /**
    * Subscribe to token refresh completion
    */
@@ -128,12 +159,7 @@ class ApiClient {
 
     if (!response.ok) {
       const errorText = await response.text();
-      let errorBody: {
-        detail: string;
-        code: string;
-        details?: Record<string, unknown>;
-        timestamp: string;
-      } | null = null;
+      let errorBody: Record<string, unknown> | null = null;
 
       try {
         errorBody = JSON.parse(errorText);
@@ -142,9 +168,9 @@ class ApiClient {
       }
 
       let errorCode: ErrorCode = ErrorCode.INTERNAL_ERROR;
-      
-      if (errorBody?.code) {
-        errorCode = errorBody.code as ErrorCode;
+
+      if (typeof errorBody?.code === "string") {
+        errorCode = this.normalizeErrorCode(errorBody.code);
       } else {
         switch (response.status) {
           case 400:
@@ -178,13 +204,25 @@ class ApiClient {
         }
       }
 
-      const errorMessage = errorBody?.detail || errorText || `Request failed with status ${response.status}`;
+      const detailMessage = typeof errorBody?.detail === "string" ? errorBody.detail : null;
+      const errorMessageField = typeof errorBody?.error === "string" ? errorBody.error : null;
+      const errorMessage =
+        detailMessage ||
+        errorMessageField ||
+        this.getDefaultMessageForCode(errorCode, response.status) ||
+        errorText ||
+        `Request failed with status ${response.status}`;
+
+      const errorDetails =
+        errorBody && typeof errorBody.details === "object" && errorBody.details !== null
+          ? (errorBody.details as Record<string, unknown>)
+          : undefined;
       
       throw new ApiError(
         errorMessage,
         errorCode,
         response.status,
-        errorBody?.details
+        errorDetails
       );
     }
 

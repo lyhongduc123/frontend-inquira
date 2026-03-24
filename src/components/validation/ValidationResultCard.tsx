@@ -24,7 +24,7 @@ import {
 import { DiffView } from './TextHighlight'
 import type { ValidationInspection } from '@/types/validation.type'
 import { cn } from '@/lib/utils'
-import { normalizeCitationIssues } from '@/lib/validation/validation-issue-utils'
+import { normalizeCitationIssues } from '@/lib/validation-issue-utils'
 
 interface ValidationResultCardProps {
   result: ValidationInspection

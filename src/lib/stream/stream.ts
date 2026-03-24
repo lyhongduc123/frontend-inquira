@@ -23,8 +23,24 @@ export interface StreamEventPayload {
   model?: string;
   isRetry?: boolean;
   clientMessageId?: string;
-  pipeline?: "database" | "hybrid" | "standard";
+  pipeline?: "database" | "hybrid";
   useHybridPipeline?: boolean; // Deprecated: kept for backward compatibility
+}
+
+function isAbortError(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) {
+    return true;
+  }
+
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+
+  if (error instanceof Error) {
+    return error.name === "AbortError";
+  }
+
+  return false;
 }
 
 export async function streamEvent(
@@ -101,7 +117,7 @@ export async function streamEvent(
     }
 
     // Route to appropriate handler based on event type
-    switch (eventType as StreamEvent) {
+    switch (eventType as StreamEvent | "token") {
       case StreamEvent.Metadata:
         if (typeof parsedData === "object" && parsedData !== null) {
           const event = parsedData as MetadataEvent;
@@ -115,6 +131,7 @@ export async function streamEvent(
         }
         break;
       case StreamEvent.Chunk:
+      case "token":
         let chunk = "";
         if (typeof parsedData === "object" && parsedData !== null && "content" in parsedData) {
           const event = parsedData as ChunkEvent;
@@ -204,6 +221,10 @@ export async function streamEvent(
       processSSEMessage(buffer);
     }
   } catch (err) {
+    if (isAbortError(err, signal)) {
+      return;
+    }
+
     const e = err instanceof Error ? err : new Error(String(err));
     callbacks.onError?.(e);
   } finally {

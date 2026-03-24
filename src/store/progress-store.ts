@@ -17,6 +17,8 @@ export interface QueryProgress {
   phaseMessage: string | null;
   progress: number;
   isComplete: boolean;
+  currentStep: number;
+  totalSteps: number;
   steps: ProgressStep[];
   startedAt: number;
   completedAt?: number;
@@ -26,6 +28,7 @@ interface ProgressState {
   queries: Map<string, QueryProgress>;
   activeQueryId: string | null;
   startQuery: (queryId: string, query: string, conversationId?: string | null) => void;
+  setStepCount: (queryId: string, totalSteps: number) => void;
   addProgress: (queryId: string, event: ProgressEvent) => void;
   completeQuery: (queryId: string) => void;
   clearQuery: (queryId: string) => void;
@@ -55,6 +58,8 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
       phaseMessage: null,
       progress: 0,
       isComplete: false,
+      currentStep: 0,
+      totalSteps: 0,
       steps: [],
       startedAt: Date.now(),
     };
@@ -66,6 +71,25 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         queries: newQueries,
         activeQueryId: queryId,
       };
+    });
+  },
+
+  setStepCount: (queryId, totalSteps) => {
+    set((state) => {
+      const queryProgress = state.queries.get(queryId);
+      if (!queryProgress) return state;
+
+      const normalizedTotalSteps = Math.max(0, Number(totalSteps) || 0);
+
+      const updatedProgress: QueryProgress = {
+        ...queryProgress,
+        totalSteps: normalizedTotalSteps,
+      };
+
+      const newQueries = new Map(state.queries);
+      newQueries.set(queryId, updatedProgress);
+
+      return { queries: newQueries };
     });
   },
   
@@ -99,6 +123,14 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         currentPhase: phaseInfo.phase,
         phaseMessage: phaseInfo.phase,
         progress: phaseInfo.progress,
+        currentStep:
+          typeof event.metadata?.current_step === "number"
+            ? event.metadata.current_step
+            : queryProgress.currentStep,
+        totalSteps:
+          typeof event.metadata?.total_steps === "number"
+            ? event.metadata.total_steps
+            : queryProgress.totalSteps,
         steps: updatedSteps,
       };
       

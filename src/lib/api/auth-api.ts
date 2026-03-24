@@ -1,14 +1,43 @@
 import { User, AuthTokens } from "@/types/auth.type";
 import { apiClient } from "./api-client";
 
+export interface RequestEmailOtpPayload {
+  email: string;
+  mode: "login" | "signup";
+  name?: string;
+}
+
+export interface RequestEmailOtpResponse {
+  message: string;
+  expiresIn: number;
+  resendAfter: number;
+}
+
+export interface VerifyEmailOtpPayload {
+  email: string;
+  otp: string;
+  mode: "login" | "signup";
+  name?: string;
+}
+
+export interface VerifyEmailOtpResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: User;
+}
+
+export interface PreVerifyEmailOtpResponse {
+  message: string;
+}
+
 export const authApi = {
   /**
    * Get OAuth URL for provider
-   * This goes directly to backend since it's used for OAuth redirect
+   * Route through frontend API so callback can forward auth cookies to this domain
    */
   getOAuthUrl(provider: "google" | "github"): string {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    return `${backendUrl}/api/v1/auth/${provider}`;
+    return `/api/auth/${provider}`;
   },
 
   /**
@@ -38,6 +67,45 @@ export const authApi = {
     return await apiClient.post(
       "/api/auth/logout",
       {} // Empty body, refresh token comes from httpOnly cookie
+    );
+  },
+
+  /**
+   * Request email OTP for login/signup.
+   */
+  async requestEmailOtp(
+    payload: RequestEmailOtpPayload
+  ): Promise<RequestEmailOtpResponse> {
+    return await apiClient.post<RequestEmailOtpResponse>(
+      "/api/auth/email/request-otp",
+      payload,
+      { skipAuth: true, skipRetry: true }
+    );
+  },
+
+  /**
+   * Verify email OTP and establish auth session (cookies).
+   */
+  async verifyEmailOtp(
+    payload: VerifyEmailOtpPayload
+  ): Promise<VerifyEmailOtpResponse> {
+    return await apiClient.post<VerifyEmailOtpResponse>(
+      "/api/auth/email/verify-otp",
+      payload,
+      { skipAuth: true, skipRetry: true }
+    );
+  },
+
+  /**
+   * Pre-verify signup OTP without consuming it.
+   */
+  async preVerifyEmailOtp(
+    payload: VerifyEmailOtpPayload
+  ): Promise<PreVerifyEmailOtpResponse> {
+    return await apiClient.post<PreVerifyEmailOtpResponse>(
+      "/api/auth/email/pre-verify-otp",
+      payload,
+      { skipAuth: true, skipRetry: true }
     );
   },
 };

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { papersApi } from '@/lib/api/papers-api'
-import { defaultRetry, defaultRetryDelay } from '@/lib/utils/react-query-utils'
+import { defaultRetry, defaultRetryDelay } from '@/lib/react-query/react-query-utils'
 
 export function usePaperDetail(paperId: string) {
   return useQuery({

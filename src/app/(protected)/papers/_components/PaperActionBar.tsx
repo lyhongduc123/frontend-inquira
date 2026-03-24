@@ -2,6 +2,7 @@ import {
   BookmarkIcon,
   ExternalLinkIcon,
   EyeIcon,
+  MessageSquarePlusIcon,
   QuoteIcon,
 } from "lucide-react";
 
@@ -18,6 +19,7 @@ interface PaperActionBarProps {
   onFulltext: () => void;
   onPeek: () => void;
   onBookmark: () => void;
+  onAddToChat?: () => void;
   onCite?: () => void;
 }
 
@@ -27,6 +29,7 @@ export function PaperActionBar({
   onFulltext,
   onPeek,
   onBookmark,
+  onAddToChat,
   onCite,
 }: PaperActionBarProps) {
   const [isCitationDialogOpen, setIsCitationDialogOpen] = useState(false);
@@ -38,21 +41,21 @@ export function PaperActionBar({
   };
   return (
     <HStack className="gap-2 flex-wrap">
-      {/* Fulltext Button */}
+      {/* Fulltext Button */} 
       {paper.pdfUrl && (
         <Button onClick={onFulltext} variant="default" size="sm">
           <ExternalLinkIcon />
-          Full Text
+          View PDF
         </Button>
       )}
 
       {/* Peek Button */}
-      {paper.pdfUrl && (
+      {/* {paper.pdfUrl && (
         <Button onClick={onPeek} variant="outline" size="sm">
           <EyeIcon />
           Peek
         </Button>
-      )}
+      )} */}
 
       {/* Bookmark Button */}
       <Button
@@ -64,10 +67,17 @@ export function PaperActionBar({
         {isBookmarked ? "Bookmarked" : "Bookmark"}
       </Button>
 
+      {onAddToChat && (
+        <Button onClick={onAddToChat} variant="ghost" size="sm">
+          <MessageSquarePlusIcon />
+          Add to Chat
+        </Button>
+      )}
+
       {/* Cite Button */}
-      <Button onClick={handleOnCite} variant="outline" size="sm">
+      <Button onClick={handleOnCite} variant="ghost" size="sm">
         <QuoteIcon />
-        Cite ({paper.citationCount?.toLocaleString() || 0})
+        Cite
       </Button>
       <CitationStyleDialog
         citationStyles={paper.citationStyles || undefined}
