@@ -1,4 +1,4 @@
-import { User, AuthTokens } from "@/types/auth.type";
+import { User } from "@/types/auth.type";
 import { apiClient } from "./api-client";
 
 export interface RequestEmailOtpPayload {
@@ -52,10 +52,10 @@ export const authApi = {
   /**
    * Refresh access token using httpOnly cookie (no body needed)
    */
-  async refreshToken(): Promise<AuthTokens> {
-    return apiClient.post<AuthTokens>(
+  async refreshToken(): Promise<void> {
+    return apiClient.post<void>(
       "/api/auth/refresh",
-      {}, // Empty body, refresh token comes from httpOnly cookie
+      {}, 
       { skipAuth: true, skipRetry: true }
     );
   },
@@ -64,7 +64,7 @@ export const authApi = {
    * Logout and revoke refresh token (from httpOnly cookie)
    */
   async logout(): Promise<void> {
-    return await apiClient.post(
+    return await apiClient.post<void>(
       "/api/auth/logout",
       {} // Empty body, refresh token comes from httpOnly cookie
     );

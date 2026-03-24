@@ -27,16 +27,17 @@ import { consumeChatLaunchPayload, consumeScopedChatSelection } from "@/lib/scop
 
 interface ChatPageClientProps {
   routeConversationId?: string;
+  launchKeyFromQuery?: string;
 }
 
-export function ChatPageClient({ routeConversationId }: ChatPageClientProps) {
+export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: ChatPageClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  // const searchParams = useSearchParams();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
   const canRenderConversationRoute = Boolean(routeConversationId);
   const showContent = canRenderConversationRoute || (!isAuthLoading && isAuthenticated);
-  const launchKeyFromQuery = searchParams.get("launch");
+  // const launchKeyFromQuery = launchKeyFromQuery;
 
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const [selectedScopedPapers, setSelectedScopedPapers] = useState<
