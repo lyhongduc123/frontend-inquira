@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userSettingsApi, type UpdateUserSettingsRequest } from "@/lib/api";
-import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from "@/lib/utils/react-query-utils";
+import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from "@/lib/react-query/react-query-utils";
 
 export function useUserSettings() {
   return useQuery({

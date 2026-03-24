@@ -30,7 +30,7 @@ import type {
   ValidationRequest,
   ValidationResult,
 } from '@/types/validation.type'
-import { normalizeCitationIssues } from '@/lib/validation/validation-issue-utils'
+import { normalizeCitationIssues } from '@/lib/validation-issue-utils'
 
 function toInspectionFromDetail(detail: ValidationDetail): ValidationInspection {
   const citationIssues = normalizeCitationIssues(detail.incorrect_citations)

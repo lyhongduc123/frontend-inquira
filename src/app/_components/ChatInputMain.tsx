@@ -38,19 +38,27 @@ import { Box } from "@/components/layout/box";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { HStack } from "@/components/layout/hstack";
+import { VStack } from "@/components/layout/vstack";
 import { BaseChatInputProps, ChatInput } from "./_shared/ChatInput";
 import { PaperMetadata } from "@/types/paper.type";
 import { TypographyP } from "@/components/global/typography";
 import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import pluralize from "pluralize";
 
 export interface ChatInputMainProps extends BaseChatInputProps {
   isAtBottom?: boolean;
   filters?: SearchFilters;
   onFiltersChange?: (filters: SearchFilters) => void;
-  pipeline?: "database" | "hybrid" | "standard";
-  onPipelineChange?: (pipeline: "database" | "hybrid" | "standard") => void;
+  pipeline?: "database" | "hybrid";
+  onPipelineChange?: (pipeline: "database" | "hybrid") => void;
   selectedScopedPapers?: PaperMetadata[];
   onRemoveScopedPaper?: (paperId: string) => void;
+  onClearScopedPapers?: () => void;
   // Deprecated - kept for backward compatibility
   useHybridPipeline?: boolean;
   setUseHybridPipeline?: (value: boolean) => void;
@@ -69,11 +77,13 @@ export function ChatInputMain({
   onPipelineChange,
   selectedScopedPapers = [],
   onRemoveScopedPaper,
+  onClearScopedPapers,
   useHybridPipeline,
   setUseHybridPipeline,
   blockStart,
 }: ChatInputMainProps) {
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const SCOPED_PAPER_COLLAPSE_THRESHOLD = 6;
 
   // Check if any filters are active
   const activeFilterCount = [
@@ -87,62 +97,99 @@ export function ChatInputMain({
     onFiltersChange?.(newFilters);
   };
 
-  // Cycle through pipeline options: database -> hybrid -> standard -> database
   const handlePipelineToggle = () => {
     if (onPipelineChange) {
-      const nextPipeline =
-        pipeline === "database"
-          ? "hybrid"
-          : pipeline === "hybrid"
-            ? "standard"
-            : "database";
+      const nextPipeline = pipeline === "database" ? "hybrid" : "database";
       onPipelineChange(nextPipeline);
     } else if (setUseHybridPipeline) {
-      // Backward compatibility
       setUseHybridPipeline(!useHybridPipeline);
     }
   };
 
-  // For backward compatibility
   const getPipelineLabel = () => {
     if (pipeline === "database") return "Database";
     if (pipeline === "hybrid") return "Hybrid (Beta)";
-    if (pipeline === "standard") return "Standard";
     return useHybridPipeline ? "Hybrid (Beta)" : "Database";
   };
 
   const isPipelineActive = pipeline !== "database" || useHybridPipeline;
 
+  const shouldCollapseScopedPapers =
+    selectedScopedPapers.length > SCOPED_PAPER_COLLAPSE_THRESHOLD;
+
   const scopedBlockStart =
     selectedScopedPapers.length > 0 ? (
       <HStack className="items-center gap-2 px-1 py-0.5">
-        <Badge variant="outline" className="text-sm">
-          Scoped to {selectedScopedPapers.length} paper
-          {selectedScopedPapers.length > 1 ? "s" : ""}
-        </Badge>
-        <HStack className="flex-1 flex-wrap gap-1">
-          {selectedScopedPapers.map((paper) => (
-            <Badge
-              key={paper.paperId}
-              variant="secondary"
-              className="max-w-[220px] pr-1"
-            >
-              <TypographyP size="xs" className="truncate">
-                {paper.title}
-              </TypographyP>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                className="ml-1 h-4 w-4"
-                aria-label={`Remove ${paper.title} from scoped papers`}
-                onClick={() => onRemoveScopedPaper?.(paper.paperId)}
+        {shouldCollapseScopedPapers ? (
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Badge
+                variant="secondary"
+                className="max-w-[260px] cursor-default"
               >
+                <TypographyP size="xs" className="truncate">
+                  Papers ({selectedScopedPapers.length})
+                </TypographyP>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="ml-1 h-4 w-4"
+                  onClick={() => onClearScopedPapers?.()}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-96 p-3">
+              <VStack className="items-start gap-2 max-h-64 overflow-y-auto">
+                {selectedScopedPapers.map((paper) => (
+                  <TypographyP
+                    key={paper.paperId}
+                    size="xs"
+                    className="w-full truncate"
+                  >
+                    • {paper.title}
+                  </TypographyP>
+                ))}
+              </VStack>
+            </HoverCardContent>
+          </HoverCard>
+        ) : (
+          <HStack className="flex-1 flex-wrap gap-1">
+            {selectedScopedPapers.length > 1 && (
+              <Badge
+                variant="default"
+                className="text-sm cursor-pointer shadow-sm"
+                onClick={() => onClearScopedPapers?.()}
+              >
+                Clear
                 <X className="h-3 w-3" />
-              </Button>
-            </Badge>
-          ))}
-        </HStack>
+              </Badge>
+            )}
+            {selectedScopedPapers.map((paper) => (
+              <Badge
+                key={paper.paperId}
+                variant="secondary"
+                className="max-w-[220px] pr-1"
+              >
+                <TypographyP size="xs" className="truncate">
+                  {paper.title}
+                </TypographyP>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="ml-1 h-4 w-4"
+                  aria-label={`Remove ${paper.title} from scoped papers`}
+                  onClick={() => onRemoveScopedPaper?.(paper.paperId)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            ))}
+          </HStack>
+        )}
       </HStack>
     ) : null;
 
@@ -154,22 +201,14 @@ export function ChatInputMain({
         className={cn(
           "rounded-full transition-colors relative",
           activeFilterCount > 0
-            ? "bg-primary/10 text-primary hover:bg-primary/20"
-            : "hover:bg-accent",
+            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+            : "",
         )}
-        size="icon-xs"
         type="button"
         onClick={() => setFilterPanelOpen(true)}
       >
         <Filter className="h-4 w-4" />
-        {activeFilterCount > 0 && (
-          <Badge
-            variant="default"
-            className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
-          >
-            {activeFilterCount}
-          </Badge>
-        )}
+        Filter {activeFilterCount > 0 ? `(${activeFilterCount})` : null}
       </InputGroupButton>
       <HStack
         className={cn(

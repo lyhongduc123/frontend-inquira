@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useProgressStore } from "@/store/progress-store";
 import {
   Loader2,
@@ -35,6 +36,7 @@ import { Box } from "@/components/layout/box";
 import { cn } from "@/lib/utils";
 import { pl } from "date-fns/locale";
 import pluralize from "pluralize";
+import * as changeCase from "change-case";
 
 interface ProgressStep {
   type: string;
@@ -52,6 +54,8 @@ interface QueryProgressProps {
     startedAt: number;
     completedAt?: number;
     currentPhase?: string | null;
+    currentStep?: number;
+    totalSteps?: number;
   };
 }
 
@@ -78,9 +82,10 @@ export function QueryProgress({
   }
 
   const displayThoughts = queryProgress.steps || [];
-  const stepsCount = displayThoughts.length;
+  const receivedStepsCount = displayThoughts.length;
+  const stepsCount = queryProgress.totalSteps || receivedStepsCount;
   const hasSteps = stepsCount > 0;
-  const latestStep = hasSteps ? displayThoughts[stepsCount - 1] : null;
+  const latestStep = receivedStepsCount > 0 ? displayThoughts[receivedStepsCount - 1] : null;
 
   const rankingStep = [...displayThoughts]
     .reverse()
@@ -96,6 +101,7 @@ export function QueryProgress({
 
   const currentLabel =
     queryProgress.currentPhase || latestStep?.type || "processing";
+  const currentStepNumber = queryProgress.currentStep || receivedStepsCount;
 
   const formatDuration = (start: number, end: number) => {
     const duration = end - start;
@@ -105,14 +111,28 @@ export function QueryProgress({
       : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
   };
 
-  const parseContent = (step: ProgressStep): string => {
+  const parseContent = (step: ProgressStep): ReactNode | string => {
     if (step.type === EventType.REASONING && step.content) {
       return step.content;
     }
 
     if (step.type === EventType.SEARCHING && step.metadata?.queries) {
-      const queries = step.metadata.queries as string[];
-      return `Searching: ${queries.join(", ")}`;
+      const queries = Array.isArray(step.metadata.queries)
+        ? (step.metadata.queries as string[]).filter(Boolean)
+        : [];
+
+      if (queries.length > 0) {
+        return (
+          queries.map((q, idx) => (
+            <span key={idx}>
+              {q}
+              {idx < queries.length - 1 && <br />}
+            </span>
+          ))
+        );
+      }
+
+      return "Searching academic databases...";
     }
     if (step.type === EventType.RANKING && step.metadata?.total_papers) {
       return `Ranking ${step.metadata.total_papers} papers (${step.metadata.chunks || 0} chunks)`;
@@ -150,7 +170,9 @@ export function QueryProgress({
           <HStack className="items-center gap-2 min-w-0">
             <ListTodo size={14} className="text-secondary shrink-0" />
             <TypographyP size="xs" weight="medium" className="truncate">
-              {pluralize("step", stepsCount, true)}
+              {queryProgress.totalSteps && queryProgress.totalSteps > 0
+                ? `${currentStepNumber}/${queryProgress.totalSteps} ${pluralize("step", queryProgress.totalSteps)}`
+                : pluralize("step", stepsCount, true)}
             </TypographyP>
           </HStack>
           <Separator orientation="vertical" className="relative mx-2 h-4 max-w-4" />
@@ -180,7 +202,9 @@ export function QueryProgress({
         <SheetHeader className="shrink-0">
           <SheetTitle>Query Steps</SheetTitle>
           <SheetDescription>
-            {pluralize("step", stepsCount, true)}
+            {queryProgress.totalSteps
+              ? `${currentStepNumber}/${queryProgress.totalSteps} ${pluralize("step", queryProgress.totalSteps)}`
+              : pluralize("step", stepsCount, true)}
             {queryProgress.isComplete && queryProgress.completedAt
               ? ` in ${formatDuration(queryProgress.startedAt, queryProgress.completedAt)}`
               : ""}
@@ -212,7 +236,7 @@ export function QueryProgress({
                         <HStack className="gap-2 items-center min-w-0">
                           <TypeIcon type={thought.type} />
                           <TypographyP
-                            size="xs"
+                            size="sm"
                             weight="medium"
                             className="text-foreground/80 capitalize truncate"
                           >
@@ -233,11 +257,11 @@ export function QueryProgress({
                     <CollapsibleContent className="p-4">
                       {thought.type === EventType.REASONING ? (
                         <ReasoningRenderer>
-                          {parseContent(thought)}
+                          {parseContent(thought) as string}
                         </ReasoningRenderer>
                       ) : (
                         <TypographyP
-                          size="xs"
+                          size="sm"
                           variant="muted"
                           className="leading-relaxed"
                         >
@@ -274,7 +298,7 @@ const TypeIcon = ({ type }: { type: string }) => {
 const ReasoningRenderer = ({ children }: { children?: string }) => {
   return (
     <Streamdown
-      className="text-xs text-muted-foreground leading-relaxed"
+      className="text-sm text-muted-foreground leading-relaxed"
       components={{
         h1: ({ children }) => <p className="font-medium m-0">{children}</p>,
         h2: ({ children }) => <p className="font-medium m-0">{children}</p>,

@@ -11,7 +11,7 @@ import {
   getValidationErrors,
   shouldRetryError,
   getRetryDelay,
-} from "@/lib/utils/error-utils";
+} from "./error-utils";
 
 /**
  * Default React Query retry logic based on error type

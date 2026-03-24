@@ -29,6 +29,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useQueryNavigatorStore } from "@/store/query-navigator-store";
+import { useConversation } from "@/hooks/use-conversation";
+import { useConversationStore } from "@/store/conversation-store";
 
 interface QueryNavigatorProps {
   messages: Message[];
@@ -41,6 +43,7 @@ function QueryNavigatorComponent({
   onQueryClick,
   activeQueryIndex,
 }: QueryNavigatorProps) {
+  const { currentConversationTitle } = useConversationStore();
   const activeQueryIndexFromStore = useQueryNavigatorStore(
     (state) => state.activeQueryIndex,
   );
@@ -74,7 +77,7 @@ function QueryNavigatorComponent({
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[80vh] h-[70vh] flex flex-col">
-        <DialogTitle>Query Navigator</DialogTitle>
+        <DialogTitle></DialogTitle>
         <VStack className="flex-1 min-h-0 w-full gap-1 overflow-auto pr-2">
           {userQueries.map((query) => (
             <Item

@@ -8,7 +8,7 @@ import { HStack } from "@/components/layout/hstack";
 import type { PaperMetadata } from "@/types/paper.type";
 import { Box } from "@/components/layout/box";
 import { Button } from "@/components/ui/button";
-import { BookOpenIcon, ChevronRight, InfoIcon } from "lucide-react";
+import { BookOpenIcon, ChevronRight, InfoIcon, MessageSquarePlusIcon } from "lucide-react";
 import { InfoItem } from "./_shared/InfoItem";
 import { C_BULLET } from "@/core";
 import {
@@ -106,22 +106,31 @@ export function PaperDetailContent({ paper }: PaperDetailContentProps) {
 
 interface PaperDetailFooterProps {
   paperMetadata?: PaperMetadata;
+  onAddToChat?: () => void;
 }
 
-export function PaperDetailFooter({ paperMetadata }: PaperDetailFooterProps) {
+export function PaperDetailFooter({ paperMetadata, onAddToChat }: PaperDetailFooterProps) {
   if (!paperMetadata) return null;
   return (
     <HStack className="w-full gap-2 items-center justify-between">
-      <Link
-        href={`/papers/${paperMetadata?.paperId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button>
-          <InfoIcon className="size-4" />
-          View Details
-        </Button>
-      </Link>
+      <HStack className="gap-2 items-center">
+        <Link
+          href={`/papers/${paperMetadata?.paperId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button>
+            <InfoIcon className="size-4" />
+            View Details
+          </Button>
+        </Link>
+        {onAddToChat && (
+          <Button variant="outline" onClick={onAddToChat}>
+            <MessageSquarePlusIcon className="size-4" />
+            Add to Chat
+          </Button>
+        )}
+      </HStack>
       <ActionButtonGroup paperMetadata={paperMetadata} />
     </HStack>
   );

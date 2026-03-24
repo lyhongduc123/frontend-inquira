@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { authorApi, type AuthorListParams } from '@/lib/api/author-api'
-import { defaultRetry, defaultRetryDelay } from '@/lib/utils/react-query-utils'
+import { defaultRetry, defaultRetryDelay } from '@/lib/react-query/react-query-utils'
 
 /**
  * Fetch a single author by ID

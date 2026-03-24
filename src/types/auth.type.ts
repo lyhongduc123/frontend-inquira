@@ -1,9 +1,9 @@
 export interface User {
   id: number;
   email: string;
-  name: string;
-  avatarUrl: string;
-  provider: "google" | "github";
+  name?: string | null;
+  avatarUrl?: string | null;
+  provider: "google" | "github" | "email";
   isActive: boolean;
   createdAt: string;
 }

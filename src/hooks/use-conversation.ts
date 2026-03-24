@@ -28,28 +28,54 @@ export function useConversation() {
   const setNewConversationId = useConversationStore(
     (state) => state.setNewConversationId,
   );
+  const setPendingConversationDraft = useConversationStore(
+    (state) => state.setPendingConversationDraft,
+  );
 
   const latestCreateRequestRef = useRef<number>(0);
+  const latestLoadRequestRef = useRef<number>(0);
 
   const createConversation = useCallback(
     async (title?: string): Promise<Conversation> => {
       const requestId = ++latestCreateRequestRef.current;
-      const conversation = await conversationsApi.create({ title });
+      const normalizedTitle = (title || "New conversation").trim() || "New conversation";
+      setPendingConversationDraft({
+        id: `pending-${requestId}`,
+        title: normalizedTitle,
+      });
 
-      // Only update state if this is still the latest request
-      if (requestId === latestCreateRequestRef.current) {
-        setCurrentConversationId(conversation.id);
-        setNewConversationId(conversation.id);
-        incrementRefreshTrigger();
+      try {
+        const conversation = await conversationsApi.create({ title });
+        if (!conversation.id) {
+          throw new Error("Conversation creation returned no id");
+        }
+
+        // Only update state if this is still the latest request
+        if (requestId === latestCreateRequestRef.current) {
+          setCurrentConversationId(conversation.id);
+          setNewConversationId(conversation.id);
+          incrementRefreshTrigger();
+        }
+
+        return conversation;
+      } finally {
+        if (requestId === latestCreateRequestRef.current) {
+          setPendingConversationDraft(null);
+        }
       }
-
-      return conversation;
     },
-    [setCurrentConversationId, setNewConversationId, incrementRefreshTrigger],
+    [
+      setCurrentConversationId,
+      setNewConversationId,
+      incrementRefreshTrigger,
+      setPendingConversationDraft,
+    ],
   );
 
   const loadConversation = useCallback(
     async (conversationId: string): Promise<Message[]> => {
+      const requestId = ++latestLoadRequestRef.current;
+
       if (conversationId === currentConversationId) {
         return [];
       }
@@ -64,7 +90,10 @@ export function useConversation() {
 
       try {
         const conversation = await conversationsApi.get(conversationId);
-        console.log("Loaded conversation:", conversation);
+        if (requestId !== latestLoadRequestRef.current) {
+          return [];
+        }
+
         const loadedMessages: Message[] = conversation.messages.map((msg) => ({
           id: msg.id,
           role: msg.role as "user" | "assistant",
@@ -79,10 +108,14 @@ export function useConversation() {
         return loadedMessages;
       } catch (error) {
         console.error("Failed to load conversation messages:", error);
-        setMessages([]);
+        if (requestId === latestLoadRequestRef.current) {
+          setMessages([]);
+        }
         return [];
       } finally {
-        setIsLoadingMessages(false);
+        if (requestId === latestLoadRequestRef.current) {
+          setIsLoadingMessages(false);
+        }
       }
     },
     [
@@ -94,6 +127,7 @@ export function useConversation() {
   );
 
   const resetConversation = useCallback(() => {
+    latestLoadRequestRef.current += 1;
     clearConversation();
   }, [clearConversation]);
 

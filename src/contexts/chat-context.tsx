@@ -10,7 +10,7 @@ type SendMessagePayload = StreamEventPayload | {
   query: string;
   conversationId?: string;
   filters?: Record<string, unknown>;
-  pipeline?: "database" | "hybrid" | "standard";
+  pipeline?: "database" | "hybrid";
   clientMessageId?: string;
 };
 

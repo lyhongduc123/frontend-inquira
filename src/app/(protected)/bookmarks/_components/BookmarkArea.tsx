@@ -22,6 +22,9 @@ interface BookmarkAreaProps {
   isError?: boolean;
   isEmpty?: boolean;
   refetch?: () => void;
+  selectedScopedPaperIds?: string[];
+  onToggleScopedPaper?: (paperId: string, checked: boolean) => void;
+  onSetAllScopedPapers?: (paperIds: string[], checked: boolean) => void;
 }
 
 export function BookmarkArea({
@@ -30,6 +33,9 @@ export function BookmarkArea({
   isError,
   isEmpty,
   refetch,
+  selectedScopedPaperIds,
+  onToggleScopedPaper,
+  onSetAllScopedPapers,
 }: BookmarkAreaProps) {
   const router = useRouter();
   const handleRemoveBookmark = async (paperId: string) => {
@@ -100,6 +106,9 @@ export function BookmarkArea({
       isLoading={isLoading}
       data={data || []}
       onRemoveBookmark={handleRemoveBookmark}
+      selectedScopedPaperIds={selectedScopedPaperIds}
+      onToggleScopedPaper={onToggleScopedPaper}
+      onSetAllScopedPapers={onSetAllScopedPapers}
     />
   );
 }

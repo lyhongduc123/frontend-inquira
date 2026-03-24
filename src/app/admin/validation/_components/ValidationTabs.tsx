@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Spinner } from '@/components/ui/spinner'
 import { useDeleteValidation, useValidationDetail, useValidationHistory } from '@/hooks/use-validation'
-import { normalizeCitationIssues } from '@/lib/validation/validation-issue-utils'
+import { normalizeCitationIssues } from '@/lib/validation-issue-utils'
 import type { ValidationDetail, ValidationInspection, ValidationResult } from '@/types/validation.type'
 
 interface ValidationTabsProps {

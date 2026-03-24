@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import { useState } from "react";
 import { notFound, useParams } from "next/navigation";
 import {
   usePaperDetail,
   usePaperCitations,
   usePaperReferences,
-  usePaperChat,
 } from "../hooks";
 
 import { VStack } from "@/components/layout/vstack";
@@ -15,11 +14,7 @@ import { Box } from "@/components/layout/box";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  SidebarProvider,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { MessageArea, MessageAreaRef } from "@/app/_components/MessageArea";
+import { useSidebar } from "@/components/ui/sidebar";
 
 import {
   PaperMetadataSection,
@@ -33,7 +28,8 @@ import {
 import { PaperAbstractSectionSkeleton } from "../_components/PaperAbstractSection";
 import { PaperActionBarSkeleton } from "../_components/PaperActionBar";
 import { PaperMetadataSectionSkeleton } from "../_components/PaperMetadataSection";
-import { TypographyP } from "@/components/global/typography";
+import { saveChatLaunchPayload } from "@/lib/scoped-chat-selection";
+import { PaperMetadata } from "@/types/paper.type";
 
 
 export function PaperPageClient() {
@@ -43,49 +39,8 @@ export function PaperPageClient() {
 
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [activeTab, setActiveTab] = useState("abstract");
-  const [chatActive, setChatActive] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const messageAreaRef = useRef<MessageAreaRef>(null);
 
   const { data: paper, isLoading, isError, error } = usePaperDetail(paperId);
-
-  // Initialize paper chat hook
-  const {
-    messages,
-    isStreaming,
-    sendMessage: sendChatMessage,
-  } = usePaperChat({
-    paperId,
-    onConversationCreated: (conversationId) => {
-      console.log("Paper conversation created:", conversationId);
-    },
-    onError: () => {
-      console.error("Chat error occurred");
-    },
-  });
-
-  const handleMouseMove = React.useCallback((e: MouseEvent) => {
-    // Reserved for future resize functionality
-    console.log("Resize event:", e.clientX);
-  }, []);
-
-  const handleMouseUp = React.useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  React.useEffect(() => {
-    if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-    } else {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    }
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isResizing, handleMouseMove, handleMouseUp]);
 
   const { data: citationsData, isLoading: citationsLoading } =
     usePaperCitations(paperId, activeTab === "citations");
@@ -115,10 +70,33 @@ export function PaperPageClient() {
   };
 
   const handleSendMessage = (msg: string) => {
-    if (!chatActive) {
-      setChatActive(true);
-    }
-    sendChatMessage(msg);
+    if (!paper) return;
+
+    const scopedPaper = mapPaperDetailToMetadata(paper);
+    const launchId = saveChatLaunchPayload({
+      query: msg,
+      scopedPapers: [scopedPaper],
+      source: "paper-detail",
+    });
+
+    if (!launchId) return;
+    const target = `/?launch=${encodeURIComponent(launchId)}`;
+    window.open(target, "_blank", "noopener,noreferrer");
+  };
+
+  const handleAddToChat = () => {
+    if (!paper) return;
+
+    const scopedPaper = mapPaperDetailToMetadata(paper);
+    const launchId = saveChatLaunchPayload({
+      query: "",
+      scopedPapers: [scopedPaper],
+      source: "paper-detail",
+    });
+
+    if (!launchId) return;
+    const target = `/?launch=${encodeURIComponent(launchId)}`;
+    window.open(target, "_blank", "noopener,noreferrer");
   };
 
   if (isError) {
@@ -131,14 +109,9 @@ export function PaperPageClient() {
 
   return (
     <HStack className="h-full w-full relative">
-      {/* Main Paper Content */}
-      <Box
-        className={`h-full transition-all duration-500 ease-in-out ${
-          chatActive ? "w-[60%]" : "w-full"
-        }`}
-      >
+      <Box className="h-full w-full">
         <ScrollArea className="h-full w-full">
-          <VStack className="p-4 sm:p-6 lg:p-8">
+          <VStack className="p-4 sm:p-6 lg:p-8 pb-32">
             <Box className="max-w-3xl w-full mx-auto space-y-6">
               {isLoading ? (
                 <>
@@ -156,6 +129,7 @@ export function PaperPageClient() {
                     onFulltext={handleFulltext}
                     onPeek={handlePeek}
                     onBookmark={handleBookmark}
+                    onAddToChat={handleAddToChat}
                   />
 
                   <Separator />
@@ -186,65 +160,64 @@ export function PaperPageClient() {
                       />
                     </TabsContent>
                   </Tabs>
-                  <Separator />
                 </>
               ) : null}
             </Box>
           </VStack>
         </ScrollArea>
 
-        {/* Chat Input - Fixed at bottom when chat not active */}
-        {!chatActive && (
-          <Box className="absolute bottom-0 left-0 right-0 p-4">
-            <Box className="max-w-3xl mx-auto">
-              <PaperChatInput
-                paperTitle={paper?.title || ""}
-                onSend={handleSendMessage}
-                isDisabled={isStreaming || !paper}
-              />
-            </Box>
-          </Box>
-        )}
-      </Box>
-
-      {/* Chat Thread Panel - Slides in from right */}
-      <Box
-        className={`h-full border-l transition-all duration-500 ease-in-out overflow-hidden ${
-          chatActive ? "w-[40%] opacity-100" : "w-0 opacity-0"
-        }`}
-      >
-        <VStack className="h-full">
-          {/* Chat Messages */}
-          <Box className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              <Box className="p-4">
-                {messages.length > 0 ? (
-                  <MessageArea
-                    ref={messageAreaRef}
-                    messages={messages}
-                    isStreaming={isStreaming}
-                  />
-                ) : (
-                  <VStack className="h-full items-center justify-center text-center p-8">
-                    <TypographyP variant="muted" size="sm">
-                      Ask me anything about this paper
-                    </TypographyP>
-                  </VStack>
-                )}
-              </Box>
-            </ScrollArea>
-          </Box>
-          
-          <Box className="border-t p-4 bg-background">
+        <Box className="absolute bottom-0 left-0 right-0 p-4">
+          <Box className="max-w-3xl mx-auto">
             <PaperChatInput
               paperTitle={paper?.title || ""}
               onSend={handleSendMessage}
-              isDisabled={isStreaming || !paper}
+              isDisabled={!paper}
             />
           </Box>
-        </VStack>
+        </Box>
       </Box>
     </HStack>
   );
+}
+
+function mapPaperDetailToMetadata(paper: {
+  paperId: string;
+  title: string;
+  abstract: string;
+  authors: PaperMetadata["authors"];
+  publicationDate?: string | null;
+  venue?: string | null;
+  url?: string | null;
+  pdfUrl?: string | null;
+  journal?: PaperMetadata["journal"];
+  citationCount: number;
+  influentialCitationCount?: number;
+  citationStyles?: Record<string, string> | null;
+  referenceCount?: number;
+  isOpenAccess: boolean;
+  isRetracted: boolean;
+  topics?: Array<Record<string, unknown>> | null;
+  keywords?: Array<Record<string, unknown>> | null;
+}): PaperMetadata {
+  return {
+    paperId: paper.paperId,
+    title: paper.title,
+    abstract: paper.abstract,
+    authors: paper.authors,
+    year: paper.publicationDate ? new Date(paper.publicationDate).getFullYear() : null,
+    publicationDate: paper.publicationDate,
+    venue: paper.venue,
+    url: paper.url,
+    pdfUrl: paper.pdfUrl,
+    journal: paper.journal ?? null,
+    citationCount: paper.citationCount,
+    influentialCitationCount: paper.influentialCitationCount,
+    citationStyles: paper.citationStyles ?? null,
+    referenceCount: paper.referenceCount,
+    isOpenAccess: paper.isOpenAccess,
+    isRetracted: paper.isRetracted,
+    topics: paper.topics ?? null,
+    keywords: paper.keywords ?? null,
+  };
 }
 

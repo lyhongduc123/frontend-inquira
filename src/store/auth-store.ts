@@ -7,7 +7,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  hasCheckedAuth: boolean; // Track if we've checked auth already
+  hasCheckedAuth: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
@@ -24,7 +24,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isLoading: true,
-      hasCheckedAuth: false, // Initialize to false
+      hasCheckedAuth: false,
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
 
@@ -33,12 +33,21 @@ export const useAuthStore = create<AuthState>()(
       login: async () => {
         try {
           set({ isLoading: true });
-          // Tokens are in HTTP-only cookies, just fetch user info
           const user = await authApi.getMe();
-          set({ user, isAuthenticated: true, isLoading: false });
+          set({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+            hasCheckedAuth: true,
+          });
         } catch (error) {
           console.error("Login failed:", error);
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            hasCheckedAuth: true,
+          });
           throw error;
         }
       },
@@ -54,40 +63,38 @@ export const useAuthStore = create<AuthState>()(
           // Silently handle logout errors - we're clearing state anyway
           console.debug("Logout error (ignored):", error);
         } finally {
-          set({ user: null, isAuthenticated: false, isLoading: false, hasCheckedAuth: false });
+          set({ user: null, isAuthenticated: false, isLoading: false, hasCheckedAuth: true });
         }
       },
 
       refreshAuth: async () => {
         try {
-          // Refresh token is in httpOnly cookie, just fetch new tokens
           await authApi.refreshToken();
           const user = await authApi.getMe();
-          set({ user, isAuthenticated: true, isLoading: false });
+          set({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+            hasCheckedAuth: true,
+          });
         } catch (error) {
           console.error("Token refresh failed:", error);
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            hasCheckedAuth: true,
+          });
           throw error;
         }
       },
 
       checkAuth: async () => {
-        // Skip if already checked to prevent duplicate calls
-        const { hasCheckedAuth } = get();
-        if (hasCheckedAuth) {
-          console.log("[checkAuth] Already checked, skipping");
-          return;
-        }
-
-        console.log("[checkAuth] Starting auth check with HTTP-only cookies");
-        
         try {
           set({ isLoading: true });
           const user = await authApi.getMe(false);
-          console.log("[checkAuth] User authenticated:", user.email);
           set({ user, isAuthenticated: true, isLoading: false, hasCheckedAuth: true });
         } catch (error) {
-          console.log("[checkAuth] Not authenticated, clearing state");
           set({ isLoading: false, isAuthenticated: false, user: null, hasCheckedAuth: true });
         }
       },
