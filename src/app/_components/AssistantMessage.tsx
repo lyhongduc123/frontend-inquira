@@ -25,6 +25,7 @@ interface AssistantMessageProps {
   isDone?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  isAnalyzing?: boolean;
   selectedPaperIds?: string[];
   onTogglePaperSelection?: (paper: PaperMetadata) => void;
 }
@@ -37,6 +38,7 @@ export function AssistantMessage({
   isDone = false,
   isError = false,
   onRetry,
+  isAnalyzing = false,
   selectedPaperIds = [],
   onTogglePaperSelection,
 }: AssistantMessageProps) {
@@ -61,12 +63,21 @@ export function AssistantMessage({
   };
   return (
     <Box className="min-w-0">
-      <AssistantMessageBody
-        text={text}
-        sources={sources}
-        scopedQuoteRefs={scopedQuoteRefs}
-        isDone={isDone}
-      />
+      {isAnalyzing && !text ? (
+        <VStack className="space-y-2 animate-pulse pr-12 pb-4">
+          <Box className="h-4 bg-muted rounded-sm w-full" />
+          <Box className="h-4 bg-muted rounded-sm w-[90%]" />
+          <Box className="h-4 bg-muted rounded-sm w-[40%]" />
+          <Box className="mt-2 text-xs text-muted-foreground italic">Analyzing research papers...</Box>
+        </VStack>
+      ) : (
+        <AssistantMessageBody
+          text={text}
+          sources={sources}
+          scopedQuoteRefs={scopedQuoteRefs}
+          isDone={isDone}
+        />
+      )}
 
       {isError && onRetry && (
         <Box className="mt-4">

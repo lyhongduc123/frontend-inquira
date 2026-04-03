@@ -49,13 +49,19 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import pluralize from "pluralize";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Icon } from "@iconify/react";
+import { useSearchFilters } from "@/hooks/use-search-filters";
 
 export interface ChatInputMainProps extends BaseChatInputProps {
   isAtBottom?: boolean;
-  filters?: SearchFilters;
-  onFiltersChange?: (filters: SearchFilters) => void;
-  pipeline?: "database" | "hybrid";
-  onPipelineChange?: (pipeline: "database" | "hybrid") => void;
   selectedScopedPapers?: PaperMetadata[];
   onRemoveScopedPaper?: (paperId: string) => void;
   onClearScopedPapers?: () => void;
@@ -71,10 +77,6 @@ export function ChatInputMain({
   isDisabled,
   isAtBottom = false,
   placeholder,
-  filters = {},
-  onFiltersChange,
-  pipeline = "database",
-  onPipelineChange,
   selectedScopedPapers = [],
   onRemoveScopedPaper,
   onClearScopedPapers,
@@ -82,6 +84,7 @@ export function ChatInputMain({
   setUseHybridPipeline,
   blockStart,
 }: ChatInputMainProps) {
+  const { filters, pipeline, setParams } = useSearchFilters();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const SCOPED_PAPER_COLLAPSE_THRESHOLD = 6;
 
@@ -94,25 +97,20 @@ export function ChatInputMain({
   ].filter(Boolean).length;
 
   const handleFiltersChange = (newFilters: SearchFilters) => {
-    onFiltersChange?.(newFilters);
+    setParams(newFilters, pipeline);
   };
 
-  const handlePipelineToggle = () => {
-    if (onPipelineChange) {
-      const nextPipeline = pipeline === "database" ? "hybrid" : "database";
-      onPipelineChange(nextPipeline);
-    } else if (setUseHybridPipeline) {
-      setUseHybridPipeline(!useHybridPipeline);
-    }
+  const handlePipelineChange = (newPipeline: "research" | "agent") => {
+    setParams(filters, newPipeline);
   };
 
   const getPipelineLabel = () => {
-    if (pipeline === "database") return "Database";
-    if (pipeline === "hybrid") return "Hybrid (Beta)";
-    return useHybridPipeline ? "Hybrid (Beta)" : "Database";
+    if (pipeline === "research") return "Research";
+    if (pipeline === "agent") return "Agent (Beta)";
+    return useHybridPipeline ? "Agent (Beta)" : "Research";
   };
 
-  const isPipelineActive = pipeline !== "database" || useHybridPipeline;
+  const isPipelineActive = pipeline === "agent" || useHybridPipeline;
 
   const shouldCollapseScopedPapers =
     selectedScopedPapers.length > SCOPED_PAPER_COLLAPSE_THRESHOLD;
@@ -204,22 +202,51 @@ export function ChatInputMain({
             ? "bg-primary text-primary-foreground hover:bg-primary/90"
             : "",
         )}
-        type="button"
+        size={"sm"}
         onClick={() => setFilterPanelOpen(true)}
       >
         <Filter className="h-4 w-4" />
         Filter {activeFilterCount > 0 ? `(${activeFilterCount})` : null}
       </InputGroupButton>
-      <HStack
-        className={cn(
-          "items-center gap-2 cursor-pointer",
-          isPipelineActive ? "text-secondary" : "text-muted-foreground",
-        )}
-        onClick={handlePipelineToggle}
+
+      <Select
+        value={pipeline}
+        onValueChange={(v) => handlePipelineChange(v as "research" | "agent")}
       >
-        <Switch size="sm" checked={isPipelineActive} />
-        <Label className="text-sm cursor-pointer">{getPipelineLabel()}</Label>
-      </HStack>
+        <InputGroupButton asChild size={"sm"}>
+          <SelectTrigger className="rounded-full gap-2">
+            <SelectValue>
+              <HStack className="items-center gap-2">
+                <Icon
+                  icon={
+                    pipeline === "research"
+                      ? "fluent-color:search-sparkle-20"
+                      : "fluent-color:bot-24"
+                  }
+                  className="h-4 w-4"
+                />
+                {getPipelineLabel()}
+              </HStack>
+            </SelectValue>
+          </SelectTrigger>
+        </InputGroupButton>
+        <SelectContent position="popper">
+          <SelectGroup>
+            <SelectItem value="research">
+              <HStack className="items-center gap-2">
+                <Icon icon="fluent-color:search-sparkle-16" />
+                Research
+              </HStack>
+            </SelectItem>
+            <SelectItem value="agent">
+              <HStack className="items-center gap-2">
+                <Icon icon="fluent-color:bot-24" />
+                Agent (Beta)
+              </HStack>
+            </SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
       <Separator orientation="vertical" className="ml-auto h-4" />
     </>
@@ -244,8 +271,6 @@ export function ChatInputMain({
       <FilterPanel
         open={filterPanelOpen}
         onOpenChange={setFilterPanelOpen}
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
       />
     </Box>
   );

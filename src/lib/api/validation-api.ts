@@ -30,17 +30,21 @@ export async function runValidation(
 export async function getValidationHistory(params: {
   skip?: number
   limit?: number
-  message_id?: number
-  model_name?: string
-  has_hallucination?: boolean
+  messageId?: number
+  conversationId?: string
+  modelName?: string
+  queryText?: string
+  hasHallucination?: boolean
 }): Promise<ValidationHistoryResponse> {
   const searchParams = new URLSearchParams()
   if (params.skip !== undefined) searchParams.append('skip', params.skip.toString())
   if (params.limit !== undefined) searchParams.append('limit', params.limit.toString())
-  if (params.message_id !== undefined) searchParams.append('message_id', params.message_id.toString())
-  if (params.model_name) searchParams.append('model_name', params.model_name)
-  if (params.has_hallucination !== undefined) {
-    searchParams.append('has_hallucination', params.has_hallucination.toString())
+  if (params.messageId !== undefined) searchParams.append('message_id', params.messageId.toString())
+  if (params.conversationId) searchParams.append('conversation_id', params.conversationId)
+  if (params.modelName) searchParams.append('model_name', params.modelName)
+  if (params.queryText) searchParams.append('query_text', params.queryText)
+  if (params.hasHallucination !== undefined) {
+    searchParams.append('has_hallucination', params.hasHallucination.toString())
   }
 
   return apiClient.request<ValidationHistoryResponse>(
@@ -75,14 +79,10 @@ export async function deleteValidation(validationId: number): Promise<{ message:
  * Get validation statistics
  */
 export async function getValidationStats(params?: {
-  conversation_id?: number
-  model_name?: string
+  messageId?: number
 }): Promise<ValidationStats> {
   const searchParams = new URLSearchParams()
-  if (params?.conversation_id !== undefined) {
-    searchParams.append('conversation_id', params.conversation_id.toString())
-  }
-  if (params?.model_name) searchParams.append('model_name', params.model_name)
+  if (params?.messageId !== undefined) searchParams.append('message_id', params.messageId.toString())
 
   return apiClient.request<ValidationStats>(
     `/api/v1/admin/validation/stats${searchParams.toString() ? '?' + searchParams.toString() : ''}`

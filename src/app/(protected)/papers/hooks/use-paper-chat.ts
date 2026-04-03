@@ -105,9 +105,8 @@ export function usePaperChat(options: UsePaperChatOptions) {
               }
             },
             onMetadata: (event: MetadataEvent) => {
-              // Paper detail endpoint returns single paper metadata
-              if (event.papers && event.papers.length > 0) {
-                updateLastMessage({ paperSnapshots: event.papers });
+              if (event.content && event.content.length > 0) {
+                updateLastMessage({ paperSnapshots: event.content });
               }
             },
             onProgress: (event: ProgressEvent) => {

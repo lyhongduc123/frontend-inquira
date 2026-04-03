@@ -8,7 +8,7 @@ export interface ChatLaunchPayload {
   scopedPapers?: PaperMetadata[]
   conversationId?: string
   filters?: Record<string, unknown>
-  pipeline?: 'database' | 'hybrid'
+  pipeline?: 'research' | 'agent'
   source?: 'bookmarks' | 'paper-detail' | 'unknown'
   createdAt: number
 }
@@ -89,7 +89,7 @@ export function consumeChatLaunchPayload(id: string): ChatLaunchPayload | null {
           ? (parsed.filters as Record<string, unknown>)
           : undefined,
       pipeline:
-        parsed.pipeline === 'hybrid' || parsed.pipeline === 'database'
+        parsed.pipeline === 'research' || parsed.pipeline === 'agent'
           ? parsed.pipeline
           : undefined,
       source:

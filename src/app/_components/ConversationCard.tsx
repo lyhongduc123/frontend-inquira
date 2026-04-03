@@ -10,16 +10,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Conversation } from "@/types/conversation.type";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { EllipsisVerticalIcon, Trash2 } from "lucide-react";
 import { TypographyP } from "@/components/global/typography";
 import { Box } from "@/components/layout/box";
 import { HStack } from "@/components/layout/hstack";
-import pluralize from "pluralize";
 import { DeleteConversationDialog } from "./DeleteConversationDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LeftSidebarMenuButton } from "./LeftSidebarMenuButton";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 
 interface ConversationCardProps {

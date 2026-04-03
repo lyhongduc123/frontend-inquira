@@ -111,7 +111,7 @@ export function PaperPageClient() {
     <HStack className="h-full w-full relative">
       <Box className="h-full w-full">
         <ScrollArea className="h-full w-full">
-          <VStack className="p-4 sm:p-6 lg:p-8 pb-32">
+          <VStack className="p-4 sm:p-6 lg:p-8">
             <Box className="max-w-3xl w-full mx-auto space-y-6">
               {isLoading ? (
                 <>
@@ -163,6 +163,7 @@ export function PaperPageClient() {
                 </>
               ) : null}
             </Box>
+            <Box className="h-32" />
           </VStack>
         </ScrollArea>
 

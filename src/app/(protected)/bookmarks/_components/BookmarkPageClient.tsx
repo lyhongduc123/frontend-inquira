@@ -129,7 +129,7 @@ export function BookmarkPageClient() {
   );
 
   return (
-    <VStack className="relative h-full w-full max-w-8xl p-8 pb-28 gap-4 items-center">
+    <VStack className="relative h-full w-full max-w-7xl p-8 pb-28 gap-4 items-center">
       <BookmarkSearchBar onSearch={handleSearch} />
       <BookmarkArea
         data={filteredBookmarks}

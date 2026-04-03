@@ -11,7 +11,7 @@ export interface ChatMessageRequest {
   filter?: Record<string, unknown>;
   model?: string | null;
   stream?: boolean;
-  pipeline?: "database" | "hybrid";
+  pipeline?: "research" | "agent";
   use_hybrid_pipeline?: boolean; // Deprecated: use pipeline field
 }
 
@@ -33,21 +33,62 @@ export interface FeedbackResponse {
 }
 
 export const chatApi = {
+  // ==================== V1 DIRECT STREAMING (Standard/Research) ====================
+  
   /**
-   * Stream chat message response with citations (Legacy v1 API)
+   * Stream chat message response with citations (Direct POST)
    * Returns SSE stream with conversation, metadata, tokens, and done events
    */
   getStreamUrl(): string {
     return `${CHAT_BASE}/stream`;
   },
 
+  // ==================== V2 EVENT-DRIVEN (Stateful Agent / Tasks) ====================
+
   /**
-   * Stream paper detail chat
-   * Chat about a specific paper with full-text context
+   * Submit a chat task for background processing
+   * Returns immediately with task_id. Use for Agent/Long-running pipelines.
    */
-  getStreamPaperUrl(paperId: string): string {
-    return `${CHAT_BASE}/stream/paper/${paperId}`;
+  getSubmitUrl(): string {
+    return `${CHAT_BASE}/submit`;
   },
+
+  /**
+   * Backward-compatible alias for event-driven submit URL.
+   */
+  getEventDrivenSubmitUrl(): string {
+    return `${CHAT_BASE}/submit`;
+  },
+
+  /**
+   * Submit agent chat message (Specifically for Agent pipeline)
+   */
+  getAgentSubmitUrl(): string {
+    return `${CHAT_BASE}/agent`;
+  },
+
+  /**
+   * Stream events from a task (Reconnectable)
+   */
+  getStreamEventsUrl(taskId: string, fromSequence: number = 0): string {
+    return `${CHAT_BASE}/stream/${taskId}${fromSequence > 0 ? `?from_sequence=${fromSequence}` : ""}`;
+  },
+
+  /**
+   * Backward-compatible alias for event-driven stream URL.
+   */
+  getEventDrivenStreamUrl(taskId: string, fromSequence: number = 0): string {
+    return `${CHAT_BASE}/stream/${taskId}${fromSequence > 0 ? `?from_sequence=${fromSequence}` : ""}`;
+  },
+
+  /**
+   * Get task status
+   */
+  getTaskStatusUrl(taskId: string): string {
+    return `${CHAT_BASE}/tasks/${taskId}`;
+  },
+
+  // ==================== COMMON UTILITIES ====================
 
   /**
    * Submit feedback for a message
@@ -69,30 +110,5 @@ export const chatApi = {
     }
 
     return response.json();
-  },
-
-  // ==================== EVENT-DRIVEN API (v2) ====================
-
-  /**
-   * Submit a chat task for background processing (Event-Driven v2)
-   * Returns immediately with task_id
-   */
-  getEventDrivenSubmitUrl(): string {
-    return `${CHAT_BASE}/submit`;
-  },
-
-  /**
-   * Stream events from a task (resumable with from_sequence)
-   * Supports reconnection - client can resume from last sequence number
-   */
-  getEventDrivenStreamUrl(taskId: string, fromSequence: number = 0): string {
-    return `${CHAT_BASE}/stream/${taskId}?from_sequence=${fromSequence}`;
-  },
-
-  /**
-   * Get task status
-   */
-  getTaskStatusUrl(taskId: string): string {
-    return `${CHAT_BASE}/tasks/${taskId}`;
   },
 };

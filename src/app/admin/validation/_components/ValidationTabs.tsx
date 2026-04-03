@@ -21,65 +21,65 @@ interface ValidationTabsProps {
 }
 
 function toInspectionFromDetail(detail: ValidationDetail): ValidationInspection {
-  const citationIssues = normalizeCitationIssues(detail.incorrect_citations)
+  const citationIssues = normalizeCitationIssues(detail.incorrectCitations)
 
   const result: ValidationResult = {
-    query: detail.query_text,
-    generated_answer: detail.generated_answer ?? '',
-    context_used: detail.context_used ?? '',
-    text_match: {
-      matched_terms: [],
-      missing_terms: [],
-      match_percentage: 0,
-      suspicious_sentences: [],
+    query: detail.queryText,
+    generatedAnswer: detail.generatedAnswer ?? '',
+    contextUsed: detail.contextUsed ?? '',
+    textMatch: {
+      matchedTerms: [],
+      missingTerms: [],
+      matchPercentage: 0,
+      suspiciousSentences: [],
     },
-    context_evidence: detail.context_evidence ?? {
-      paper_ids: [],
-      chunk_ids: [],
-      total_papers: 0,
-      total_chunks: 0,
+    contextEvidence: detail.contextEvidence ?? {
+      paperIds: [],
+      chunkIds: [],
+      totalPapers: 0,
+      totalChunks: 0,
     },
-    has_hallucination: detail.has_hallucination,
-    hallucination_count: detail.hallucination_count,
-    hallucination_details: detail.hallucination_details,
-    non_existent_facts: detail.non_existent_facts,
-    incorrect_citations: citationIssues,
-    citation_accuracy: {
-      total_citations: detail.total_citations,
-      correct_citations: detail.correct_citations,
-      hallucinated_citations: detail.hallucinated_citations,
-      missing_citations: detail.missing_citations,
-      accuracy: detail.citation_accuracy ?? 0,
+    hasHallucination: detail.hasHallucination,
+    hallucinationCount: detail.hallucinationCount,
+    hallucinationDetails: detail.hallucinationDetails,
+    nonExistentFacts: detail.nonExistentFacts,
+    incorrectCitations: citationIssues,
+    citationAccuracy: {
+      totalCitations: detail.totalCitations,
+      correctCitations: detail.correctCitations,
+      hallucinatedCitations: detail.hallucinatedCitations,
+      missingCitations: detail.missingCitations,
+      accuracy: detail.citationAccuracy ?? 0,
     },
-    relevance_score: detail.relevance_score ?? 0,
-    factual_accuracy_score: detail.factual_accuracy_score ?? 0,
-    component_scores:
-      detail.component_scores ?? {
-        grounding_score: detail.factual_accuracy_score ?? 0,
-        citation_faithfulness_score: detail.citation_accuracy ?? 0,
-        relevance_score: detail.relevance_score ?? 0,
-        perspective_coverage_score: 0,
-        overall_score: detail.factual_accuracy_score ?? 0,
+    relevanceScore: detail.relevanceScore ?? 0,
+    factualAccuracyScore: detail.factualAccuracyScore ?? 0,
+    componentScores:
+      detail.componentScores ?? {
+        groundingScore: detail.factualAccuracyScore ?? 0,
+        citationFaithfulnessScore: detail.citationAccuracy ?? 0,
+        relevanceScore: detail.relevanceScore ?? 0,
+        perspectiveCoverageScore: 0,
+        overallScore: detail.factualAccuracyScore ?? 0,
       },
-    claims_checked: [],
-    execution_time_ms: detail.execution_time_ms ?? 0,
-    model_used: detail.model_name ?? 'unknown',
-    validation_id: detail.id,
+    claimsChecked: [],
+    executionTimeMs: detail.executionTimeMs ?? 0,
+    modelUsed: detail.modelName ?? 'unknown',
+    validationId: detail.id,
   }
 
   return {
-    validation_id: detail.id,
-    timestamp: detail.created_at,
+    validationId: detail.id,
+    timestamp: detail.createdAt,
     result,
     summary: {
-      has_issues: detail.has_hallucination || detail.hallucinated_citations > 0,
-      text_match_percentage: 0,
-      citation_accuracy: detail.citation_accuracy ?? 0,
-      relevance: detail.relevance_score ?? 0,
-      issues_count: detail.hallucination_count + detail.hallucinated_citations,
-      overall_score: result.component_scores.overall_score,
-      grounding_score: result.component_scores.grounding_score,
-      perspective_coverage_score: result.component_scores.perspective_coverage_score,
+      hasIssues: detail.hasHallucination || detail.hallucinatedCitations > 0,
+      textMatchPercentage: 0,
+      citationAccuracy: detail.citationAccuracy ?? 0,
+      relevance: detail.relevanceScore ?? 0,
+      issuesCount: detail.hallucinationCount + detail.hallucinatedCitations,
+      overallScore: result.componentScores.overallScore,
+      groundingScore: result.componentScores.groundingScore,
+      perspectiveCoverageScore: result.componentScores.perspectiveCoverageScore,
     },
   }
 }
@@ -93,7 +93,7 @@ export default function ValidationTabs({
   const { data: historyData, isLoading, refetch } = useValidationHistory({
     skip: 0,
     limit: 100,
-    message_id: Number(messageId),
+    messageId: Number(messageId),
   })
   const { data: selectedDetail, isLoading: isLoadingDetail } = useValidationDetail(selectedValidationId)
 
@@ -177,15 +177,15 @@ export default function ValidationTabs({
                           onClick={() => setSelectedValidationId(validation.id)}
                         >
                           <TableCell className="font-medium">
-                            {format(new Date(validation.created_at), 'MMM d, HH:mm:ss')}
+                            {format(new Date(validation.createdAt), 'MMM d, HH:mm:ss')}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">
-                              {validation.model_name}
+                              {validation.modelName}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {validation.has_hallucination ? (
+                            {validation.hasHallucination ? (
                               <Badge variant="destructive" className="gap-1">
                                 <XCircle className="h-3 w-3" />
                                 Issues
@@ -201,13 +201,13 @@ export default function ValidationTabs({
                             )}
                           </TableCell>
                           <TableCell className="text-right font-semibold">
-                            {((validation.relevance_score ?? 0) * 100).toFixed(0)}%
+                            {((validation.relevanceScore ?? 0) * 100).toFixed(0)}%
                           </TableCell>
                           <TableCell className="text-right font-semibold">
-                            {((validation.factual_accuracy_score ?? 0) * 100).toFixed(0)}%
+                            {((validation.factualAccuracyScore ?? 0) * 100).toFixed(0)}%
                           </TableCell>
                           <TableCell className="text-right font-semibold">
-                            {((validation.citation_accuracy ?? 0) * 100).toFixed(0)}%
+                            {((validation.citationAccuracy ?? 0) * 100).toFixed(0)}%
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">

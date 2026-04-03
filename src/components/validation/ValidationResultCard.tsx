@@ -35,10 +35,30 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
   const [isExpanded, setIsExpanded] = React.useState(true)
 
   const { result: validationResult, summary } = result
-  const citationIssues = normalizeCitationIssues(validationResult.incorrect_citations)
-  const unsupportedFacts = validationResult.non_existent_facts ?? []
-  const potentiallyMisunderstoodClaims = validationResult.claims_checked.filter(
-    (claim) => claim.support_score >= 0.5 && claim.support_score < 0.75
+  const textMatch = validationResult.textMatch ?? {
+    matchedTerms: [],
+    missingTerms: [],
+    matchPercentage: 0,
+    suspiciousSentences: [],
+  }
+  const componentScores = validationResult.componentScores ?? {
+    groundingScore: 0,
+    citationFaithfulnessScore: 0,
+    relevanceScore: 0,
+    perspectiveCoverageScore: 0,
+    overallScore: 0,
+  }
+  const contextEvidence = validationResult.contextEvidence ?? {
+    paperIds: [],
+    chunkIds: [],
+    totalPapers: 0,
+    totalChunks: 0,
+  }
+  const claimsChecked = validationResult.claimsChecked ?? []
+  const citationIssues = normalizeCitationIssues(validationResult.incorrectCitations)
+  const unsupportedFacts = validationResult.nonExistentFacts ?? []
+  const potentiallyMisunderstoodClaims = claimsChecked.filter(
+    (claim) => claim.supportScore >= 0.5 && claim.supportScore < 0.75
   )
 
   return (
@@ -48,10 +68,10 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
           <div>
             <CardTitle>Validation Result</CardTitle>
             <CardDescription>
-              Validated with {validationResult.model_used} in {validationResult.execution_time_ms}ms
+              Validated with {validationResult.modelUsed} in {validationResult.executionTimeMs}ms
             </CardDescription>
           </div>
-          {summary.has_issues ? (
+          {summary.hasIssues ? (
             <Badge variant="destructive" className="gap-1">
               <XCircle className="h-3 w-3" />
               Issues Detected
@@ -70,23 +90,23 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <MetricCard
             label="Relevance"
-            value={validationResult.relevance_score}
+            value={validationResult.relevanceScore}
             icon={<BarChart3 className="h-4 w-4" />}
           />
           <MetricCard
             label="Factual Accuracy"
-            value={validationResult.factual_accuracy_score}
+            value={validationResult.factualAccuracyScore}
             icon={<CheckCircle className="h-4 w-4" />}
           />
           <MetricCard
             label="Text Match"
-            value={validationResult.text_match.match_percentage / 100}
+            value={textMatch.matchPercentage / 100}
             icon={<Sparkles className="h-4 w-4" />}
           />
-          {validationResult.citation_accuracy && (
+          {validationResult.citationAccuracy && (
             <MetricCard
               label="Citation Accuracy"
-              value={validationResult.citation_accuracy.accuracy}
+              value={validationResult.citationAccuracy.accuracy}
               icon={<FileText className="h-4 w-4" />}
             />
           )}
@@ -95,27 +115,27 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <MetricCard
             label="Grounding"
-            value={validationResult.component_scores.grounding_score}
+            value={componentScores.groundingScore}
             icon={<CheckCircle className="h-4 w-4" />}
           />
           <MetricCard
             label="Citation Faithfulness"
-            value={validationResult.component_scores.citation_faithfulness_score}
+            value={componentScores.citationFaithfulnessScore}
             icon={<FileText className="h-4 w-4" />}
           />
           <MetricCard
             label="Perspective Coverage"
-            value={validationResult.component_scores.perspective_coverage_score}
+            value={componentScores.perspectiveCoverageScore}
             icon={<Sparkles className="h-4 w-4" />}
           />
           <MetricCard
             label="Overall Score"
-            value={validationResult.component_scores.overall_score}
+            value={componentScores.overallScore}
             icon={<BarChart3 className="h-4 w-4" />}
           />
           <StatCard
             label="Claims Checked"
-            value={validationResult.claims_checked.length}
+            value={claimsChecked.length}
           />
         </div>
 
@@ -125,9 +145,9 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
             <TabsTrigger value="diff">Text Matching</TabsTrigger>
             <TabsTrigger value="issues">
               Issues
-              {summary.issues_count > 0 && (
+              {summary.issuesCount > 0 && (
                 <Badge variant="destructive" className="ml-2 h-5 px-1.5">
-                  {summary.issues_count}
+                  {summary.issuesCount}
                 </Badge>
               )}
             </TabsTrigger>
@@ -138,28 +158,28 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
           {/* Diff View Tab */}
           <TabsContent value="diff" className="space-y-4 mt-4">
             <DiffView
-              response={validationResult.generated_answer}
-              context={validationResult.context_used}
-              matchedTerms={validationResult.text_match.matched_terms}
-              missingTerms={validationResult.text_match.missing_terms}
+              response={validationResult.generatedAnswer}
+              context={validationResult.contextUsed}
+              matchedTerms={textMatch.matchedTerms}
+              missingTerms={textMatch.missingTerms}
             />
 
             {/* Match Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <StatCard
                 label="Matched Terms"
-                value={validationResult.text_match.matched_terms.length}
+                  value={textMatch.matchedTerms.length}
                 color="green"
               />
               <StatCard
                 label="Missing Terms"
-                value={validationResult.text_match.missing_terms.length}
+                  value={textMatch.missingTerms.length}
                 color="red"
               />
               <StatCard
                 label="Match Rate"
-                value={`${validationResult.text_match.match_percentage.toFixed(1)}%`}
-                color={validationResult.text_match.match_percentage > 70 ? 'green' : 'red'}
+                  value={`${textMatch.matchPercentage.toFixed(1)}%`}
+                  color={textMatch.matchPercentage > 70 ? 'green' : 'red'}
               />
             </div>
           </TabsContent>
@@ -184,20 +204,20 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
               />
             </div>
 
-            {validationResult.has_hallucination && unsupportedFacts.length > 0 ? (
+            {validationResult.hasHallucination && unsupportedFacts.length > 0 ? (
               <IssueSection
                 title="Potential Hallucinations"
                 icon={<AlertTriangle className="h-4 w-4 text-yellow-600" />}
                 items={unsupportedFacts}
-                details={validationResult.hallucination_details}
+                details={validationResult.hallucinationDetails}
               />
             ) : null}
 
-            {validationResult.text_match.suspicious_sentences.length > 0 ? (
+            {textMatch.suspiciousSentences.length > 0 ? (
               <IssueSection
                 title="Suspicious Sentences"
                 icon={<XCircle className="h-4 w-4 text-red-600" />}
-                items={validationResult.text_match.suspicious_sentences}
+                items={textMatch.suspiciousSentences}
               />
             ) : null}
 
@@ -220,9 +240,9 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
                         </Badge>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">{citation.reason}</p>
-                      {citation.expected_range && (
+                      {citation.expectedRange && (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Expected: {citation.expected_range}
+                          Expected: {citation.expectedRange}
                         </p>
                       )}
                     </div>
@@ -237,13 +257,13 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
                 icon={<AlertTriangle className="h-4 w-4 text-yellow-600" />}
                 items={potentiallyMisunderstoodClaims.map((claim) => claim.claim)}
                 details={potentiallyMisunderstoodClaims.map(
-                  (claim) => `Support score: ${(claim.support_score * 100).toFixed(1)}%`
+                  (claim) => `Support score: ${(claim.supportScore * 100).toFixed(1)}%`
                 )}
               />
             ) : null}
 
-            {!validationResult.has_hallucination &&
-              validationResult.text_match.suspicious_sentences.length === 0 &&
+            {!validationResult.hasHallucination &&
+              textMatch.suspiciousSentences.length === 0 &&
               citationIssues.length === 0 &&
               potentiallyMisunderstoodClaims.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -258,26 +278,26 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
 
           {/* Citations Tab */}
           <TabsContent value="citations" className="space-y-4 mt-4">
-            {validationResult.citation_accuracy ? (
+            {validationResult.citationAccuracy ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <StatCard
                     label="Total Citations"
-                    value={validationResult.citation_accuracy.total_citations}
+                    value={validationResult.citationAccuracy.totalCitations}
                   />
                   <StatCard
                     label="Correct"
-                    value={validationResult.citation_accuracy.correct_citations}
+                    value={validationResult.citationAccuracy.correctCitations}
                     color="green"
                   />
                   <StatCard
                     label="Hallucinated"
-                    value={validationResult.citation_accuracy.hallucinated_citations}
+                    value={validationResult.citationAccuracy.hallucinatedCitations}
                     color="red"
                   />
                   <StatCard
                     label="Missing"
-                    value={validationResult.citation_accuracy.missing_citations}
+                    value={validationResult.citationAccuracy.missingCitations}
                     color="yellow"
                   />
                 </div>
@@ -286,10 +306,10 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Citation Accuracy</span>
                     <span className="text-sm font-semibold">
-                      {(validationResult.citation_accuracy.accuracy * 100).toFixed(1)}%
+                      {(validationResult.citationAccuracy.accuracy * 100).toFixed(1)}%
                     </span>
                   </div>
-                  <Progress value={validationResult.citation_accuracy.accuracy * 100} />
+                  <Progress value={validationResult.citationAccuracy.accuracy * 100} />
                 </div>
               </div>
             ) : (
@@ -322,7 +342,7 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">Generated Answer</h4>
               <ScrollArea className="h-64 rounded-xl border bg-card p-4">
-                <p className="text-sm whitespace-pre-wrap">{validationResult.generated_answer}</p>
+                <p className="text-sm whitespace-pre-wrap">{validationResult.generatedAnswer}</p>
               </ScrollArea>
             </div>
 
@@ -330,18 +350,18 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
               <h4 className="text-sm font-semibold">Context</h4>
               <ScrollArea className="h-96 rounded-xl border bg-muted/30 p-4">
                 <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap">
-                  {validationResult.context_used}
+                  {validationResult.contextUsed}
                 </pre>
               </ScrollArea>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Paper IDs ({validationResult.context_evidence.total_papers})</h4>
+                <h4 className="text-sm font-semibold">Paper IDs ({contextEvidence.totalPapers})</h4>
                 <ScrollArea className="h-40 rounded-xl border bg-card p-4">
                   <div className="space-y-1">
-                    {validationResult.context_evidence.paper_ids.length > 0 ? (
-                      validationResult.context_evidence.paper_ids.map((paperId) => (
+                    {contextEvidence.paperIds.length > 0 ? (
+                      contextEvidence.paperIds.map((paperId) => (
                         <code key={paperId} className="block text-xs">{paperId}</code>
                       ))
                     ) : (
@@ -352,11 +372,11 @@ export function ValidationResultCard({ result, className }: ValidationResultCard
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Chunk IDs ({validationResult.context_evidence.total_chunks})</h4>
+                <h4 className="text-sm font-semibold">Chunk IDs ({contextEvidence.totalChunks})</h4>
                 <ScrollArea className="h-40 rounded-xl border bg-card p-4">
                   <div className="space-y-1">
-                    {validationResult.context_evidence.chunk_ids.length > 0 ? (
-                      validationResult.context_evidence.chunk_ids.map((chunkId) => (
+                    {contextEvidence.chunkIds.length > 0 ? (
+                      contextEvidence.chunkIds.map((chunkId) => (
                         <code key={chunkId} className="block text-xs">{chunkId}</code>
                       ))
                     ) : (

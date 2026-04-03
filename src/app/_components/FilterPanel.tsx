@@ -23,10 +23,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { TypographyP } from "@/components/global/typography";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { useSearchFilters } from "@/hooks/use-search-filters";
 
 export interface SearchFilters {
   author?: string;
@@ -49,9 +55,8 @@ export interface SearchFilters {
 export function FilterPanel({
   open,
   onOpenChange,
-  filters,
-  onFiltersChange,
 }: FilterPanelProps) {
+  const { filters, setParams } = useSearchFilters();
   const [localFilters, setLocalFilters] = useState<SearchFilters>(filters);
 
   const hasActiveFilters = Object.values(localFilters).some((value) => {
@@ -97,14 +102,14 @@ export function FilterPanel({
   }
 
   function handleApply() {
-    onFiltersChange(localFilters);
+    setParams(localFilters);
     onOpenChange(false);
   }
 
   function handleClear() {
     const clearedFilters: SearchFilters = {};
     setLocalFilters(clearedFilters);
-    onFiltersChange(clearedFilters);
+    setParams(clearedFilters);
   }
 
   function handleCancel() {
@@ -116,14 +121,14 @@ export function FilterPanel({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md flex h-full flex-col"
+        className="w-full sm:max-w-md flex h-full flex-col gap-1"
       >
-        <SheetHeader className="shrink-0">
-          <SheetTitle>Search Filters</SheetTitle>
+        <SheetHeader className="">
+          <SheetTitle>Filters</SheetTitle>
         </SheetHeader>
 
         <ScrollArea className="flex-1 min-h-0">
-          <VStack className="gap-6 p-4">
+          <VStack className="gap-6 px-4">
             <HStack className="items-start gap-4">
               <Box className="flex-1">
                 <YearFilter
@@ -131,11 +136,11 @@ export function FilterPanel({
                   onYearRangeChange={updateYearRange}
                 />
               </Box>
-              <Separator
+              {/* <Separator
                 orientation="vertical"
                 className="h-auto self-stretch"
               />
-              <Box className="flex-1"></Box>
+              <Box className="flex-1"></Box> */}
             </HStack>
 
             <Separator />
@@ -143,10 +148,8 @@ export function FilterPanel({
             <PaperTypeFilter
               openAccessOnly={localFilters.openAccessOnly}
               excludePreprints={localFilters.excludePreprints}
-              topJournalsOnly={localFilters.topJournalsOnly}
               onOpenAccessChange={updateOpenAccess}
               onExcludePreprintsChange={updateExcludePreprints}
-              onTopJournalsChange={updateTopJournals}
             />
 
             <CategoryFilter
@@ -156,18 +159,18 @@ export function FilterPanel({
           </VStack>
         </ScrollArea>
 
-        <Box className="border-t p-4 flex-shrink-0">
-          {hasActiveFilters && (
+        {hasActiveFilters && (
+          <Box className="border-t p-4 flex-shrink-0">
             <FilterSummary filters={localFilters} onClearAll={handleClear} />
-          )}
-        </Box>
+          </Box>
+        )}
 
         <SheetFooter className="flex-row gap-2 flex-shrink-0">
+          <Button variant="default" onClick={handleApply} className="flex-3">
+            Apply
+          </Button>
           <Button variant="outline" onClick={handleCancel} className="flex-1">
             Cancel
-          </Button>
-          <Button onClick={handleApply} className="flex-1">
-            Apply Filters
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -178,8 +181,6 @@ export function FilterPanel({
 interface FilterPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  filters: SearchFilters;
-  onFiltersChange: (filters: SearchFilters) => void;
 }
 
 const currentYear = new Date().getFullYear();
@@ -190,6 +191,15 @@ const YEAR_OPTIONS = Array.from(
   { length: MAX_YEAR - MIN_YEAR + 1 },
   (_, i) => MAX_YEAR - i,
 );
+
+const PREFILLED_YEAR_RANGES = [
+  { label: "Last 2 years", range: { min: currentYear - 2, max: currentYear } },
+  { label: "Last 5 years", range: { min: currentYear - 5, max: currentYear } },
+  {
+    label: "Last 10 years",
+    range: { min: currentYear - 10, max: currentYear },
+  },
+];
 
 const CATEGORY_OPTIONS = [
   "Computer Science",
@@ -253,106 +263,75 @@ const YearFilter = ({
           Clear
         </Button>
       </HStack>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList variant="line" className="w-fit gap-2 px-0">
-          <TabsTrigger value="range" className="px-0">
-            Range
-          </TabsTrigger>
-          <TabsTrigger value="single" className="px-0">
-            Single Year
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="range" className="mt-4">
-          <HStack className="gap-2">
-            <VStack className="gap-1.5">
-              <Label
-                htmlFor="year-from"
-                className="text-xs text-muted-foreground"
-              >
-                From
-              </Label>
-              <Select
-                value={yearRange?.min?.toString() || ""}
-                onValueChange={(value) => {
-                  const year = value ? parseInt(value) : undefined;
-                  onYearRangeChange({
-                    ...yearRange,
-                    min: year,
-                  });
-                }}
-              >
-                <SelectTrigger className="h-9 w-24">
-                  <SelectValue placeholder="--" />
-                </SelectTrigger>
-                <SelectContent>
-                  {YEAR_OPTIONS.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </VStack>
-            <VStack className="gap-1.5">
-              <Label
-                htmlFor="year-to"
-                className="text-xs text-muted-foreground"
-              >
-                To
-              </Label>
-              <Select
-                value={yearRange?.max?.toString() || ""}
-                onValueChange={(value) => {
-                  const year = value ? parseInt(value) : undefined;
-                  onYearRangeChange({
-                    ...yearRange,
-                    max: year,
-                  });
-                }}
-              >
-                <SelectTrigger className="h-9 w-24">
-                  <SelectValue placeholder="--" />
-                </SelectTrigger>
-                <SelectContent>
-                  {YEAR_OPTIONS.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </VStack>
-          </HStack>
-        </TabsContent>
-
-        <TabsContent value="single" className="mt-4">
-          <VStack className="gap-1.5">
-            <Label
-              htmlFor="year-single"
-              className="text-xs text-muted-foreground"
+      <ScrollArea className="h-8 w-full">
+        <HStack className="gap-2">
+          {PREFILLED_YEAR_RANGES.map(({ label, range }) => (
+            <Button
+              key={label}
+              variant="outline"
+              size="sm"
+              className="text-xs bg-muted"
+              onClick={() => onYearRangeChange(range)}
             >
-              Year
-            </Label>
-            <Select
-              value={isSingleYear ? yearRange.min?.toString() : ""}
-              onValueChange={handleSingleYearChange}
-            >
-              <SelectTrigger className="h-9 w-24">
-                <SelectValue placeholder="--" />
-              </SelectTrigger>
-              <SelectContent>
-                {YEAR_OPTIONS.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </VStack>
-        </TabsContent>
-      </Tabs>
+              {label}
+            </Button>
+          ))}
+        </HStack>
+      </ScrollArea>
+      <HStack className="gap-2">
+        <VStack className="gap-1.5">
+          <Label htmlFor="year-from" className="text-xs text-muted-foreground">
+            From
+          </Label>
+          <Select
+            value={yearRange?.min?.toString() || ""}
+            onValueChange={(value) => {
+              const year = value ? parseInt(value) : undefined;
+              onYearRangeChange({
+                ...yearRange,
+                min: year,
+              });
+            }}
+          >
+            <SelectTrigger className="h-9 w-24">
+              <SelectValue placeholder="--" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEAR_OPTIONS.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </VStack>
+        <VStack className="gap-1.5">
+          <Label htmlFor="year-to" className="text-xs text-muted-foreground">
+            To
+          </Label>
+          <Select
+            value={yearRange?.max?.toString() || ""}
+            onValueChange={(value) => {
+              const year = value ? parseInt(value) : undefined;
+              onYearRangeChange({
+                ...yearRange,
+                max: year,
+              });
+            }}
+          >
+            <SelectTrigger className="h-9 w-24">
+              <SelectValue placeholder="--" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEAR_OPTIONS.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </VStack>
+      </HStack>
     </VStack>
   );
 };
@@ -379,56 +358,61 @@ const CategoryFilter = ({
   }
 
   return (
-    <VStack className="gap-4">
-      <HStack className="flex items-center justify-between">
-        <Label>Field of Study</Label>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="h-auto p-1 text-xs"
-          onClick={handleClear}
-          style={{ visibility: hasCategory ? "visible" : "hidden" }}
-        >
-          Clear
-        </Button>
-      </HStack>
-      <ScrollArea className="h-full w-full">
-        <VStack className="gap-2 pl-1 pr-2">
-          {CATEGORY_OPTIONS.map((field) => (
-            <HStack key={field} className="items-start gap-2">
-              <Checkbox
-                id={`category-${field}`}
-                checked={category?.includes(field) || false}
-                onCheckedChange={() => handleToggle(field)}
-              />
-              <Label
-                htmlFor={`category-${field}`}
-                className="cursor-pointer leading-tight"
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="category">
+        <AccordionTrigger>Field of Study</AccordionTrigger>
+        <AccordionContent>
+          <VStack className="gap-4">
+            <HStack className="flex items-center justify-between">
+              {/* <Button
+                variant="secondary"
+                size="sm"
+                className="h-auto p-1 text-xs"
+                onClick={handleClear}
+                style={{ visibility: hasCategory ? "visible" : "hidden" }}
               >
-                {field}
-              </Label>
+                Search
+              </Button> */}
             </HStack>
-          ))}
-        </VStack>
-      </ScrollArea>
-    </VStack>
+            <ScrollArea className="h-full w-full">
+              <VStack className="gap-2 pl-1 pr-2">
+                {CATEGORY_OPTIONS.map((field) => (
+                  <HStack key={field} className="items-start gap-2">
+                    <Checkbox
+                      id={`category-${field}`}
+                      checked={category?.includes(field) || false}
+                      onCheckedChange={() => handleToggle(field)}
+                    />
+                    <Label
+                      htmlFor={`category-${field}`}
+                      className="cursor-pointer leading-tight"
+                    >
+                      {field}
+                    </Label>
+                  </HStack>
+                ))}
+              </VStack>
+            </ScrollArea>
+          </VStack>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 };
 
 const PaperTypeFilter = ({
   openAccessOnly,
   excludePreprints,
-  topJournalsOnly,
+  journalLevel,
   onOpenAccessChange,
   onExcludePreprintsChange,
-  onTopJournalsChange,
 }: {
   openAccessOnly?: boolean;
   excludePreprints?: boolean;
-  topJournalsOnly?: boolean;
+  journalLevel?: string;
   onOpenAccessChange: (value: boolean | undefined) => void;
   onExcludePreprintsChange: (value: boolean | undefined) => void;
-  onTopJournalsChange: (value: boolean | undefined) => void;
+  // onJournalLevelChange: (value: string | undefined) => void;
 }) => {
   return (
     <VStack className="gap-3">
@@ -460,19 +444,6 @@ const PaperTypeFilter = ({
           className="cursor-pointer font-normal"
         >
           Exclude Preprints
-        </Label>
-      </HStack>
-
-      <HStack className="items-center gap-3">
-        <Checkbox
-          id="top-journals"
-          checked={topJournalsOnly || false}
-          onCheckedChange={(checked) =>
-            onTopJournalsChange(checked ? true : undefined)
-          }
-        />
-        <Label htmlFor="top-journals" className="cursor-pointer font-normal">
-          Top Journals Only (Q1)
         </Label>
       </HStack>
     </VStack>

@@ -22,6 +22,7 @@ import {
   Moon,
   Sun,
   Monitor,
+  CheckIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { TypographyP } from "@/components/global/typography";
@@ -55,10 +56,6 @@ export function SidebarUserMenu() {
     } catch (error) {
       console.error("Logout failed:", error);
     }
-  };
-
-  const handleBookmarks = () => {
-    router.push("/bookmarks");
   };
 
   return (
@@ -101,39 +98,48 @@ export function SidebarUserMenu() {
             </VStack>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem disabled>
+          {/* <DropdownMenuItem disabled>
             <UserIcon className="mr-2 h-4 w-4" />
             <span>Profile</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleBookmarks}>
+          </DropdownMenuItem> */}
+          {/* <DropdownMenuItem onClick={handleBookmarks}>
             <Bookmark className="mr-2 h-4 w-4" />
             <span>Bookmarks</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+          </DropdownMenuItem> */}
+          <DropdownMenuItem
+            className="focus:bg-accent/10 focus:text-primary dark:focus:text-accent-foreground"
+            onClick={() => setSettingsOpen(true)}
+          >
             <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
+            Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger className="focus:bg-accent/10 data-[state=open]:bg-accent/10 data-[state=open]:text-primary focus:text-primary dark:focus:text-accent-foreground">
               <Monitor className="mr-2 h-4 w-4" />
-              <span>Theme</span>
+              Mode
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              <DropdownMenuItem onClick={() => setTheme("light")}>
+              <DropdownMenuItem className="focus:bg-accent/10 focus:text-primary dark:focus:text-accent-foreground" onClick={() => setTheme("light")}>
                 <Sun className="mr-2 h-4 w-4" />
                 <span>Light</span>
-                {theme === "light" && <span className="ml-auto">✓</span>}
+                {theme === "light" && <span className="ml-auto">
+                  <CheckIcon className="h-4 w-4" />
+                </span>}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
+              <DropdownMenuItem className="focus:bg-accent/10 focus:text-primary dark:focus:text-accent-foreground" onClick={() => setTheme("dark")}>
                 <Moon className="mr-2 h-4 w-4" />
                 <span>Dark</span>
-                {theme === "dark" && <span className="ml-auto">✓</span>}
+                {theme === "dark" && <span className="ml-auto">
+                  <CheckIcon className="h-4 w-4" />
+                </span>}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>
+              <DropdownMenuItem className="focus:bg-accent/10 focus:text-primary dark:focus:text-accent-foreground" onClick={() => setTheme("system")}>
                 <Monitor className="mr-2 h-4 w-4" />
                 <span>System</span>
-                {theme === "system" && <span className="ml-auto">✓</span>}
+                {theme === "system" && <span className="ml-auto">
+                  <CheckIcon className="h-4 w-4" />
+                </span>}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>

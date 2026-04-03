@@ -11,6 +11,7 @@ interface MessageSectionProps {
   onRetry?: () => void;
   selectedPaperIds?: string[];
   onTogglePaperSelection?: (paperId: string) => void;
+  isAnalyzing?: boolean;
 }
 
 function MessageSectionComponent({
@@ -20,6 +21,7 @@ function MessageSectionComponent({
   onRetry,
   selectedPaperIds = [],
   onTogglePaperSelection,
+  isAnalyzing,
 }: MessageSectionProps) {
   const renderUserMessage = () => {
     return <UserMessage text={m.text} />;
@@ -36,6 +38,7 @@ function MessageSectionComponent({
           isDone={m.done}
           isError={m.isError}
           onRetry={onRetry}
+          isAnalyzing={isAnalyzing}
           selectedPaperIds={selectedPaperIds}
           onTogglePaperSelection={(paper) => {
             if (paper.paperId) {

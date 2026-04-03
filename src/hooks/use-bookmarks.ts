@@ -2,38 +2,39 @@
  * React hooks for bookmarks
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { bookmarksApi, type Bookmark, type CreateBookmarkRequest, type UpdateBookmarkRequest } from "@/lib/api";
 import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from "@/lib/react-query/react-query-utils";
 import { useBookmarkStore } from "@/store/bookmark-store";
+import { useQueryWithError } from "./use-query-with-error";
 
 export function useBookmarks(skip: number = 0, limit: number = 50) {
-  return useQuery({
+  return useQueryWithError({
     queryKey: ["bookmarks", skip, limit],
     queryFn: () => bookmarksApi.list(skip, limit),
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
-  });
+  }, 'Failed to load bookmarks');
 }
 
 export function useBookmark(bookmarkId: number) {
-  return useQuery({
+  return useQueryWithError({
     queryKey: ["bookmark", bookmarkId],
     queryFn: () => bookmarksApi.get(bookmarkId),
     enabled: !!bookmarkId,
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
-  });
+  }, 'Failed to load bookmark');
 }
 
 export function useCheckBookmark(paperId: string) {
-  return useQuery({
+  return useQueryWithError({
     queryKey: ["bookmark-check", paperId],
     queryFn: () => bookmarksApi.check(paperId),
     enabled: !!paperId,
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
-  });
+  }, 'Failed to check bookmark status');
 }
 
 export function useCreateBookmark() {

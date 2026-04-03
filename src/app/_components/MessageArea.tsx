@@ -34,6 +34,7 @@ interface MessageAreaProps {
   conversationKey?: string;
   messages: Message[];
   isStreaming: boolean;
+  isAnalyzing?: boolean;
   onRetry?: () => void;
   selectedPaperIds?: string[];
   onTogglePaperSelection?: (paperId: string) => void;
@@ -46,6 +47,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       conversationKey,
       messages,
       isStreaming,
+      isAnalyzing,
       onRetry,
       selectedPaperIds = [],
       onTogglePaperSelection,
@@ -282,6 +284,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
                     onRetry={onRetry}
                     selectedPaperIds={selectedPaperIds}
                     onTogglePaperSelection={onTogglePaperSelection}
+                    isAnalyzing={isAnalyzing && i === messages.length - 1}
                   />
                   {shouldShowProgress && (
                     <Box className="mt-2">

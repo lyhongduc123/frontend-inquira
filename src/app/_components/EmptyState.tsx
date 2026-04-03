@@ -7,10 +7,6 @@ import { PaperMetadata } from "@/types/paper.type";
 interface EmptyStateProps {
   onSend: (query: string) => void;
   isDisabled: boolean;
-  filters: SearchFilters;
-  onFiltersChange: (filters: SearchFilters) => void;
-  pipeline?: "database" | "hybrid";
-  onPipelineChange?: (pipeline: "database" | "hybrid") => void;
   selectedScopedPapers?: PaperMetadata[];
   onRemoveScopedPaper?: (paperId: string) => void;
   onClearScopedPapers?: () => void;
@@ -22,10 +18,6 @@ interface EmptyStateProps {
 export function EmptyState({
   onSend,
   isDisabled,
-  filters,
-  onFiltersChange,
-  pipeline,
-  onPipelineChange,
   selectedScopedPapers,
   onRemoveScopedPaper,
   onClearScopedPapers,
@@ -48,10 +40,6 @@ export function EmptyState({
           onSend={onSend}
           isDisabled={isDisabled}
           isAtBottom={false}
-          filters={filters}
-          onFiltersChange={onFiltersChange}
-          pipeline={pipeline}
-          onPipelineChange={onPipelineChange}
           selectedScopedPapers={selectedScopedPapers}
           onRemoveScopedPaper={onRemoveScopedPaper}
           onClearScopedPapers={onClearScopedPapers}

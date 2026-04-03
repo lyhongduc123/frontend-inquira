@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { LoadingState } from "@/app/_components/LoadingState";
 import { EmptyState } from "@/app/_components/EmptyState";
 import { ChatView } from "@/app/_components/ChatView";
@@ -18,12 +17,12 @@ import {
   SidebarInset,
   SidebarManager,
 } from "@/components/ui/sidebar";
-import { SearchFilters } from "@/app/_components/FilterPanel";
 import { PaperDetailSidebar } from "@/app/_components/PaperDetailSidebar";
 import { QueryNavigator } from "@/app/_components/QueryNavigator";
 import { useDetailSidebarStore } from "@/store/paper-detail-sidebar-store";
 import { PaperMetadata } from "@/types/paper.type";
 import { consumeChatLaunchPayload, consumeScopedChatSelection } from "@/lib/scoped-chat-selection";
+import { useSearchFilters } from "@/hooks/use-search-filters";
 
 interface ChatPageClientProps {
   routeConversationId?: string;
@@ -31,21 +30,25 @@ interface ChatPageClientProps {
 }
 
 export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: ChatPageClientProps) {
-  const router = useRouter();
-  // const searchParams = useSearchParams();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
   const canRenderConversationRoute = Boolean(routeConversationId);
   const showContent = canRenderConversationRoute || (!isAuthLoading && isAuthenticated);
-  // const launchKeyFromQuery = launchKeyFromQuery;
 
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
+  const {
+    filters: searchFilters,
+    pipeline,
+    setParams,
+  } = useSearchFilters();
+
   const [selectedScopedPapers, setSelectedScopedPapers] = useState<
     PaperMetadata[]
   >([]);
-  const [pipeline, setPipeline] = useState<"database" | "hybrid">(
-    "database",
-  );
+
+  const handlePipelineChange = useCallback((newPipeline: "research" | "agent") => {
+    setParams(searchFilters, newPipeline);
+  }, [searchFilters, setParams]);
+
   const { isOpen: isDetailSidebarOpen, close: closeDetailSidebar } =
     useDetailSidebarStore();
 
@@ -66,6 +69,7 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     undefined,
   );
   const processedLaunchKeyRef = useRef<string | null>(null);
+  const hasInitializedRootStateRef = useRef(false);
 
   useEffect(() => {
     if (!showContent) return;
@@ -75,9 +79,28 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
         latestAppliedRouteConversationIdRef.current !== routeConversationId
         || currentConversationId !== routeConversationId
       ) {
+        // Skip loading if we are already streaming this conversation (prevents flicker on initial message)
+        const isCurrentlyStreaming = useConversationStore.getState().messages.some(m => !m.done);
+        if (isCurrentlyStreaming && currentConversationId === routeConversationId) {
+             console.log("Skipping loadConversation as it matches active stream:", routeConversationId);
+             latestAppliedRouteConversationIdRef.current = routeConversationId;
+             return;
+        }
+
+        // Skip loading if we just created this conversation (prevents disconnect after creation)
+        const isNewConversation = useConversationStore.getState().newConversationId === routeConversationId;
+        if (isNewConversation) {
+          console.log("Skipping loadConversation for newly created conversation:", routeConversationId);
+          latestAppliedRouteConversationIdRef.current = routeConversationId;
+          return;
+        }
+
         latestAppliedRouteConversationIdRef.current = routeConversationId;
-        void loadConversation(routeConversationId);
+        void loadConversation(routeConversationId).catch((error) => {
+          console.error("Route conversation load failed:", error);
+        });
       }
+      console.log("Loaded conversation for route ID:", routeConversationId);
       return;
     }
 
@@ -86,24 +109,25 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     currentConversationId,
     loadConversation,
     routeConversationId,
-    showContent,
+    showContent
   ]);
 
-  useEffect(() => {
-    if (!showContent) return;
-    if (routeConversationId) return;
-    if (launchKeyFromQuery) return;
-
-    if (currentConversationId !== null) {
-      resetConversation();
-    }
-  }, [
-    currentConversationId,
-    launchKeyFromQuery,
-    resetConversation,
-    routeConversationId,
-    showContent,
-  ]);
+  const onConversationCreated = useCallback(
+    (conversationId: string) => {
+      // Update store immediately
+      const store = useConversationStore.getState();
+      store.setCurrentConversationId(conversationId);
+      store.setNewConversationId(conversationId);
+      
+      // Update URL without triggering a full page re-mount (Gemini-like)
+      // This keeps the useChat hook alive and streaming correctly
+      window.history.replaceState(null, "", `/conversation/${conversationId}`);
+      
+      // Note: We don't use router.push here because it might cause a re-mount 
+      // of the ChatPageClient, which would kill the active stream.
+    },
+    [],
+  );
 
   useEffect(() => {
     const pendingScopedSelection = consumeScopedChatSelection();
@@ -128,17 +152,35 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     });
   }, []);
 
-  const onConversationCreated = useCallback(
-    (conversationId: string) => {
-      useConversationStore.getState().setCurrentConversationId(conversationId);
-      router.push(`/conversation/${conversationId}`);
-    },
-    [router],
-  );
-
   const { messages, isStreaming, sendMessage, clearMessages, retry } = useChat({
     onConversationCreated,
   });
+
+  useEffect(() => {
+    if (!showContent) return;
+    if (routeConversationId) {
+      hasInitializedRootStateRef.current = false;
+      return;
+    }
+    if (launchKeyFromQuery) return;
+    if (hasInitializedRootStateRef.current) return;
+
+    if (currentConversationId !== null || messages.length > 0) {
+      console.log("Root route detected with active conversation state. Clearing...");
+      resetConversation();
+      clearMessages();
+    }
+
+    hasInitializedRootStateRef.current = true;
+  }, [
+    currentConversationId,
+    launchKeyFromQuery,
+    resetConversation,
+    clearMessages,
+    messages.length,
+    routeConversationId,
+    showContent,
+  ]);
 
   const availablePapersMap = useMemo(() => {
     const map = new Map<string, PaperMetadata>();
@@ -226,7 +268,7 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     const pipelineFromLaunch = launchPayload.pipeline;
     if (pipelineFromLaunch) {
       queueMicrotask(() => {
-        setPipeline(pipelineFromLaunch);
+        handlePipelineChange(pipelineFromLaunch as "research" | "agent");
       });
     }
 
@@ -256,6 +298,7 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     routeConversationId,
     sendMessage,
     showContent,
+    handlePipelineChange,
   ]);
 
   return (
@@ -286,29 +329,23 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
             <LoadingState />
           ) : messages.length === 0 ? (
             <EmptyState
+              key={`empty-${currentConversationId ?? "new"}`}
               onSend={handleSend}
               isDisabled={isStreaming}
-              filters={searchFilters}
-              onFiltersChange={setSearchFilters}
               selectedScopedPapers={selectedScopedPapers}
               onRemoveScopedPaper={removeScopedPaper}
               onClearScopedPapers={clearScopedPapers}
-              pipeline={pipeline}
-              onPipelineChange={setPipeline}
             />
           ) : (
             <ChatView
-              conversationKey={routeConversationId ?? "new"}
+              key={`chat-${routeConversationId ?? currentConversationId ?? "new"}`}
+              conversationKey={routeConversationId ?? currentConversationId ?? "new"}
               messages={messages}
               onSend={handleSend}
               isStreaming={isStreaming}
               onQueryClick={handleQueryClick}
               onActiveQueryIndexChange={handleActiveQueryIndexChange}
               messageAreaRef={messageAreaRef}
-              filters={searchFilters}
-              onFiltersChange={setSearchFilters}
-              pipeline={pipeline}
-              onPipelineChange={setPipeline}
               selectedScopedPapers={selectedScopedPapers}
               onToggleScopedPaper={toggleScopedPaper}
               onRemoveScopedPaper={removeScopedPaper}

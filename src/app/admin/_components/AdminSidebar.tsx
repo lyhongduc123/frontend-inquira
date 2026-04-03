@@ -1,64 +1,74 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  Database,
-  Users,
-  Building2,
-  FileText,
-  TestTube2,
-  LayoutDashboard,
-  ChevronRight,
-} from "lucide-react";
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { FileText, LayoutDashboard, ShieldCheck, TestTube2 } from 'lucide-react'
+
+import { Brand } from '@/components/global/brand'
 import {
   Sidebar,
   SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
-} from "@/components/ui/sidebar";
-import { TypographyH2 } from "@/components/global/typography";
-import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from '@/components/ui/sidebar'
 
 const navigation = [
-  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { name: "Authors", href: "/admin/authors", icon: Users },
-  { name: "Institutions", href: "/admin/institutions", icon: Building2 },
-  { name: "Preprocessing", href: "/admin/preprocessing", icon: FileText },
-  { name: "LLM Validation", href: "/admin/validation", icon: TestTube2 },
-];
+  { name: 'Overview', href: '/admin', icon: LayoutDashboard },
+  { name: 'Preprocessing', href: '/admin/preprocessing', icon: FileText },
+  { name: 'Validation', href: '/admin/validation', icon: TestTube2 },
+]
 
 export function AdminSidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname()
+  const { open: isOpen } = useSidebar()
+
+  const isActiveRoute = (href: string): boolean => {
+    if (href === '/admin') return pathname === href
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
 
   return (
-    <Sidebar className="w-64">
-      <SidebarHeader className="p-4">
-        <TypographyH2>Admin Panel</TypographyH2>
+    <Sidebar collapsible="icon" side="left">
+      <SidebarHeader className="py-4">
+        <div className="px-2">
+          <Brand showText={isOpen} />
+        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton disabled className="cursor-default opacity-100">
+              <ShieldCheck />
+              {isOpen && <span>Admin Panel</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent className="p-4">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Item
-              key={item.name}
-              asChild
-              className={isActive ? "bg-primary font-medium" : ""}
-            >
-              <Link href={item.href}>
-                <ItemMedia variant="icon">
-                  <item.icon />
-                </ItemMedia>
-                <ItemContent>
-                  <ItemTitle>{item.name}</ItemTitle>
-                </ItemContent>
-                <ItemActions>
-                    <ChevronRight className="h-4 w-4" />
-                </ItemActions>
-              </Link>
-            </Item>
-          );
-        })}
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarMenu>
+            {navigation.map((item) => {
+              const isActive = isActiveRoute(item.href)
+
+              return (
+                <SidebarMenuItem key={item.name}>
+                  <SidebarMenuButton asChild isActive={isActive} tooltip={!isOpen ? item.name : undefined}>
+                    <Link href={item.href}>
+                      <item.icon />
+                      {isOpen && <span>{item.name}</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  );
+  )
 }
