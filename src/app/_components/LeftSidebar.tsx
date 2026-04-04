@@ -32,6 +32,8 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useConversation } from "@/hooks/use-conversation";
 import { TypographyP } from "@/components/global/typography";
+import { Command } from "@/components/ui/command";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 export function LeftSidebar() {
   const router = useRouter();
@@ -93,8 +95,6 @@ export function LeftSidebar() {
 
   const handleNewConversation = () => {
     resetConversation();
-    setNewConversationId(null);
-    setPendingConversationDraft(null);
     router.push("/");
   };
 
@@ -108,7 +108,6 @@ export function LeftSidebar() {
         deleteConversation(conversationId, {
           onSuccess: async () => {
             toast.success("Conversation deleted successfully");
-            // If deleting current conversation, navigate to home
             if (conversationId === currentConversationId) {
               await deleteConversationAction(conversationId);
               handleNewConversation();
@@ -142,22 +141,16 @@ export function LeftSidebar() {
       <SidebarHeader className="py-4">
         <Brand showText={isOpen} />
         <SidebarMenu>
-          <LeftSidebarMenuButton
+          <NewChatButton
             isOpen={isOpen}
             onClick={handleNewConversation}
-            text="New Chat"
-          >
-            <MessageSquarePlus />
-          </LeftSidebarMenuButton>
-          <LeftSidebarMenuButton
+          />
+          <BookmarkButton
             isOpen={isOpen}
             onClick={() => {
               router.push("/bookmarks");
             }}
-            text="Bookmarks"
-          >
-            <BookmarkIcon />
-          </LeftSidebarMenuButton>
+          />
         </SidebarMenu>
       </SidebarHeader>
       <Separator />
@@ -261,3 +254,35 @@ export function LeftSidebar() {
     </Sidebar>
   );
 }
+
+const NewChatButton = ({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) => {
+  return (
+    <SidebarMenuButton
+      onClick={onClick}
+      tooltip={!isOpen ? "New Chat" : undefined}
+      className={cn("w-full truncate")}
+    >
+      <MessageSquarePlus />
+      {isOpen && <span>New Chat</span>}
+      {isOpen && <Kbd className="ml-auto">
+        Alt + N
+      </Kbd>}
+    </SidebarMenuButton>
+  )
+};
+
+const BookmarkButton = ({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) => {
+  return (
+    <SidebarMenuButton
+      onClick={onClick}
+      tooltip={!isOpen ? "Bookmarks" : undefined}
+      className={cn("w-full truncate")}
+    >
+      <BookmarkIcon />
+      {isOpen && <span>Bookmarks</span>}
+      {isOpen && <Kbd className="ml-auto">
+        Alt + B
+      </Kbd>}
+    </SidebarMenuButton>
+  )
+};

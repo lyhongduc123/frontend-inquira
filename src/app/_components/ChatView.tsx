@@ -10,17 +10,14 @@ interface ChatViewProps {
   messages: Message[];
   isAuthenticated?: boolean;
   isStreaming: boolean;
+  isAnalyzing?: boolean;
   messageAreaRef: React.RefObject<MessageAreaRef | null>;
-  filters: SearchFilters;
   activeQueryIndex?: number;
 
   onSend: (query: string) => void;
   onQueryClick: (index: number) => void;
   onActiveQueryIndexChange?: (index: number | null) => void;
-  onFiltersChange: (filters: SearchFilters) => void;
   onRetry?: () => void;
-  pipeline?: "database" | "hybrid";
-  onPipelineChange?: (pipeline: "database" | "hybrid") => void;
   selectedScopedPapers?: PaperMetadata[];
   onToggleScopedPaper?: (paperId: string) => void;
   onRemoveScopedPaper?: (paperId: string) => void;
@@ -38,17 +35,14 @@ export function ChatView({
   isAuthenticated,
   onActiveQueryIndexChange,
   messageAreaRef,
-  filters,
-  onFiltersChange,
   onRetry,
-  pipeline,
-  onPipelineChange,
   selectedScopedPapers = [],
   onToggleScopedPaper,
   onRemoveScopedPaper,
   onClearScopedPapers,
   useHybridPipeline,
   setUseHybridPipeline,
+  isAnalyzing,
 }: ChatViewProps) {
   return (
     <VStack className="flex-1 gap-0 min-w-0 overflow-y-hidden">
@@ -58,6 +52,7 @@ export function ChatView({
           conversationKey={conversationKey}
           messages={messages}
           isStreaming={isStreaming}
+          isAnalyzing={isAnalyzing}
           onRetry={onRetry}
           onActiveQueryIndexChange={onActiveQueryIndexChange}
           selectedPaperIds={selectedScopedPapers.map((paper) => paper.paperId)}
@@ -71,10 +66,6 @@ export function ChatView({
             onSend={onSend}
             isDisabled={isStreaming}
             isAtBottom={true}
-            filters={filters}
-            onFiltersChange={onFiltersChange}
-            pipeline={pipeline}
-            onPipelineChange={onPipelineChange}
             selectedScopedPapers={selectedScopedPapers}
             onRemoveScopedPaper={onRemoveScopedPaper}
             onClearScopedPapers={onClearScopedPapers}

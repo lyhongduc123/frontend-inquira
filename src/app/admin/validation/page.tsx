@@ -1,13 +1,16 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
-import { CheckCircle, History, MessageSquare, Play, TestTube, Trash2, XCircle } from 'lucide-react'
+import { CheckCircle, History, Play, TestTube, Trash2, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { ValidationResultCard } from '@/components/validation/ValidationResultCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -23,9 +26,11 @@ import {
   useValidationHistory,
   useValidationStats,
 } from '@/hooks/use-validation'
+import { conversationsApi } from '@/lib/api/conversations-api'
 import type { Conversation, Message } from '@/types/conversation.type'
 import type {
   ValidationDetail,
+  ValidationHistoryItem,
   ValidationInspection,
   ValidationRequest,
   ValidationResult,
@@ -33,77 +38,78 @@ import type {
 import { normalizeCitationIssues } from '@/lib/validation-issue-utils'
 
 function toInspectionFromDetail(detail: ValidationDetail): ValidationInspection {
-  const citationIssues = normalizeCitationIssues(detail.incorrect_citations)
+  const citationIssues = normalizeCitationIssues(detail.incorrectCitations)
 
   const result: ValidationResult = {
-    query: detail.query_text,
-    generated_answer: detail.generated_answer ?? '',
-    context_used: detail.context_used ?? '',
-    text_match: {
-      matched_terms: [],
-      missing_terms: [],
-      match_percentage: 0,
-      suspicious_sentences: [],
+    query: detail.queryText,
+    generatedAnswer: detail.generatedAnswer ?? '',
+    contextUsed: detail.contextUsed ?? '',
+    textMatch: {
+      matchedTerms: [],
+      missingTerms: [],
+      matchPercentage: 0,
+      suspiciousSentences: [],
     },
-    context_evidence: detail.context_evidence ?? {
-      paper_ids: [],
-      chunk_ids: [],
-      total_papers: 0,
-      total_chunks: 0,
+    contextEvidence: detail.contextEvidence ?? {
+      paperIds: [],
+      chunkIds: [],
+      totalPapers: 0,
+      totalChunks: 0,
     },
-    has_hallucination: detail.has_hallucination,
-    hallucination_count: detail.hallucination_count,
-    hallucination_details: detail.hallucination_details,
-    non_existent_facts: detail.non_existent_facts,
-    incorrect_citations: citationIssues,
-    citation_accuracy: {
-      total_citations: detail.total_citations,
-      correct_citations: detail.correct_citations,
-      hallucinated_citations: detail.hallucinated_citations,
-      missing_citations: detail.missing_citations,
-      accuracy: detail.citation_accuracy ?? 0,
+    hasHallucination: detail.hasHallucination,
+    hallucinationCount: detail.hallucinationCount,
+    hallucinationDetails: detail.hallucinationDetails,
+    nonExistentFacts: detail.nonExistentFacts,
+    incorrectCitations: citationIssues,
+    citationAccuracy: {
+      totalCitations: detail.totalCitations,
+      correctCitations: detail.correctCitations,
+      hallucinatedCitations: detail.hallucinatedCitations,
+      missingCitations: detail.missingCitations,
+      accuracy: detail.citationAccuracy ?? 0,
     },
-    relevance_score: detail.relevance_score ?? 0,
-    factual_accuracy_score: detail.factual_accuracy_score ?? 0,
-    component_scores:
-      detail.component_scores ?? {
-        grounding_score: detail.factual_accuracy_score ?? 0,
-        citation_faithfulness_score: detail.citation_accuracy ?? 0,
-        relevance_score: detail.relevance_score ?? 0,
-        perspective_coverage_score: 0,
-        overall_score: detail.factual_accuracy_score ?? 0,
+    relevanceScore: detail.relevanceScore ?? 0,
+    factualAccuracyScore: detail.factualAccuracyScore ?? 0,
+    componentScores:
+      detail.componentScores ?? {
+        groundingScore: detail.factualAccuracyScore ?? 0,
+        citationFaithfulnessScore: detail.citationAccuracy ?? 0,
+        relevanceScore: detail.relevanceScore ?? 0,
+        perspectiveCoverageScore: 0,
+        overallScore: detail.factualAccuracyScore ?? 0,
       },
-    claims_checked: [],
-    execution_time_ms: detail.execution_time_ms ?? 0,
-    model_used: detail.model_name ?? 'unknown',
-    validation_id: detail.id,
+    claimsChecked: [],
+    executionTimeMs: detail.executionTimeMs ?? 0,
+    modelUsed: detail.modelName ?? 'unknown',
+    validationId: detail.id,
   }
 
   return {
-    validation_id: detail.id,
-    timestamp: detail.created_at,
+    validationId: detail.id,
+    timestamp: detail.createdAt,
     result,
     summary: {
-      has_issues: detail.has_hallucination || detail.hallucinated_citations > 0,
-      text_match_percentage: 0,
-      citation_accuracy: detail.citation_accuracy ?? 0,
-      relevance: detail.relevance_score ?? 0,
-      issues_count: detail.hallucination_count + detail.hallucinated_citations,
-      overall_score: result.component_scores.overall_score,
-      grounding_score: result.component_scores.grounding_score,
-      perspective_coverage_score: result.component_scores.perspective_coverage_score,
+      hasIssues: detail.hasHallucination || detail.hallucinatedCitations > 0,
+      textMatchPercentage: 0,
+      citationAccuracy: detail.citationAccuracy ?? 0,
+      relevance: detail.relevanceScore ?? 0,
+      issuesCount: detail.hallucinationCount + detail.hallucinatedCitations,
+      overallScore: result.componentScores.overallScore,
+      groundingScore: result.componentScores.groundingScore,
+      perspectiveCoverageScore: result.componentScores.perspectiveCoverageScore,
     },
   }
 }
 
 function getPreviousUserQuery(conversation: Conversation | null, message: Message | null): string {
   if (!conversation || !message) return ''
-  const messageIndex = conversation.messages.findIndex((item) => item.id === message.id)
+  const messages = conversation.messages ?? []
+  const messageIndex = messages.findIndex((item) => item.id === message.id)
   if (messageIndex <= 0) return ''
 
   for (let index = messageIndex - 1; index >= 0; index -= 1) {
-    if (conversation.messages[index].role === 'user') {
-      return conversation.messages[index].content
+    if (messages[index].role === 'user') {
+      return messages[index].content
     }
   }
 
@@ -111,20 +117,47 @@ function getPreviousUserQuery(conversation: Conversation | null, message: Messag
 }
 
 export default function ValidationPage() {
+  const [activeTab, setActiveTab] = useState('history')
   const [query, setQuery] = useState('')
   const [context, setContext] = useState('')
   const [generatedAnswer, setGeneratedAnswer] = useState('')
   const [modelName, setModelName] = useState('gpt-4o-mini')
+  const [historyQueryFilter, setHistoryQueryFilter] = useState('')
+  const [historyConversationFilter, setHistoryConversationFilter] = useState('')
+  const [historyModelFilter, setHistoryModelFilter] = useState('all')
+  const [historyIssueFilter, setHistoryIssueFilter] = useState<'all' | 'issues' | 'clean'>('all')
+  const [historyPage, setHistoryPage] = useState(1)
+  const [historyPageSize, setHistoryPageSize] = useState(50)
 
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
   const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null)
+  const [isLoadingConversationDetail, setIsLoadingConversationDetail] = useState(false)
+  const selectedValidationRef = useRef<HTMLDivElement | null>(null)
 
   const validationMutation = useValidation()
   const deleteValidationMutation = useDeleteValidation()
   const { data: stats } = useValidationStats()
-  const { data: historyData, isLoading: loadingHistory, refetch: refetchHistory } =
-    useValidationHistory({ skip: 0, limit: 100 })
+  const historyParams = useMemo(
+    () => ({
+      skip: (historyPage - 1) * historyPageSize,
+      limit: historyPageSize,
+      conversationId: historyConversationFilter || undefined,
+      modelName: historyModelFilter === 'all' ? undefined : historyModelFilter,
+      queryText: historyQueryFilter || undefined,
+      hasHallucination:
+        historyIssueFilter === 'all' ? undefined : historyIssueFilter === 'issues',
+    }),
+    [
+      historyConversationFilter,
+      historyIssueFilter,
+      historyModelFilter,
+      historyPage,
+      historyPageSize,
+      historyQueryFilter,
+    ]
+  )
+  const { data: historyData, isLoading: loadingHistory } = useValidationHistory(historyParams)
   const { data: detailData, isLoading: loadingDetail } = useValidationDetail(selectedHistoryId)
   const { conversations, isLoading: loadingConversations } = useConversations({
     page: 1,
@@ -136,6 +169,111 @@ export default function ValidationPage() {
     if (!detailData) return null
     return toInspectionFromDetail(detailData)
   }, [detailData])
+
+  const assistantMessages = useMemo(() => {
+    return (selectedConversation?.messages ?? []).filter((item) => item.role === 'assistant')
+  }, [selectedConversation])
+
+  const historyRows = useMemo(() => historyData?.validations ?? [], [historyData?.validations])
+
+  const historyModels = useMemo(() => {
+    const uniqueModels = new Set(historyRows.map((item) => item.modelName))
+    return Array.from(uniqueModels).sort()
+  }, [historyRows])
+
+  const historyTotalRows = historyData?.total ?? 0
+  const historyTotalPages = Math.max(1, Math.ceil(historyTotalRows / historyPageSize))
+
+  const historyColumns: ColumnDef<ValidationHistoryItem>[] = [
+      {
+        accessorKey: 'queryText',
+        header: 'Query',
+        cell: ({ row }) => <p className="line-clamp-2 max-w-[400px] text-sm">{row.original.queryText}</p>,
+      },
+      {
+        accessorKey: 'assistantAnswerPreview',
+        header: 'Assistant answer',
+        cell: ({ row }) => (
+          <p className="line-clamp-2 max-w-[420px] text-sm text-muted-foreground">
+            {row.original.assistantAnswerPreview || '—'}
+          </p>
+        ),
+      },
+      {
+        accessorKey: 'conversationTitle',
+        header: 'Conversation',
+        cell: ({ row }) => (
+          <div className="max-w-[240px]">
+            <p className="line-clamp-1 text-sm">{row.original.conversationTitle || 'Untitled'}</p>
+            <p className="line-clamp-1 text-xs text-muted-foreground">{row.original.conversationId || '—'}</p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'modelName',
+        header: 'Model',
+      },
+      {
+        accessorKey: 'hasHallucination',
+        header: 'Status',
+        cell: ({ row }) =>
+          row.original.hasHallucination ? (
+            <Badge variant="destructive" className="gap-1">
+              <XCircle className="h-3 w-3" />
+              Issues
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1 border-green-600 text-green-600">
+              <CheckCircle className="h-3 w-3" />
+              Clean
+            </Badge>
+          ),
+      },
+      {
+        id: 'relevance',
+        header: 'Relevance',
+        cell: ({ row }) => `${((row.original.relevanceScore ?? 0) * 100).toFixed(1)}%`,
+      },
+      {
+        id: 'factual',
+        header: 'Factual',
+        cell: ({ row }) => `${((row.original.factualAccuracyScore ?? 0) * 100).toFixed(1)}%`,
+      },
+      {
+        id: 'citations',
+        header: 'Citations',
+        cell: ({ row }) => `${((row.original.citationAccuracy ?? 0) * 100).toFixed(1)}%`,
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Created',
+        cell: ({ row }) => (row.original.createdAt ? format(new Date(row.original.createdAt), 'yyyy-MM-dd HH:mm') : '—'),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setSelectedHistoryId(row.original.id)}>
+              Open
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => removeValidation(row.original.id)}
+              disabled={deleteValidationMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        ),
+      },
+    ]
+
+  useEffect(() => {
+    if (!selectedHistoryInspection || !selectedValidationRef.current) return
+    selectedValidationRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [selectedHistoryInspection])
 
   const buildConversationContext = (message: Message): string => {
     const paperSnapshots = message.paperSnapshots ?? []
@@ -172,33 +310,53 @@ export default function ValidationPage() {
     const payload: ValidationRequest = {
       query,
       context,
-      generated_answer: generatedAnswer || undefined,
-      model_name: modelName,
+      generatedAnswer: generatedAnswer || undefined,
+      modelName,
     }
     await validationMutation.mutateAsync(payload)
   }
 
   const runMessageValidation = async (): Promise<void> => {
     if (!selectedMessage) return
+    const conversationIdNumber = selectedConversation ? Number(selectedConversation.id) : NaN
     const payload: ValidationRequest = {
       query: getPreviousUserQuery(selectedConversation, selectedMessage) || 'Conversation query',
       context: buildConversationContext(selectedMessage),
-      generated_answer: selectedMessage.content,
-      model_name: modelName,
-      conversation_id: selectedConversation ? Number(selectedConversation.id) : undefined,
-      message_id: selectedMessage.id,
+      generatedAnswer: selectedMessage.content,
+      modelName,
+      conversationId: Number.isFinite(conversationIdNumber) ? conversationIdNumber : undefined,
+      messageId: selectedMessage.id,
     }
     await validationMutation.mutateAsync(payload)
-    refetchHistory()
   }
 
-  const removeValidation = async (validationId: number): Promise<void> => {
+  const removeValidation = useCallback(async (validationId: number): Promise<void> => {
     if (!confirm('Delete this validation record?')) return
     await deleteValidationMutation.mutateAsync(validationId)
     if (selectedHistoryId === validationId) {
       setSelectedHistoryId(null)
     }
-    refetchHistory()
+  }, [deleteValidationMutation, selectedHistoryId])
+
+  const selectConversation = async (conversation: Conversation): Promise<void> => {
+    setSelectedMessage(null)
+    setSelectedConversation({
+      ...conversation,
+      messages: conversation.messages ?? [],
+    })
+
+    if ((conversation.messages ?? []).length > 0) return
+
+    setIsLoadingConversationDetail(true)
+    try {
+      const conversationDetail = await conversationsApi.get(conversation.id)
+      setSelectedConversation(conversationDetail)
+    } catch (error) {
+      console.error('Failed to load conversation detail:', error)
+      toast.error('Failed to load conversation details')
+    } finally {
+      setIsLoadingConversationDetail(false)
+    }
   }
 
   return (
@@ -212,43 +370,35 @@ export default function ValidationPage() {
 
       {stats && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          <StatsCard label="Total" value={stats.total_validations} icon={<TestTube className="h-4 w-4" />} />
+          <StatsCard label="Total" value={stats.totalValidations} icon={<TestTube className="h-4 w-4" />} />
           <StatsCard
             label="Hallucination Rate"
-            value={`${(stats.hallucination_rate * 100).toFixed(1)}%`}
+            value={`${(stats.hallucinationRate * 100).toFixed(1)}%`}
             icon={<XCircle className="h-4 w-4" />}
           />
           <StatsCard
             label="Avg Relevance"
-            value={`${(stats.average_relevance_score * 100).toFixed(1)}%`}
+            value={`${(stats.averageRelevanceScore * 100).toFixed(1)}%`}
             icon={<CheckCircle className="h-4 w-4" />}
           />
           <StatsCard
             label="Avg Grounding"
-            value={`${((stats.average_grounding_score ?? 0) * 100).toFixed(1)}%`}
+            value={`${((stats.averageGroundingScore ?? 0) * 100).toFixed(1)}%`}
             icon={<CheckCircle className="h-4 w-4" />}
           />
           <StatsCard
             label="Avg Perspective"
-            value={`${((stats.average_perspective_coverage ?? 0) * 100).toFixed(1)}%`}
+            value={`${((stats.averagePerspectiveCoverage ?? 0) * 100).toFixed(1)}%`}
             icon={<History className="h-4 w-4" />}
           />
         </div>
       )}
 
-      <Tabs defaultValue="conversation" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
-          <TabsTrigger value="conversation" className="gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Conversation
-          </TabsTrigger>
-          <TabsTrigger value="manual" className="gap-2">
-            <TestTube className="h-4 w-4" />
-            Manual
-          </TabsTrigger>
           <TabsTrigger value="history" className="gap-2">
             <History className="h-4 w-4" />
-            Per-query History
+            Assistant Validations
           </TabsTrigger>
         </TabsList>
 
@@ -271,15 +421,12 @@ export default function ValidationPage() {
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => {
-                            setSelectedConversation(item)
-                            setSelectedMessage(null)
-                          }}
+                          onClick={() => selectConversation(item)}
                           className="w-full rounded-lg border p-3 text-left hover:bg-accent"
                         >
                           <p className="line-clamp-1 font-medium">{item.title || 'Untitled conversation'}</p>
                           <p className="text-xs text-muted-foreground">
-                            {item.messageCount} messages · {format(new Date(item.updatedAt), 'yyyy-MM-dd HH:mm')}
+                            {item.messageCount} messages
                           </p>
                         </button>
                       ))}
@@ -296,11 +443,18 @@ export default function ValidationPage() {
               </CardHeader>
               <CardContent>
                 {selectedConversation ? (
-                  <ScrollArea className="h-[420px]">
-                    <div className="space-y-2">
-                      {selectedConversation.messages
-                        .filter((item) => item.role === 'assistant')
-                        .map((item) => (
+                  isLoadingConversationDetail ? (
+                    <div className="flex justify-center py-10">
+                      <Spinner className="h-7 w-7" />
+                    </div>
+                  ) : assistantMessages.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No assistant messages found in this conversation
+                    </p>
+                  ) : (
+                    <ScrollArea className="h-[420px]">
+                      <div className="space-y-2">
+                        {assistantMessages.map((item) => (
                           <button
                             key={item.id}
                             type="button"
@@ -314,8 +468,9 @@ export default function ValidationPage() {
                             </p>
                           </button>
                         ))}
-                    </div>
-                  </ScrollArea>
+                      </div>
+                    </ScrollArea>
+                  )
                 ) : (
                   <p className="text-sm text-muted-foreground">Select a conversation first</p>
                 )}
@@ -405,68 +560,139 @@ export default function ValidationPage() {
             <CardHeader>
               <CardTitle>Per-query validation history</CardTitle>
               <CardDescription>
-                Open a row to inspect original query, metrics, papers, and input chunks
+                Double-click a row to open that validation result
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="history-query-filter">Query contains</Label>
+                  <Input
+                    id="history-query-filter"
+                    value={historyQueryFilter}
+                    onChange={(event) => {
+                      setHistoryPage(1)
+                      setHistoryQueryFilter(event.target.value)
+                    }}
+                    placeholder="e.g. citations, reranking"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="history-conversation-filter">Conversation ID</Label>
+                  <Input
+                    id="history-conversation-filter"
+                    value={historyConversationFilter}
+                    onChange={(event) => {
+                      setHistoryPage(1)
+                      setHistoryConversationFilter(event.target.value)
+                    }}
+                    placeholder="optional"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Model</Label>
+                  <Select
+                    value={historyModelFilter}
+                    onValueChange={(value) => {
+                      setHistoryPage(1)
+                      setHistoryModelFilter(value)
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem key={"0"} value="all">All models</SelectItem>
+                      {historyModels.map((model) => (
+                        <SelectItem key={model || "0"} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={historyIssueFilter}
+                    onValueChange={(value: 'all' | 'issues' | 'clean') => {
+                      setHistoryPage(1)
+                      setHistoryIssueFilter(value)
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="issues">Issues</SelectItem>
+                      <SelectItem value="clean">Clean</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {loadingHistory ? (
                 <div className="flex justify-center py-10">
                   <Spinner className="h-7 w-7" />
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {historyData?.validations.map((item) => (
-                    <div key={item.id} className="rounded-lg border p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold">{item.query_text}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(item.created_at), 'yyyy-MM-dd HH:mm:ss')} · model: {item.model_name}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {item.has_hallucination ? (
-                            <Badge variant="destructive" className="gap-1">
-                              <XCircle className="h-3 w-3" />
-                              Issues
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="gap-1 border-green-600 text-green-600">
-                              <CheckCircle className="h-3 w-3" />
-                              Clean
-                            </Badge>
-                          )}
-                          <Button size="sm" variant="outline" onClick={() => setSelectedHistoryId(item.id)}>
-                            Open
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removeValidation(item.id)}
-                            disabled={deleteValidationMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs md:grid-cols-6">
-                        <MetricChip label="Relevance" value={`${((item.relevance_score ?? 0) * 100).toFixed(1)}%`} />
-                        <MetricChip
-                          label="Factual"
-                          value={`${((item.factual_accuracy_score ?? 0) * 100).toFixed(1)}%`}
-                        />
-                        <MetricChip
-                          label="Citations"
-                          value={`${((item.citation_accuracy ?? 0) * 100).toFixed(1)}%`}
-                        />
-                        <MetricChip label="Paper IDs" value={item.context_evidence?.total_papers ?? 0} />
-                        <MetricChip label="Chunk IDs" value={item.context_evidence?.total_chunks ?? 0} />
-                        <MetricChip label="Exec (ms)" value={item.execution_time_ms ?? 0} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <DataTable
+                  columns={historyColumns}
+                  data={historyRows}
+                  searchKey="queryText"
+                  searchPlaceholder="Search validation query..."
+                  onRowDoubleClick={(row) => {
+                    setSelectedHistoryId(row.id)
+                    setActiveTab('history')
+                  }}
+                />
               )}
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Label>Rows per page</Label>
+                  <Select
+                    value={String(historyPageSize)}
+                    onValueChange={(value) => {
+                      setHistoryPage(1)
+                      setHistoryPageSize(Number(value))
+                    }}
+                  >
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    Page {historyPage} / {historyTotalPages} • {historyTotalRows} total
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setHistoryPage((prev) => Math.max(1, prev - 1))}
+                    disabled={historyPage <= 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setHistoryPage((prev) => Math.min(historyTotalPages, prev + 1))}
+                    disabled={historyPage >= historyTotalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -476,7 +702,11 @@ export default function ValidationPage() {
             </div>
           )}
 
-          {selectedHistoryInspection && <ValidationResultCard result={selectedHistoryInspection} />}
+          {selectedHistoryInspection && (
+            <div ref={selectedValidationRef}>
+              <ValidationResultCard result={selectedHistoryInspection} />
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
@@ -505,11 +735,3 @@ function StatsCard({
   )
 }
 
-function MetricChip({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-md border bg-muted/40 p-2">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className="font-semibold">{value}</p>
-    </div>
-  )
-}

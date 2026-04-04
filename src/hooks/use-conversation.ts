@@ -4,6 +4,8 @@ import { Message } from "@/types/message.type";
 import { useConversationStore } from "@/store/conversation-store";
 import { Conversation } from "@/types/conversation.type";
 import { PaperMetadata } from "@/types/paper.type";
+import { toast } from "sonner";
+import { getErrorMessage, isNotFoundError } from "@/lib/react-query/error-utils";
 
 export function useConversation() {
   const currentConversationId = useConversationStore(
@@ -38,6 +40,7 @@ export function useConversation() {
   const createConversation = useCallback(
     async (title?: string): Promise<Conversation> => {
       const requestId = ++latestCreateRequestRef.current;
+
       const normalizedTitle = (title || "New conversation").trim() || "New conversation";
       setPendingConversationDraft({
         id: `pending-${requestId}`,
@@ -45,7 +48,7 @@ export function useConversation() {
       });
 
       try {
-        const conversation = await conversationsApi.create({ title });
+        const conversation = await conversationsApi.create({ title: normalizedTitle });
         if (!conversation.id) {
           throw new Error("Conversation creation returned no id");
         }
@@ -108,6 +111,17 @@ export function useConversation() {
         return loadedMessages;
       } catch (error) {
         console.error("Failed to load conversation messages:", error);
+
+        if (requestId === latestLoadRequestRef.current) {
+          const description = isNotFoundError(error)
+            ? "This conversation is unavailable or was deleted."
+            : getErrorMessage(error);
+
+          toast.error("Failed to load conversation", {
+            description,
+          });
+        }
+
         if (requestId === latestLoadRequestRef.current) {
           setMessages([]);
         }
@@ -129,7 +143,10 @@ export function useConversation() {
   const resetConversation = useCallback(() => {
     latestLoadRequestRef.current += 1;
     clearConversation();
-  }, [clearConversation]);
+    incrementRefreshTrigger();
+    setNewConversationId(null);
+    setPendingConversationDraft(null);
+  }, [clearConversation, incrementRefreshTrigger, setNewConversationId, setPendingConversationDraft]);
 
   const deleteConversation = useCallback(
     async (conversationId: string) => {
@@ -142,6 +159,20 @@ export function useConversation() {
     [currentConversationId, resetConversation],
   );
 
+  const updateConversationTitle = useCallback(
+    async (conversationId: string, title: string): Promise<boolean> => {
+      try {
+        await conversationsApi.update(conversationId, { title });
+        incrementRefreshTrigger();
+        return true;
+      } catch (error) {
+        console.error("Failed to update conversation title:", error);
+        return false;
+      }
+    },
+    [incrementRefreshTrigger],
+  );
+
   return {
     currentConversationId,
     isLoadingMessages,
@@ -149,5 +180,6 @@ export function useConversation() {
     resetConversation,
     deleteConversation,
     createConversation,
+    updateConversationTitle,
   };
 }

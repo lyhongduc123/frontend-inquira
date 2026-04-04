@@ -180,7 +180,7 @@ export function AuthorPaperCard({
             )}
 
             {/* Abstract/Snippet */}
-            {displayText ? (
+            {/* {displayText ? (
               <TypographyP
                 variant="muted"
                 size="xs"
@@ -193,10 +193,10 @@ export function AuthorPaperCard({
               <TypographyP variant="accent" size="xs" className="mt-1 italic">
                 No abstract available.
               </TypographyP>
-            )}
+            )} */}
           </VStack>
           {/* Citation Levels */}
-          <Box className="min-h-4">
+          {/* <Box className="min-h-4">
             {(citationLevel() || influentialLevel()) && (
               <HStack className="gap-2 min-h-4">
                 <SignalBadge
@@ -217,7 +217,7 @@ export function AuthorPaperCard({
                 />
               </HStack>
             )}
-          </Box>
+          </Box> */}
           <Box className="@container w-full mt-2">
             <HStack className="w-full justify-between items-center gap-2 min-w-0">
               <HStack className="items-center gap-2 @sm:gap-4 min-w-0 flex-1">

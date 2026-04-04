@@ -48,7 +48,7 @@ interface TaskSubmitPayload {
   query: string;
   conversationId?: string;
   filters?: Record<string, unknown>;
-  pipeline?: "database" | "hybrid";
+  pipeline?: "research" | "agent";
   clientMessageId?: string;
 }
 
@@ -583,7 +583,7 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
         query,
         conversationId,
         filters,
-        pipeline = "database",
+        pipeline = "research",
         clientMessageId,
       } = payload;
 
@@ -738,7 +738,7 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
         conversationId:
           currentConversationId || retryPayload?.conversationId || undefined,
         filters: retryPayload?.filters,
-        pipeline: retryPayload?.pipeline || "database",
+        pipeline: retryPayload?.pipeline || "research",
       });
     }
   }, [streamState.lastFailedQuery, setMessages, sendMessage]);

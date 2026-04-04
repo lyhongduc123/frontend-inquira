@@ -3,7 +3,7 @@
  * React hooks for managing validation state and operations
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   runValidation,
@@ -12,6 +12,7 @@ import {
   deleteValidation,
   getValidationStats,
 } from '@/lib/api/validation-api'
+import { useQueryWithError } from './use-query-with-error'
 import type {
   ValidationRequest,
   ValidationInspection,
@@ -44,29 +45,31 @@ export function useValidation() {
 export function useValidationHistory(params: {
   skip?: number
   limit?: number
-  message_id?: number
-  model_name?: string
-  has_hallucination?: boolean
+  messageId?: number
+  conversationId?: string
+  modelName?: string
+  queryText?: string
+  hasHallucination?: boolean
 }) {
-  return useQuery({
+  return useQueryWithError({
     queryKey: ['validation-history', params],
     queryFn: () => getValidationHistory(params),
     staleTime: 30_000, // 30 seconds
-  })
+  }, 'Failed to load validation history')
 }
 
 /**
  * Hook to fetch validation detail
  */
 export function useValidationDetail(validationId: number | null) {
-  return useQuery({
+  return useQueryWithError({
     queryKey: ['validation-detail', validationId],
     queryFn: () => {
       if (!validationId) throw new Error('Validation ID is required')
       return getValidationDetail(validationId)
     },
     enabled: !!validationId,
-  })
+  }, 'Failed to load validation detail')
 }
 
 /**
@@ -92,12 +95,11 @@ export function useDeleteValidation() {
  * Hook to fetch validation statistics
  */
 export function useValidationStats(params?: {
-  conversation_id?: number
-  model_name?: string
+  messageId?: number
 }) {
-  return useQuery({
+  return useQueryWithError({
     queryKey: ['validation-stats', params],
     queryFn: () => getValidationStats(params),
     staleTime: 60_000, // 1 minute
-  })
+  }, 'Failed to load validation statistics')
 }

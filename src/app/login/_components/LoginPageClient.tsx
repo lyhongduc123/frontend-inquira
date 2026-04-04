@@ -23,7 +23,7 @@ import { VStack } from "@/components/layout/vstack";
 import { authApi } from "@/lib/api/auth-api";
 import { useAuth } from "@/hooks/use-auth";
 import { useAuthStore } from "@/store/auth-store";
-import { ApiError } from "@/types/api.type";
+import { ApiError, ErrorCode } from "@/types/api.type";
 
 import { EmailStepForm } from "./EmailStepForm";
 import { OtpStepForm } from "./OtpStepForm";
@@ -90,10 +90,9 @@ export function LoginPageClient() {
       setStep("otp");
       setInfoMessage(values.email || response.message);
     } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? error.message
-          : "Could not send verification code. Please try again.";
+      const message = (error instanceof ApiError && error.code === ErrorCode.BAD_REQUEST) ?
+        "Invalid email, please try again." :
+        "Could not send verification code. Please try again.";
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);

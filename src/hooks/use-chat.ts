@@ -1,11 +1,13 @@
 import { useState, useRef, useCallback } from "react";
 import { Message } from "@/types/message.type";
-import { streamEvent, StreamEventPayload } from "@/lib/stream/stream";
+import { streamEvent, streamTask, StreamEventPayload } from "@/lib/stream/stream";
 import { useConversation } from "./use-conversation";
 import { useConversationStore } from "@/store/conversation-store";
 import { useAuthStore } from "@/store/auth-store";
+import { chatApi } from "@/lib/api/chat-api";
 import { useProgressStore } from "@/store/progress-store";
-import { MetadataEvent, ProgressEvent } from "@/lib/stream/event.types";
+import { MetadataEvent, ProgressEvent, StreamEvent, ConversationEvent } from "@/lib/stream/event.types";
+import { ChatSubmitResponse } from "@/types/task.type";
 
 interface UseChatOptions {
   apiEndpoint?: string;
@@ -16,6 +18,7 @@ interface UseChatOptions {
 
 interface ChatStreamState {
   isStreaming: boolean;
+  isAnalyzing: boolean;
   isError: boolean;
   lastFailedQuery: string | null;
   lastClientMessageId: string | null;
@@ -64,6 +67,7 @@ export function useChat(options: UseChatOptions = {}) {
 
   const [streamState, setStreamState] = useState<ChatStreamState>({
     isStreaming: false,
+    isAnalyzing: false,
     isError: false,
     lastFailedQuery: null,
     lastClientMessageId: null,
@@ -113,9 +117,10 @@ export function useChat(options: UseChatOptions = {}) {
         conversationId,
         isRetry = false,
         clientMessageId,
-        pipeline = "database",
+        pipeline = "research",
         useHybridPipeline,
         model,
+        filters,
       } = payload;
       let finalConversationId = conversationId;
       if (abortControllerRef.current) {
@@ -149,30 +154,11 @@ export function useChat(options: UseChatOptions = {}) {
         ]);
       }
 
-      const isTestEndpoint = apiEndpoint.includes("/test");
-      const { isAuthenticated } = useAuthStore.getState();
-
-      try {
-        if (!finalConversationId && !isTestEndpoint && isAuthenticated) {
-          const newConversation = await createConversation(query);
-          finalConversationId = newConversation.id;
-          if (finalConversationId) {
-            onConversationCreated?.(finalConversationId);
-            startQuery(queryId, query, finalConversationId);
-          }
-        }
-      } catch (error) {
-        console.error("Error creating conversation:", error);
-        if (!isTestEndpoint) {
-          throw error;
-        }
-      }
-
       activeConversationIdRef.current = finalConversationId || null;
 
       addAssistantMessage();
 
-      setStreamState((prev) => ({ ...prev, isStreaming: true }));
+      setStreamState((prev) => ({ ...prev, isStreaming: true, isAnalyzing: true }));
       accumulatedTextRef.current = "";
       abortControllerRef.current = new AbortController();
       useConversationStore.getState().setAbortStream(() => {
@@ -181,101 +167,170 @@ export function useChat(options: UseChatOptions = {}) {
         }
       });
 
-      try {
-        await streamEvent(
-          apiEndpoint,
-          {
-            query: query,
-            conversationId: finalConversationId || undefined,
-            isRetry: isRetry,
-            clientMessageId: messageId,
-            pipeline: pipeline,
-            useHybridPipeline: useHybridPipeline,
-            model: model,
-          },
-          {
-            onMetadata: (event: MetadataEvent) => {
-              setLatestMetadataEvent(event);
-              updateLastMessage({ paperSnapshots: event.papers });
-            },
-            onProgress: (event: ProgressEvent) => {
-              if (currentQueryIdRef.current) {
-                addProgress(currentQueryIdRef.current, event);
-              }
-              onProgress?.(event);
-            },
-            onChunk: (chunk) => {
-              accumulatedTextRef.current += chunk;
-              updateLastMessage({ text: accumulatedTextRef.current });
-            },
-            onDone: () => {
-              if (currentQueryIdRef.current) {
-                const queryProgress = useProgressStore
-                  .getState()
-                  .getQueryProgress(currentQueryIdRef.current);
-                if (queryProgress && queryProgress.steps.length > 0) {
-                  updateLastMessage({
-                    text: accumulatedTextRef.current,
-                    done: true,
-                    progressEvents: queryProgress.steps,
-                  });
-                } else {
-                  updateLastMessage({
-                    text: accumulatedTextRef.current,
-                    done: true,
-                  });
-                }
-                completeQuery(currentQueryIdRef.current);
-              } else {
-                updateLastMessage({
-                  text: accumulatedTextRef.current,
-                  done: true,
-                });
-              }
-            },
-            onError: (error) => {
-              if (isAbortError(error)) {
-                return;
-              }
+      // Determine the correct flow: Agent uses task queue, Research/Scoped uses direct stream
+      const isEventDriven = pipeline === "agent";
 
-              console.error("Stream error:", error);
+      const commonCallbacks = {
+        onConversation: (event: ConversationEvent) => {
+          const newId = event.conversation_id;
+          const newTitle = event.title;
+
+          if (newId && newId !== finalConversationId) {
+            finalConversationId = newId;
+            activeConversationIdRef.current = newId;
+            if (currentQueryIdRef.current) {
+              startQuery(currentQueryIdRef.current, query, newId);
+            }
+            
+            // Update URL immediately via replaceState to avoid re-mounts
+            onConversationCreated?.(newId);
+          }
+
+          if (newTitle) {
+            useConversationStore.getState().setCurrentConversationTitle(newTitle);
+          }
+        },
+        onMetadata: (event: MetadataEvent) => {
+          setStreamState((prev) => ({ ...prev, isAnalyzing: false }));
+          setLatestMetadataEvent(event);
+
+          if (Array.isArray(event.content)) {
+            updateLastMessage({ paperSnapshots: event.content });
+          }
+        },
+        onProgress: (event: ProgressEvent) => {
+          setStreamState((prev) => ({ ...prev, isAnalyzing: false }));
+          if (currentQueryIdRef.current) {
+            addProgress(currentQueryIdRef.current, event);
+          }
+          onProgress?.(event);
+        },
+        onChunk: (chunk: string) => {
+          setStreamState((prev) => ({ ...prev, isAnalyzing: false }));
+          accumulatedTextRef.current += chunk;
+          updateLastMessage({ text: accumulatedTextRef.current });
+        },
+        onDone: () => {
+          setStreamState((prev) => ({ ...prev, isAnalyzing: false }));
+          
+          if (currentQueryIdRef.current) {
+            const queryProgress = useProgressStore
+              .getState()
+              .getQueryProgress(currentQueryIdRef.current);
+            if (queryProgress && queryProgress.steps.length > 0) {
               updateLastMessage({
-                text:
-                  error.message || "Error: Failed to get response from server.",
+                text: accumulatedTextRef.current,
                 done: true,
-                isError: true,
+                progressEvents: queryProgress.steps,
               });
-
-              if (currentQueryIdRef.current) {
-                completeQuery(currentQueryIdRef.current);
-              }
-
-              onErrorCallback?.();
-              setStreamState({
-                isStreaming: false,
-                isError: true,
-                lastFailedQuery: query,
-                lastClientMessageId: messageId,
+            } else {
+              updateLastMessage({
+                text: accumulatedTextRef.current,
+                done: true,
               });
-            },
-          },
-          {
+            }
+            completeQuery(currentQueryIdRef.current);
+          } else {
+            updateLastMessage({
+              text: accumulatedTextRef.current,
+              done: true,
+            });
+          }
+        },
+        onError: (error: Error) => {
+          if (isAbortError(error)) {
+            return;
+          }
+
+          console.error("Stream error:", error);
+          
+          updateLastMessage({
+            text: error.message || "Error: Failed to get response from server.",
+            done: true,
+            isError: true,
+          });
+
+          if (currentQueryIdRef.current) {
+            completeQuery(currentQueryIdRef.current);
+          }
+
+          onErrorCallback?.();
+          setStreamState({
+            isStreaming: false,
+            isAnalyzing: false,
+            isError: true,
+            lastFailedQuery: query,
+            lastClientMessageId: messageId,
+          });
+        },
+      };
+
+      try {
+        if (isEventDriven) {
+          // flow: POST /agent -> task ID -> streamTask (GET)
+          const submitEndpoint = chatApi.getAgentSubmitUrl();
+          const response = await fetch(submitEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query,
+              conversationId: finalConversationId || undefined,
+              pipeline,
+              filters,
+              model,
+              clientMessageId: messageId,
+            }),
+            credentials: "include",
+            signal: abortControllerRef.current.signal,
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to submit agent task: ${response.status} ${errorText}`);
+          }
+
+          const submitData = (await response.json()) as { data: ChatSubmitResponse };
+          const taskId = submitData.data.taskId;
+
+          // Step 2: Stream events for the task
+          const streamUrl = chatApi.getStreamEventsUrl(taskId);
+          await streamTask(streamUrl, commonCallbacks, {
             signal: abortControllerRef.current.signal,
             heartbeatTimeout: 0,
-          },
-        );
+          });
+        } else {
+          // Direct Stream flow (Research/Scoped): POST /stream -> streamEvent (POST)
+          const streamUrl = chatApi.getStreamUrl();
+          await streamEvent(
+            streamUrl,
+            {
+              query,
+              conversationId: finalConversationId || undefined,
+              pipeline: pipeline as "research",
+              filters: filters as any,
+              model: model || undefined,
+              clientMessageId: messageId,
+            },
+            commonCallbacks,
+            {
+              signal: abortControllerRef.current.signal,
+              heartbeatTimeout: 0,
+            }
+          );
+        }
       } catch (error) {
         if (isAbortError(error)) {
           return;
         }
 
         console.error("Streaming error:", error);
+        
         if (
           useConversationStore.getState().currentConversationId ===
           activeConversationIdRef.current
         ) {
           updateLastMessage({
-            text: "Error: Failed to get response from server.",
+            text: error instanceof Error ? error.message : "Error: Failed to get response from server.",
             done: true,
             isError: true,
           });
@@ -288,12 +343,13 @@ export function useChat(options: UseChatOptions = {}) {
         onErrorCallback?.();
         setStreamState({
           isStreaming: false,
+          isAnalyzing: false,
           isError: true,
           lastFailedQuery: query,
           lastClientMessageId: messageId,
         });
       } finally {
-        setStreamState((prev) => ({ ...prev, isStreaming: false }));
+        setStreamState((prev) => ({ ...prev, isStreaming: false, isAnalyzing: false }));
         abortControllerRef.current = null;
         activeConversationIdRef.current = null;
         currentQueryIdRef.current = null;
@@ -362,6 +418,7 @@ export function useChat(options: UseChatOptions = {}) {
     messages,
     latestMetadataEvent,
     isStreaming: streamState.isStreaming,
+    isAnalyzing: streamState.isAnalyzing,
     isError: streamState.isError,
     sendMessage,
     retry,

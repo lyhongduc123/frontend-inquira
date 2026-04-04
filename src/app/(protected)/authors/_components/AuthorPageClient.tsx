@@ -156,7 +156,7 @@ export function AuthorPageClient() {
           {author?.quartileBreakdown && (
             <QuartileChart quartileBreakdown={author.quartileBreakdown} />
           )}
-          {author?.countsByYear && (
+          {author?.countsByYear && author.countsByYear.length > 0 && (
             <CitationChartCard countsByYear={author.countsByYear} />
           )}
           {author?.papersByYear && (

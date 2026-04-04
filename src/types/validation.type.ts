@@ -4,20 +4,20 @@ import { PaperMetadata } from './paper.type'
  * Text matching analysis for frontend diff display
  */
 export interface TextMatchAnalysis {
-  matched_terms: string[]
-  missing_terms: string[]
-  match_percentage: number
-  suspicious_sentences: string[]
+  matchedTerms: string[]
+  missingTerms: string[]
+  matchPercentage: number
+  suspiciousSentences: string[]
 }
 
 /**
  * Citation accuracy metrics
  */
 export interface CitationAccuracy {
-  total_citations: number
-  correct_citations: number
-  hallucinated_citations: number
-  missing_citations: number
+  totalCitations: number
+  correctCitations: number
+  hallucinatedCitations: number
+  missingCitations: number
   accuracy: number
 }
 
@@ -31,30 +31,30 @@ export type ValidationCitationIssueType =
 export interface ValidationCitationIssue {
   citation: string
   reason: string
-  expected_range?: string
+  expectedRange?: string
   type?: ValidationCitationIssueType
 }
 
 export interface ContextEvidence {
-  paper_ids: string[]
-  chunk_ids: string[]
-  total_papers: number
-  total_chunks: number
+  paperIds: string[]
+  chunkIds: string[]
+  totalPapers: number
+  totalChunks: number
 }
 
 export interface ValidationClaim {
   claim: string
-  support_score: number
+  supportScore: number
   supported: boolean
-  missing_terms: string[]
+  missingTerms: string[]
 }
 
 export interface ValidationComponentScores {
-  grounding_score: number
-  citation_faithfulness_score: number
-  relevance_score: number
-  perspective_coverage_score: number
-  overall_score: number
+  groundingScore: number
+  citationFaithfulnessScore: number
+  relevanceScore: number
+  perspectiveCoverageScore: number
+  overallScore: number
 }
 
 /**
@@ -62,41 +62,41 @@ export interface ValidationComponentScores {
  */
 export interface ValidationResult {
   query: string
-  generated_answer: string
-  context_used: string
-  text_match: TextMatchAnalysis
-  context_evidence: ContextEvidence
-  has_hallucination: boolean
-  hallucination_count: number
-  hallucination_details?: string[] | null
-  non_existent_facts?: string[] | null
-  incorrect_citations?: ValidationCitationIssue[] | null
-  citation_accuracy?: CitationAccuracy | null
-  relevance_score: number
-  factual_accuracy_score: number
-  component_scores: ValidationComponentScores
-  claims_checked: ValidationClaim[]
-  execution_time_ms: number
-  model_used: string
-  validation_id?: number | null
+  generatedAnswer: string
+  contextUsed: string
+  textMatch: TextMatchAnalysis
+  contextEvidence: ContextEvidence
+  hasHallucination: boolean
+  hallucinationCount: number
+  hallucinationDetails?: string[] | null
+  nonExistentFacts?: string[] | null
+  incorrectCitations?: ValidationCitationIssue[] | null
+  citationAccuracy?: CitationAccuracy | null
+  relevanceScore: number
+  factualAccuracyScore: number
+  componentScores: ValidationComponentScores
+  claimsChecked: ValidationClaim[]
+  executionTimeMs: number
+  modelUsed: string
+  validationId?: number | null
 }
 
 /**
  * Complete validation inspection response
  */
 export interface ValidationInspection {
-  validation_id: number
+  validationId: number
   timestamp: string
   result: ValidationResult
   summary: {
-    has_issues: boolean
-    text_match_percentage: number
-    citation_accuracy: number
+    hasIssues: boolean
+    textMatchPercentage: number
+    citationAccuracy: number
     relevance: number
-    issues_count: number
-    overall_score?: number
-    grounding_score?: number
-    perspective_coverage_score?: number
+    issuesCount: number
+    overallScore?: number
+    groundingScore?: number
+    perspectiveCoverageScore?: number
   }
 }
 
@@ -106,10 +106,10 @@ export interface ValidationInspection {
 export interface ValidationRequest {
   query: string
   context: string
-  generated_answer?: string | null
-  model_name?: string
-  conversation_id?: number | null
-  message_id?: number | null
+  generatedAnswer?: string | null
+  modelName?: string
+  conversationId?: number | null
+  messageId?: number | null
 }
 
 /**
@@ -117,48 +117,51 @@ export interface ValidationRequest {
  */
 export interface ValidationHistoryItem {
   id: number
-  query_text: string
-  model_name: string
-  message_id?: number | null
-  has_hallucination: boolean
-  factual_accuracy_score?: number | null
-  relevance_score?: number | null
-  citation_accuracy?: number | null
-  execution_time_ms?: number | null
-  total_citations: number
-  correct_citations: number
-  hallucinated_citations: number
-  missing_citations: number
-  context_evidence?: ContextEvidence | null
-  created_at: string
-  validated_at?: string | null
+  queryText: string
+  assistantAnswerPreview?: string | null
+  conversationId?: string | null
+  conversationTitle?: string | null
+  modelName: string
+  messageId?: number | null
+  hasHallucination: boolean
+  factualAccuracyScore?: number | null
+  relevanceScore?: number | null
+  citationAccuracy?: number | null
+  executionTimeMs?: number | null
+  totalCitations: number
+  correctCitations: number
+  hallucinatedCitations: number
+  missingCitations: number
+  contextEvidence?: ContextEvidence | null
+  createdAt: string
+  validatedAt?: string | null
 }
 
 export interface ValidationDetail {
   id: number
-  message_id?: number | null
-  query_text: string
-  generated_answer?: string | null
-  context_used?: string | null
-  context_evidence?: ContextEvidence | null
-  has_hallucination: boolean
-  hallucination_count: number
-  hallucination_details?: string[] | null
-  non_existent_facts?: string[] | null
-  incorrect_citations?: ValidationCitationIssue[] | null
-  relevance_score?: number | null
-  factual_accuracy_score?: number | null
-  citation_accuracy?: number | null
-  total_citations: number
-  correct_citations: number
-  hallucinated_citations: number
-  missing_citations: number
-  execution_time_ms?: number | null
-  model_name?: string | null
+  messageId?: number | null
+  queryText: string
+  generatedAnswer?: string | null
+  contextUsed?: string | null
+  contextEvidence?: ContextEvidence | null
+  hasHallucination: boolean
+  hallucinationCount: number
+  hallucinationDetails?: string[] | null
+  nonExistentFacts?: string[] | null
+  incorrectCitations?: ValidationCitationIssue[] | null
+  relevanceScore?: number | null
+  factualAccuracyScore?: number | null
+  citationAccuracy?: number | null
+  totalCitations: number
+  correctCitations: number
+  hallucinatedCitations: number
+  missingCitations: number
+  executionTimeMs?: number | null
+  modelName?: string | null
   status: string
-  component_scores?: ValidationComponentScores | null
-  created_at: string
-  validated_at?: string | null
+  componentScores?: ValidationComponentScores | null
+  createdAt: string
+  validatedAt?: string | null
 }
 
 /**
@@ -175,17 +178,17 @@ export interface ValidationHistoryResponse {
  * Validation statistics
  */
 export interface ValidationStats {
-  total_validations: number
-  hallucination_rate: number
-  average_relevance_score: number
-  average_factual_accuracy: number
-  average_citation_accuracy: number
-  total_hallucinations: number
-  total_incorrect_citations: number
-  average_grounding_score?: number
-  average_perspective_coverage?: number
-  conversation_id?: number | null
-  model_name?: string | null
+  totalValidations: number
+  hallucinationRate: number
+  averageRelevanceScore: number
+  averageFactualAccuracy: number
+  averageCitationAccuracy: number
+  totalHallucinations: number
+  totalIncorrectCitations: number
+  averageGroundingScore?: number
+  averagePerspectiveCoverage?: number
+  conversationId?: number | null
+  modelName?: string | null
 }
 
 /**
@@ -193,5 +196,5 @@ export interface ValidationStats {
  */
 export interface PaperSnapshot extends PaperMetadata {
   chunks?: string[]
-  relevance_score?: number
+  relevanceScore?: number
 }

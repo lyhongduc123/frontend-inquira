@@ -15,29 +15,23 @@ export function transformFiltersForBackend(filters?: SearchFilters): Record<stri
 
   const transformed: Record<string, unknown> = {};
 
-  // Transform yearRange to year_min/year_max
+  // Transform yearRange to yearMin/yearMax
   if (filters.yearRange) {
     if (filters.yearRange.min !== undefined) {
-      transformed.year_min = filters.yearRange.min;
+      transformed.yearMin = filters.yearRange.min;
     }
     if (filters.yearRange.max !== undefined) {
-      transformed.year_max = filters.yearRange.max;
+      transformed.yearMax = filters.yearRange.max;
     }
   }
 
-  // Direct mappings for snake_case fields (if they exist in filters)
+  // Direct mappings for camelCase fields
   if (filters.author) transformed.author = filters.author;
-  if (filters.year_min !== undefined) transformed.year_min = filters.year_min;
-  if (filters.year_max !== undefined) transformed.year_max = filters.year_max;
+  if (filters.year_min !== undefined) transformed.yearMin = filters.year_min;
+  if (filters.year_max !== undefined) transformed.yearMax = filters.year_max;
   if (filters.venue) transformed.venue = filters.venue;
-  if (filters.min_citations !== undefined) transformed.min_citations = filters.min_citations;
-  if (filters.max_citations !== undefined) transformed.max_citations = filters.max_citations;
-
-  // TODO: Map frontend-specific filters to backend equivalents
-  // - category -> venue or other field?
-  // - openAccessOnly -> needs backend support
-  // - excludePreprints -> needs backend support
-  // - topJournalsOnly -> needs backend support
+  if (filters.min_citations !== undefined) transformed.minCitations = filters.min_citations;
+  if (filters.max_citations !== undefined) transformed.maxCitations = filters.max_citations;
 
   return Object.keys(transformed).length > 0 ? transformed : undefined;
 }

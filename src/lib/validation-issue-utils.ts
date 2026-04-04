@@ -37,8 +37,8 @@ export function normalizeCitationIssues(
     .map((issue) => ({
       citation: issue.citation as string,
       reason: issue.reason as string,
-      expected_range:
-        typeof issue.expected_range === 'string' ? issue.expected_range : undefined,
+      expectedRange:
+        typeof issue.expectedRange === 'string' ? issue.expectedRange : undefined,
       type: issue.type ?? classifyCitationIssue(issue.reason as string),
     }))
 }

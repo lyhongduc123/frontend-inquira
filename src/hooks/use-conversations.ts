@@ -1,9 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { conversationsApi } from "@/lib/api/conversations-api";
 import {
   ConversationListResponse,
   Conversation,
 } from "@/types/conversation.type";
+import { useQueryWithError } from "./use-query-with-error";
 
 export const conversationKeys = {
   all: ["conversations"] as const,
@@ -26,7 +27,7 @@ export function useConversations(options: UseConversationsOptions = {}) {
 
   const queryClient = useQueryClient();
 
-  const conversationsQuery = useQuery({
+  const conversationsQuery = useQueryWithError({
     queryKey: conversationKeys.list(page, pageSize, archived),
     queryFn: () =>
       conversationsApi.list({ page, page_size: pageSize, archived }),
@@ -35,7 +36,7 @@ export function useConversations(options: UseConversationsOptions = {}) {
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
     refetchOnMount: false, // Don't refetch when component remounts
-  });
+  }, 'Failed to load conversations');
 
   const deleteConversationMutation = useMutation({
     mutationFn: (conversationId: string) =>

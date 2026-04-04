@@ -8,7 +8,7 @@ type SendMessagePayload = StreamEventPayload | {
   query: string;
   conversationId?: string;
   filters?: Record<string, unknown>;
-  pipeline?: "database" | "hybrid";
+  pipeline?: "research" | "agent";
   clientMessageId?: string;
 };
 
@@ -19,7 +19,7 @@ interface ChatHandlersParams {
   clearMessages: () => void;
   searchFilters?: SearchFilters;
   selectedScopedPaperIds?: string[];
-  pipeline?: "database" | "hybrid";
+  pipeline?: "research" | "agent";
   // Deprecated - kept for backward compatibility
   useHybridPipeline?: boolean;
 }
@@ -35,18 +35,16 @@ export function useChatHandlers({
   clearMessages,
   searchFilters,
   selectedScopedPaperIds = [],
-  pipeline = "database",
+  pipeline = "research",
   useHybridPipeline,
 }: ChatHandlersParams) {
   
   const handleNewConversation = useCallback(() => {
     resetConversation();
     clearMessages();
-    // Navigation should be handled by the calling component
   }, [resetConversation, clearMessages]);
   
   const handleSend = useCallback(async (query: string) => {
-    // Transform filters to backend format (yearRange -> year_min/year_max, etc.)
     const transformedFilters = transformFiltersForBackend(searchFilters) || {};
 
     if (selectedScopedPaperIds.length > 0) {

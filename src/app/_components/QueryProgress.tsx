@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useProgressStore } from "@/store/progress-store";
 import {
@@ -9,7 +9,6 @@ import {
   Search,
   ListOrdered,
   ListTodo,
-  ChevronDownIcon,
   ChevronRightIcon,
 } from "lucide-react";
 import { TypographyP } from "@/components/global/typography";
@@ -31,12 +30,18 @@ import {
 } from "@/components/ui/collapsible";
 import { EventType } from "@/lib/stream/event.types";
 import { Streamdown } from "streamdown";
-import { Separator } from "@/components/ui/separator";
 import { Box } from "@/components/layout/box";
 import { cn } from "@/lib/utils";
-import { pl } from "date-fns/locale";
 import pluralize from "pluralize";
 import * as changeCase from "change-case";
+import { C_BULLET } from "@/core";
+import { OpacityShimmer } from "@/components/ui/opacity-shimmer";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface ProgressStep {
   type: string;
@@ -65,27 +70,23 @@ export function QueryProgress({
   progressData,
 }: QueryProgressProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
+  const [openItem, setOpenItem] = useState<string | undefined>(undefined);
   const queryProgressFromStore = useProgressStore((state) =>
     queryId ? state.getQueryProgress(queryId) : undefined,
   );
-
-  // Use provided progressData or query from store
   const queryProgress = progressData || queryProgressFromStore;
 
-  if (
-    !queryProgress ||
-    !queryProgress.steps ||
-    queryProgress.steps.length === 0
-  ) {
+  if (!queryProgress) {
     return null;
   }
 
   const displayThoughts = queryProgress.steps || [];
   const receivedStepsCount = displayThoughts.length;
+  const hasNoEventsYet = !queryProgress.isComplete && receivedStepsCount === 0;
   const stepsCount = queryProgress.totalSteps || receivedStepsCount;
   const hasSteps = stepsCount > 0;
-  const latestStep = receivedStepsCount > 0 ? displayThoughts[receivedStepsCount - 1] : null;
+  const latestStep =
+    receivedStepsCount > 0 ? displayThoughts[receivedStepsCount - 1] : null;
 
   const rankingStep = [...displayThoughts]
     .reverse()
@@ -103,97 +104,55 @@ export function QueryProgress({
     queryProgress.currentPhase || latestStep?.type || "processing";
   const currentStepNumber = queryProgress.currentStep || receivedStepsCount;
 
-  const formatDuration = (start: number, end: number) => {
-    const duration = end - start;
-    const seconds = Math.floor(duration / 1000);
-    return seconds < 60
-      ? `${seconds}s`
-      : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-  };
-
-  const parseContent = (step: ProgressStep): ReactNode | string => {
-    if (step.type === EventType.REASONING && step.content) {
-      return step.content;
-    }
-
-    if (step.type === EventType.SEARCHING && step.metadata?.queries) {
-      const queries = Array.isArray(step.metadata.queries)
-        ? (step.metadata.queries as string[]).filter(Boolean)
-        : [];
-
-      if (queries.length > 0) {
-        return (
-          queries.map((q, idx) => (
-            <span key={idx}>
-              {q}
-              {idx < queries.length - 1 && <br />}
-            </span>
-          ))
-        );
-      }
-
-      return "Searching academic databases...";
-    }
-    if (step.type === EventType.RANKING && step.metadata?.total_papers) {
-      return `Ranking ${step.metadata.total_papers} papers (${step.metadata.chunks || 0} chunks)`;
-    }
-
-    if (step.type === EventType.SEARCHING) {
-      return "Searching academic databases...";
-    }
-    if (step.type === EventType.RANKING) {
-      return "Filtering and ranking papers...";
-    }
-    if (step.type === EventType.REASONING) {
-      return "Generating response...";
-    }
-
-    return step.content || "";
-  };
-
-  const toggleStep = (stepKey: string) => {
-    setOpenSteps((prev) => ({
-      ...prev,
-      [stepKey]: !prev[stepKey],
-    }));
-  };
-
   return (
     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
       <Button
         onClick={() => hasSteps && setIsSheetOpen(true)}
-        disabled={!hasSteps}
         variant="ghost"
-        className="max-w-[50%] w-fit justify-between rounded-lg"
+        className="max-w-[50%] w-fit justify-between rounded-lg px-2 py-1"
       >
         <>
           <HStack className="items-center gap-2 min-w-0">
             <ListTodo size={14} className="text-secondary shrink-0" />
             <TypographyP size="xs" weight="medium" className="truncate">
-              {queryProgress.totalSteps && queryProgress.totalSteps > 0
-                ? `${currentStepNumber}/${queryProgress.totalSteps} ${pluralize("step", queryProgress.totalSteps)}`
-                : pluralize("step", stepsCount, true)}
+              {pluralize("step", stepsCount, true)}
             </TypographyP>
           </HStack>
-          <Separator orientation="vertical" className="relative mx-2 h-4 max-w-4" />
+          {C_BULLET}
           <HStack className="items-center gap-1 min-w-0">
-            {!queryProgress.isComplete && (
-              <Loader2
-                size={12}
-                className="animate-spin text-secondary shrink-0"
-              />
-            )}
-            <TypographyP
-              size="xs"
-              className="truncate"
-            >
-              {queryProgress.isComplete
-                ? `${pluralize("source", completedSourceCount ?? 0, true)}`
-                : `${currentLabel}`}
+            <TypographyP size="xs" className="truncate">
+              {hasNoEventsYet
+                ? "Processing..."
+                : queryProgress.isComplete
+                  ? `${pluralize("source", queryProgress.totalSteps ?? 0, true)}`
+                  : `${changeCase.capitalCase(currentLabel)}...`}
             </TypographyP>
           </HStack>
         </>
       </Button>
+      {!queryProgress.isComplete && (
+        <VStack className="gap-2 min-w-0 px-4 py-2 border rounded-xl bg-muted/10">
+          {!hasNoEventsYet && latestStep?.type !== EventType.REASONING && (
+            <HStack className="items-center gap-2 min-w-0">
+              <Loader2
+                size={14}
+                className="animate-spin text-secondary shrink-0"
+              />
+              <TypographyP size="sm" weight="medium" className="truncate">
+                {changeCase.capitalCase(currentLabel)}
+              </TypographyP>
+            </HStack>
+          )}
+
+          {!hasNoEventsYet && latestStep?.type !== EventType.REASONING && (
+            <TypographyP size="sm" variant="muted" className="leading-relaxed">
+              <OpacityShimmer>
+                {latestStep ? parseContent(latestStep) : null}
+              </OpacityShimmer>
+            </TypographyP>
+          )}
+        </VStack>
+      )}
 
       <SheetContent
         side="right"
@@ -211,87 +170,130 @@ export function QueryProgress({
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
-          <VStack className="gap-2 px-4">
-            {displayThoughts.map((thought, idx) => {
-              const stepKey = `${thought.type}-${idx}`;
-              const isOpen =
-                openSteps[stepKey] ?? idx === displayThoughts.length - 1;
-
-              const isLastStep = idx === displayThoughts.length - 1;
-
-              return (
-                <Box key={stepKey} className="w-full">
-                  <Collapsible
-                    key={stepKey}
-                    open={isOpen}
-                    onOpenChange={() => toggleStep(stepKey)}
-                    className=""
-                  >
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="w-full h-auto justify-between rounded-md"
-                      >
-                        <HStack className="gap-2 items-center min-w-0">
-                          <TypeIcon type={thought.type} />
-                          <TypographyP
-                            size="sm"
-                            weight="medium"
-                            className="text-foreground/80 capitalize truncate"
-                          >
-                            Step {idx + 1}: {thought.type}
-                          </TypographyP>
-                        </HStack>
-                        <TypographyP size="xs" variant="muted">
-                          <ChevronRightIcon
-                            className={cn(
-                              "size-4 transition-transform",
-                              isOpen && "rotate-90",
-                            )}
-                          />
-                        </TypographyP>
-                      </Button>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent className="p-4">
-                      {thought.type === EventType.REASONING ? (
-                        <ReasoningRenderer>
-                          {parseContent(thought) as string}
-                        </ReasoningRenderer>
-                      ) : (
-                        <TypographyP
-                          size="sm"
-                          variant="muted"
-                          className="leading-relaxed"
-                        >
-                          {parseContent(thought)}
-                        </TypographyP>
-                      )}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </Box>
-              );
-            })}
-          </VStack>
+        <ScrollArea className="flex-1 min-h-0 pt-2 px-2">
+          <StepAccordion
+            value={
+              latestStep
+                ? `${latestStep.type}-${receivedStepsCount - 1}`
+                : undefined
+            }
+            displayThoughts={displayThoughts}
+            queryProgress={queryProgress}
+          />
         </ScrollArea>
       </SheetContent>
     </Sheet>
   );
 }
 
+const StepAccordion = ({
+  value,
+  displayThoughts,
+  queryProgress,
+}: {
+  value?: string;
+  displayThoughts: ProgressStep[];
+  queryProgress: NonNullable<QueryProgressProps["progressData"]>;
+}) => {
+  const [openItem, setOpenItem] = useState<string | undefined>(value);
+
+  function onValueChange(newValue: string | undefined) {
+    setOpenItem(newValue);
+  }
+
+  return (
+    <Accordion
+      type="single"
+      collapsible
+      value={openItem}
+      onValueChange={onValueChange}
+      className="relative w-full"
+    >
+      {displayThoughts.map((thought, idx) => {
+        const stepKey = `${thought.type}-${idx}`;
+        const isLastStep = idx === displayThoughts.length - 1;
+        const isActive = isLastStep && !queryProgress.isComplete;
+
+        return (
+          <div key={stepKey} className="relative flex gap-3 pb-4">
+            {/* Connector Line (2px thick, perfectly centered) */}
+            {!isLastStep && (
+              <div className="absolute left-[15px] top-[32px] bottom-0 w-0.5 bg-border/70" />
+            )}
+
+            {/* Timeline Icon Node */}
+            <div
+              className={cn(
+                "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-sm transition-colors mt-0.5",
+                isActive
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "bg-background border-border text-muted-foreground",
+              )}
+            >
+              {isActive ? (
+                <Loader2 size={14} className="animate-spin text-primary" />
+              ) : (
+                <TypeIcon type={thought.type} />
+              )}
+            </div>
+
+            <AccordionItem
+              value={stepKey}
+              className="flex-1 min-w-0 border-none"
+            >
+              <AccordionTrigger
+                className={cn(
+                  "group w-full justify-between rounded-xl px-4 py-3 transition-colors ",
+                  isActive && "bg-muted/30",
+                )}
+              >
+                <HStack className="gap-3 items-center min-w-0">
+                  <TypographyP
+                    size="sm"
+                    weight="medium"
+                    className={cn(
+                      "capitalize truncate",
+                      isActive ? "text-foreground" : "text-foreground/80",
+                    )}
+                  >
+                    Step {idx + 1}: {thought.type}
+                  </TypographyP>
+                </HStack>
+              </AccordionTrigger>
+
+              <AccordionContent className="px-4 pb-2 pt-1">
+                {thought.type === EventType.REASONING ? (
+                  <ReasoningRenderer>
+                    {parseContent(thought) as string}
+                  </ReasoningRenderer>
+                ) : (
+                  <TypographyP
+                    size="sm"
+                    variant="muted"
+                    className="leading-relaxed"
+                  >
+                    {parseContent(thought)}
+                  </TypographyP>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </div>
+        );
+      })}
+    </Accordion>
+  );
+};
+
 const TypeIcon = ({ type }: { type: string }) => {
   switch (type as EventType) {
     case EventType.SEARCHING:
-      return <Search size={14} className="text-secondary shrink-0 mt-0.5" />;
+      return <Search size={14} className="text-inherit shrink-0" />;
     case EventType.RANKING:
-      return (
-        <ListOrdered size={14} className="text-secondary shrink-0 mt-0.5" />
-      );
+      return <ListOrdered size={14} className="text-inherit shrink-0" />;
     case EventType.REASONING:
-      return <Sparkles size={14} className="text-secondary shrink-0 mt-0.5" />;
+      return <Sparkles size={14} className="text-inherit shrink-0" />;
     default:
-      return <Sparkles size={14} className="text-secondary shrink-0 mt-0.5" />;
+      return <Sparkles size={14} className="text-inherit shrink-0" />;
   }
 };
 
@@ -322,3 +324,46 @@ const ReasoningRenderer = ({ children }: { children?: string }) => {
     </Streamdown>
   );
 };
+
+function parseContent(step: ProgressStep): ReactNode | string {
+  switch (step.type) {
+    case EventType.SEARCHING:
+      if (!step.metadata?.queries) {
+        console.warn("Searching step is missing metadata.queries", step);
+        return "Searching academic databases...";
+      }
+      const queries = Array.isArray(step.metadata.queries)
+        ? (step.metadata.queries as string[]).filter(Boolean)
+        : [];
+      return queries.map((q, idx) => (
+        <span key={idx}>
+          {q}
+          {idx < queries.length - 1 && <br />}
+        </span>
+      ));
+
+    case EventType.RANKING:
+      if (!step.metadata?.total_papers) {
+        console.warn("Ranking step is missing metadata", step);
+      }
+      return (
+        step.content ||
+        `Ranking ${step.metadata?.total_papers ?? "papers"} by  relevance, filters, and quality...`
+      );
+    case EventType.REASONING:
+      if (!step.content) {
+        console.warn("Reasoning step is missing content", step);
+      }
+      return step.content || "Generating response...";
+    default:
+      return step.content || "";
+  }
+}
+
+function formatDuration(start: number, end: number) {
+  const duration = end - start;
+  const seconds = Math.floor(duration / 1000);
+  return seconds < 60
+    ? `${seconds}s`
+    : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}

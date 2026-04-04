@@ -253,6 +253,18 @@
       opacity: 0;
     }
   }
+
+  --animate-mask-shimmer: mask-shimmer 3.5s linear infinite;
+  @keyframes mask-shimmer {
+    0% {
+      -webkit-mask-position: 200% center;
+      mask-position: 200% center;
+    }
+    100% {
+      -webkit-mask-position: -200% center;
+      mask-position: -200% center;
+    }
+  }
 }
 
 @layer base {

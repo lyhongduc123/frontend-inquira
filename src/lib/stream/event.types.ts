@@ -7,6 +7,10 @@ export enum StreamEvent {
   Done = "done",
   Error = "error",
   Heartbeat = "heartbeat",
+  Step = "step",
+  Reasoning = "reasoning",
+  Ping = "ping",
+  Conversation = "conversation",
 }
 
 export enum EventType {
@@ -30,9 +34,17 @@ export interface ProgressEvent {
     | EventType.RANKING
     | EventType.SEARCHING
     | EventType.REASONING
-    | EventType.END_EVENT;
+    | EventType.END_EVENT
+    | "reasoning"
+    | "searching"
+    | "ranking"
+    | "step_count";
   content: string;
   metadata?: Record<string, unknown>;
+  phase?: string;
+  progress_percent?: number;
+  current_step?: number;
+  total_steps?: number;
 }
 
 export interface ReasoningEvent {
@@ -42,10 +54,18 @@ export interface ReasoningEvent {
 
 export interface MetadataEvent {
   type: EventType.PAPER_METADATA;
-  papers: PaperMetadata[];
+  content: PaperMetadata[];
 }
 
 export interface ChunkEvent {
   type: StreamEvent.Chunk;
   content: string;
+}
+
+export interface ConversationEvent {
+  conversation_id: string;
+  title?: string;
+  conversation_type?: string;
+  primary_paper_id?: string;
+  metadata?: Record<string, unknown>;
 }

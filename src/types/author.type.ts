@@ -26,13 +26,13 @@ export interface AuthorDetail {
   url: string | null;
   externalIds: Record<string, unknown> | null;
   hIndex: number | null;
-  i10Index: number | null;
+  i10Index: number | null; // Not computing this anymore
   totalCitations: number | null;
   totalPapers: number | null;
   verified: boolean;
   firstPublicationYear: number | null;
   lastKnownInstitutionId: number | null;
-  reputationScore: number | null;
+  retractionRate: number | null;
   authorInstitutions: Array<{
     id: string;
     name: string;
@@ -46,7 +46,7 @@ export interface AuthorDetail {
   averageAuthorPosition: number | null;
   retractedPapersCount: number | null;
   hasRetractedPapers: boolean;
-  selfCitationRate: number | null;
+  selfCitationRate: number | null; // Hard to compute
   isProcessed: boolean;
   isConflict: boolean;
   homepageUrl: string | null;

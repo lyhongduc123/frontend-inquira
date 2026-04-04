@@ -93,4 +93,18 @@ export const conversationsApi = {
       `${CONVERSATIONS_BASE}/${conversationId}`
     );
   },
+
+  /**
+   * Generate a conversation title using heuristics or AI
+   */
+  async generateTitle(
+    conversationId: string,
+    message: string,
+    maxLength: number = 50
+  ): Promise<{ title: string }> {
+    return apiClient.post<{ title: string }>(
+      `${CONVERSATIONS_BASE}/${conversationId}/generate-title`,
+      { message, max_length: maxLength }
+    );
+  },
 };

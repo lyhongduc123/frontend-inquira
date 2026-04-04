@@ -2,17 +2,18 @@
  * React hooks for user settings
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { userSettingsApi, type UpdateUserSettingsRequest } from "@/lib/api";
 import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from "@/lib/react-query/react-query-utils";
+import { useQueryWithError } from "./use-query-with-error";
 
 export function useUserSettings() {
-  return useQuery({
+  return useQueryWithError({
     queryKey: ["user-settings"],
     queryFn: () => userSettingsApi.get(),
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
-  });
+  }, 'Failed to load user settings');
 }
 
 export function useUpdateUserSettings() {
