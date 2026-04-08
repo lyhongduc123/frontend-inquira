@@ -3,7 +3,7 @@ import { VStack } from "@/components/layout/vstack";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PaperMetadata } from "@/types/paper.type";
-import { AuthorMetadata } from "@/types/author.type";
+import { AuthorMetadataDTO } from "@/types/author.type";
 import { TypographyP } from "@/components/global/typography";
 import {
   BookOpen,
@@ -59,10 +59,11 @@ export function PaperCard({
     citationCount,
     influentialCitationCount,
     pdfUrl,
+    externalIds,
   } = paperMetadata;
   const displayText = abstract;
 
-  const formatAuthors = (authorsArr: AuthorMetadata[]) => {
+  const formatAuthors = (authorsArr: AuthorMetadataDTO[]) => {
     if (!authorsArr?.length) return "";
     if (authorsArr.length <= 3) {
       return authorsArr.map((author) => author.name).join(", ");
@@ -130,7 +131,7 @@ export function PaperCard({
         <CardTitle className="flex-1 text-sm font-medium min-w-0">
           <HStack className="items-center gap-1 min-w-0">
             <a
-              href={url ?? "#"}
+              href={externalIds?.doi ? `https://doi.org/${externalIds.doi}` : url ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 group-hover:underline line-clamp-1 pr-2 min-w-0 max-w-[90%]"

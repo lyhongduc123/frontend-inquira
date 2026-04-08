@@ -1,18 +1,16 @@
 import { useState, useRef, useCallback } from "react";
 import { Message } from "@/types/message.type";
 import { streamEvent } from "@/lib/stream/stream";
-import { MetadataEvent, ProgressEvent } from "@/lib/stream/event.types";
+import {
+  MetadataEvent,
+  ProgressEvent,
+  ConversationEvent,
+} from "@/lib/stream/event.types";
 
 interface UsePaperChatOptions {
   paperId: string;
   onConversationCreated?: (conversationId: string) => void;
   onError?: () => void;
-}
-
-interface ConversationEvent {
-  conversation_id: string;
-  conversation_type: string;
-  primary_paper_id: string;
 }
 
 interface StreamState {

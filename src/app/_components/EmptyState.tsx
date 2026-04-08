@@ -29,7 +29,7 @@ export function EmptyState({
       <div className="w-full max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="space-y-3 text-center">
           <h1 className="bg-linear-to-r from-primary to-primary/60 bg-clip-text text-4xl font-bold text-transparent">
-            Welcome to Exegent
+            Welcome to Inquira
           </h1>
           <TypographyP variant="muted" size="lg">
             Your AI-powered research assistant. Ask questions and get

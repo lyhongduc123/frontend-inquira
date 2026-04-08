@@ -16,11 +16,14 @@ import {
 
 interface CitationChartCardProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  countsByYear?: Array<any>;
+  countsByYear?: Record<string, unknown>;
 }
 
 export function CitationChartCard({ countsByYear }: CitationChartCardProps) {
-  const citationMetrics = countsByYear;
+  const citationMetrics = Object.entries(countsByYear || {}).map(([year, data]) => ({
+    year,
+    cited_by_count: (data as Record<string, unknown>).citations as number || 0,
+  })).sort((a, b) => Number(a.year) - Number(b.year));
   const chartConfig = {
     year: {
       label: "Year",
@@ -35,7 +38,7 @@ export function CitationChartCard({ countsByYear }: CitationChartCardProps) {
         config={chartConfig}
         className="w-full h-full min-h-[250px]"
       >
-        <BarChart accessibilityLayer data={citationMetrics || []}>
+        <BarChart accessibilityLayer data={citationMetrics}>
           <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
           <YAxis allowDecimals={false} tickLine={false} />
           <XAxis dataKey={"year"} tickLine={false} />

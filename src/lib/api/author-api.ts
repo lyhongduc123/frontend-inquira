@@ -3,7 +3,7 @@
  */
 
 import { apiClient } from "./api-client";
-import type { AuthorDetail, AuthorDetailWithPapers } from "@/types/author.type";
+import type { AuthorDetailDTO, AuthorDetailWithPapersDTO } from "@/types/author.type";
 import {
   type PaginatedData,
   HttpStatus,
@@ -32,7 +32,7 @@ export const authorApi = {
    */
   async list(
     params: AuthorListParams = {},
-  ): Promise<PaginatedData<AuthorDetail>> {
+  ): Promise<PaginatedData<AuthorDetailDTO>> {
     const { page = 1, pageSize = 20, search, verified } = params;
 
     const queryParams = new URLSearchParams({
@@ -48,7 +48,7 @@ export const authorApi = {
       queryParams.append("verified", verified.toString());
     }
 
-    const response = await apiClient.get<PaginatedData<AuthorDetail>>(
+    const response = await apiClient.get<PaginatedData<AuthorDetailDTO>>(
       `${AUTHORS_BASE}?${queryParams}`,
     );
     return response;
@@ -57,9 +57,9 @@ export const authorApi = {
   /**
    * Get a specific author by author_id
    */
-  async get(authorId: string): Promise<AuthorDetail | null> {
+  async get(authorId: string): Promise<AuthorDetailDTO | null> {
     try {
-      const response = await apiClient.get<AuthorDetail>(
+      const response = await apiClient.get<AuthorDetailDTO>(
         `${AUTHORS_BASE}/${authorId}`,
       );
       return response;
@@ -74,9 +74,9 @@ export const authorApi = {
   /**
    * Get author details with papers, co-authors, and metrics
    */
-  async getDetails(authorId: string): Promise<AuthorDetailWithPapers | null> {
+  async getDetails(authorId: string): Promise<AuthorDetailWithPapersDTO | null> {
     try {
-      const response = await apiClient.get<AuthorDetailWithPapers>(
+      const response = await apiClient.get<AuthorDetailWithPapersDTO>(
         `${AUTHORS_BASE}/${authorId}/details`,
       );
       return response;

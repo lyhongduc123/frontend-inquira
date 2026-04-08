@@ -1,14 +1,14 @@
 import { PaperMetadata } from "./paper.type";
 
-export interface QuartileBreakdown {
-  Q1: number;
-  Q2: number;
-  Q3: number;
-  Q4: number;
+export interface QuartileBreakdownDTO {
+  q1: number;
+  q2: number;
+  q3: number;
+  q4: number;
   unknown: number;
 }
 
-export interface CoAuthor {
+export interface CoAuthorDTO {
   authorId: string;
   name: string;
   hIndex: number | null;
@@ -16,7 +16,7 @@ export interface CoAuthor {
   collaborationCount: number;
 }
 
-export interface AuthorDetail {
+export interface AuthorDetailDTO {
   id: number;
   authorId: string;
   openalexId: string | null;
@@ -61,17 +61,12 @@ export interface AuthorDetail {
   } | null;
 }
 
-export interface AuthorDetailWithPapers extends AuthorDetail {
+export interface AuthorDetailWithPapersDTO extends AuthorDetailDTO {
   papers: PaperMetadata[];
-  quartileBreakdown: QuartileBreakdown;
-  coAuthors: CoAuthor[];
+  quartileBreakdown: QuartileBreakdownDTO;
+  coAuthors: CoAuthorDTO[];
   papersByYear: Record<number, number> | null;
-  countsByYear: Array<{
-    year: number;
-    worksCount: number;
-    oaWorksCount: number;
-    citedByCount: number;
-  }> | null;
+  countsByYear: Record<string, unknown> | null;
   topics: Array<{
     displayName: string;
     count: number;
@@ -86,7 +81,7 @@ export interface AuthorDetailWithPapers extends AuthorDetail {
   }> | null;
 }
 
-export interface AuthorMetadata {
+export interface AuthorMetadataDTO {
   name: string;
   authorId?: string | null;
   citationCount?: number | null;

@@ -35,13 +35,18 @@ import {
 import { useSearchFilters } from "@/hooks/use-search-filters";
 
 export interface SearchFilters {
-  author?: string;
+  author_name?: string;
   year_min?: number;
   year_max?: number;
   venue?: string;
+  min_citation_count?: number;
+  max_citation_count?: number;
+  journal_quartile?: "Q1" | "Q2" | "Q3" | "Q4";
+  field_of_study?: string[];
+  // Legacy fields for UI compatibility (can be removed later)
+  author?: string;
   min_citations?: number;
   max_citations?: number;
-  // Legacy fields for UI compatibility (can be removed later)
   yearRange?: {
     min?: number;
     max?: number;
@@ -77,6 +82,14 @@ export function FilterPanel({
     setLocalFilters((prev) => ({
       ...prev,
       category: value.length > 0 ? value : undefined,
+      field_of_study: value.length > 0 ? value : undefined,
+    }));
+  }
+
+  function updateJournalQuartile(value: "Q1" | "Q2" | "Q3" | "Q4" | undefined) {
+    setLocalFilters((prev) => ({
+      ...prev,
+      journal_quartile: value,
     }));
   }
 
@@ -148,8 +161,10 @@ export function FilterPanel({
             <PaperTypeFilter
               openAccessOnly={localFilters.openAccessOnly}
               excludePreprints={localFilters.excludePreprints}
+              journalQuartile={localFilters.journal_quartile}
               onOpenAccessChange={updateOpenAccess}
               onExcludePreprintsChange={updateExcludePreprints}
+              onJournalQuartileChange={updateJournalQuartile}
             />
 
             <CategoryFilter
@@ -160,12 +175,12 @@ export function FilterPanel({
         </ScrollArea>
 
         {hasActiveFilters && (
-          <Box className="border-t p-4 flex-shrink-0">
+          <Box className="border-t p-4 shrink-0">
             <FilterSummary filters={localFilters} onClearAll={handleClear} />
           </Box>
         )}
 
-        <SheetFooter className="flex-row gap-2 flex-shrink-0">
+        <SheetFooter className="flex-row gap-2 shrink-0">
           <Button variant="default" onClick={handleApply} className="flex-3">
             Apply
           </Button>
@@ -403,16 +418,17 @@ const CategoryFilter = ({
 const PaperTypeFilter = ({
   openAccessOnly,
   excludePreprints,
-  journalLevel,
+  journalQuartile,
   onOpenAccessChange,
   onExcludePreprintsChange,
+  onJournalQuartileChange,
 }: {
   openAccessOnly?: boolean;
   excludePreprints?: boolean;
-  journalLevel?: string;
+  journalQuartile?: "Q1" | "Q2" | "Q3" | "Q4";
   onOpenAccessChange: (value: boolean | undefined) => void;
   onExcludePreprintsChange: (value: boolean | undefined) => void;
-  // onJournalLevelChange: (value: string | undefined) => void;
+  onJournalQuartileChange: (value: "Q1" | "Q2" | "Q3" | "Q4" | undefined) => void;
 }) => {
   return (
     <VStack className="gap-3">
@@ -446,6 +462,29 @@ const PaperTypeFilter = ({
           Exclude Preprints
         </Label>
       </HStack>
+
+      <VStack className="gap-1.5">
+        <Label htmlFor="journal-quartile" className="text-xs text-muted-foreground">
+          Journal Quartile
+        </Label>
+        <Select
+          value={journalQuartile || "all"}
+          onValueChange={(value) => {
+            onJournalQuartileChange(value === "all" ? undefined : (value as "Q1" | "Q2" | "Q3" | "Q4"));
+          }}
+        >
+          <SelectTrigger id="journal-quartile" className="h-9 w-32">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="Q1">Q1</SelectItem>
+            <SelectItem value="Q2">Q2</SelectItem>
+            <SelectItem value="Q3">Q3</SelectItem>
+            <SelectItem value="Q4">Q4</SelectItem>
+          </SelectContent>
+        </Select>
+      </VStack>
     </VStack>
   );
 };
@@ -465,8 +504,13 @@ const FilterSummary = ({
     activeFilters.push(`Year: ${min}-${max}`);
   }
 
-  if (filters.category && filters.category.length > 0) {
-    activeFilters.push(`Fields: ${filters.category.length} selected`);
+  const selectedFields = filters.field_of_study || filters.category;
+  if (selectedFields && selectedFields.length > 0) {
+    activeFilters.push(`Fields: ${selectedFields.length} selected`);
+  }
+
+  if (filters.journal_quartile) {
+    activeFilters.push(`Journal: ${filters.journal_quartile}`);
   }
 
   if (filters.openAccessOnly) {

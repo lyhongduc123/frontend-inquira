@@ -4,15 +4,7 @@ import React, { createContext, useContext, ReactNode } from "react";
 import { useConversation } from "@/hooks/use-conversation";
 import { useChat } from "@/hooks/use-chat";
 import { useConversationStore } from "@/store/conversation-store";
-import { StreamEventPayload } from "@/lib/stream/stream";
-
-type SendMessagePayload = StreamEventPayload | {
-  query: string;
-  conversationId?: string;
-  filters?: Record<string, unknown>;
-  pipeline?: "research" | "agent";
-  clientMessageId?: string;
-};
+import { ChatSendMessagePayload } from "@/types/chat.type";
 
 interface ChatContextValue {
   // Conversation state
@@ -25,7 +17,7 @@ interface ChatContextValue {
   deleteConversation: (conversationId: string) => Promise<void>;
   
   // Message actions
-  sendMessage: (payload: SendMessagePayload) => Promise<void>;
+  sendMessage: (payload: ChatSendMessagePayload) => Promise<void>;
   clearMessages: () => void;
 }
 

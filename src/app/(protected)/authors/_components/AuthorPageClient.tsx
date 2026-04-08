@@ -30,6 +30,7 @@ export function AuthorPageClient() {
   } = useAuthorDetails(authorId);
   const previousStatusRef = useRef<string | null>(null);
   const lastNotifiedTerminalKeyRef = useRef<string | null>(null);
+  console.log("Author data:", author);
 
   useEffect(() => {
     const currentStatus = author?.enrichmentStatus?.status ?? null;
@@ -156,7 +157,7 @@ export function AuthorPageClient() {
           {author?.quartileBreakdown && (
             <QuartileChart quartileBreakdown={author.quartileBreakdown} />
           )}
-          {author?.countsByYear && author.countsByYear.length > 0 && (
+          {author?.countsByYear && (
             <CitationChartCard countsByYear={author.countsByYear} />
           )}
           {author?.papersByYear && (

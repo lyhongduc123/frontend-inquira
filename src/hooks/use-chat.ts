@@ -3,7 +3,6 @@ import { Message } from "@/types/message.type";
 import { streamEvent, streamTask, StreamEventPayload } from "@/lib/stream/stream";
 import { useConversation } from "./use-conversation";
 import { useConversationStore } from "@/store/conversation-store";
-import { useAuthStore } from "@/store/auth-store";
 import { chatApi } from "@/lib/api/chat-api";
 import { useProgressStore } from "@/store/progress-store";
 import { MetadataEvent, ProgressEvent, StreamEvent, ConversationEvent } from "@/lib/stream/event.types";

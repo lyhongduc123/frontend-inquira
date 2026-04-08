@@ -1,4 +1,5 @@
 import { StreamEvent, ProgressEvent, MetadataEvent, ChunkEvent, ConversationEvent } from "./event.types";
+import { apiClient } from "@/lib/api/api-client";
 
 export interface StreamCallbacks {
   onChunk?: (chunk: string) => void;
@@ -75,10 +76,11 @@ export async function streamTask(
     }
   };
 
-  const res = await fetch(url, {
-    method: "GET",
-    credentials: "include",
+  const res = await apiClient.getRaw(url, {
     signal,
+    headers: {
+      Accept: "text/event-stream",
+    },
   });
 
   if (!res.ok) {
@@ -227,6 +229,7 @@ export async function streamEvent(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    Accept: "text/event-stream",
   };
 
   // Heartbeat tracking
@@ -253,11 +256,8 @@ export async function streamEvent(
     }
   };
 
-  const res = await fetch(url, {
-    method: "POST",
+  const res = await apiClient.postRaw(url, payload, {
     headers,
-    body: JSON.stringify(payload),
-    credentials: "include",
     signal,
   });
 

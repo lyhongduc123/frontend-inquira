@@ -3,11 +3,7 @@
 import { memo, useMemo } from "react";
 import { Message } from "@/types/message.type";
 import { Button } from "@/components/ui/button";
-import {
-  CircleDot,
-  CircleXIcon,
-  TargetIcon,
-} from "lucide-react";
+import { ChevronDownIcon, CircleDot, CircleXIcon, TargetIcon } from "lucide-react";
 import { VStack } from "@/components/layout/vstack";
 import {
   Dialog,
@@ -63,7 +59,7 @@ function QueryNavigatorComponent({
   }
 
   const activeQuery = userQueries.find(
-    (q) => q.originalIndex === currentActiveQueryIndex
+    (q) => q.originalIndex === currentActiveQueryIndex,
   );
 
   const displayQuery = activeQuery || userQueries[0];
@@ -72,8 +68,8 @@ function QueryNavigatorComponent({
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8">
-          <CircleDot className="h-2 w-2" />
           {displayQuery?.text}
+          <ChevronDownIcon className="size-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[80vh] h-[70vh] flex flex-col">

@@ -1,4 +1,4 @@
-import { AuthorDetailWithPapers } from "@/types/author.type";
+import { AuthorDetailWithPapersDTO } from "@/types/author.type";
 import { HStack } from "@/components/layout/hstack";
 import { VStack } from "@/components/layout/vstack";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ import {
 import { AuthorMetricCard } from "./AuthorMetricCard";
 
 interface AuthorMetricsCardsProps {
-  author?: AuthorDetailWithPapers;
+  author?: AuthorDetailWithPapersDTO;
 }
 
 export function AuthorMetricsSection({ author }: AuthorMetricsCardsProps) {

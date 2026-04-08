@@ -89,14 +89,14 @@ export function ScopedCitationCard({
       <Separator />
 
       <HStack className="gap-1 items-center justify-between">
-        {paperDetail.externalIds?.DOI && (
+        {paperDetail.externalIds?.doi && (
           <a
-            href={`https://doi.org/${paperDetail.externalIds?.DOI}`}
+            href={`https://doi.org/${paperDetail.externalIds?.doi}`}
             target="_blank"
             rel="noopener noreferrer"
           >
             <TypographyP className="text-xs text-muted-foreground underline">
-              DOI: {paperDetail.externalIds?.DOI}
+              DOI: {paperDetail.externalIds?.doi}
             </TypographyP>
           </a>
         )}

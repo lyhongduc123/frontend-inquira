@@ -14,8 +14,11 @@ export function useSearchFilters() {
   const state = useMemo((): { filters: SearchFilters; pipeline: "research" | "agent" } => {
     const f: SearchFilters = {};
 
-    const author = searchParams.get("author");
-    if (author) f.author = author;
+    const authorName = searchParams.get("author_name") || searchParams.get("author");
+    if (authorName) {
+      f.author_name = authorName;
+      f.author = authorName;
+    }
 
     const yearMin = searchParams.get("year_min");
     if (yearMin) f.year_min = parseInt(yearMin, 10);
@@ -26,14 +29,33 @@ export function useSearchFilters() {
     const venue = searchParams.get("venue");
     if (venue) f.venue = venue;
 
-    const minCitations = searchParams.get("min_citations");
-    if (minCitations) f.min_citations = parseInt(minCitations, 10);
+    const minCitations = searchParams.get("min_citation_count") || searchParams.get("min_citations");
+    if (minCitations) {
+      const parsed = parseInt(minCitations, 10);
+      f.min_citation_count = parsed;
+      f.min_citations = parsed;
+    }
 
-    const maxCitations = searchParams.get("max_citations");
-    if (maxCitations) f.max_citations = parseInt(maxCitations, 10);
+    const maxCitations = searchParams.get("max_citation_count") || searchParams.get("max_citations");
+    if (maxCitations) {
+      const parsed = parseInt(maxCitations, 10);
+      f.max_citation_count = parsed;
+      f.max_citations = parsed;
+    }
 
-    const categories = searchParams.get("category")?.split(",").filter(Boolean);
-    if (categories && categories.length > 0) f.category = categories;
+    const journalQuartile = searchParams.get("journal_quartile") || searchParams.get("journal_rank");
+    if (journalQuartile && ["Q1", "Q2", "Q3", "Q4"].includes(journalQuartile)) {
+      f.journal_quartile = journalQuartile as "Q1" | "Q2" | "Q3" | "Q4";
+    }
+
+    const fields =
+      searchParams.get("field_of_study")?.split(",").filter(Boolean)
+      || searchParams.get("fields_of_study")?.split(",").filter(Boolean)
+      || searchParams.get("category")?.split(",").filter(Boolean);
+    if (fields && fields.length > 0) {
+      f.field_of_study = fields;
+      f.category = fields;
+    }
 
     const openAccess = searchParams.get("open_access");
     if (openAccess === "true") f.openAccessOnly = true;
@@ -72,7 +94,7 @@ export function useSearchFilters() {
         }
       };
 
-      updateParam("author", newFilters.author);
+      updateParam("author_name", newFilters.author_name ?? newFilters.author);
       
       // Prefer yearRange if it exists, otherwise use flat fields
       const yearMin = newFilters.yearRange?.min ?? newFilters.year_min;
@@ -81,13 +103,15 @@ export function useSearchFilters() {
       updateParam("year_max", yearMax);
 
       updateParam("venue", newFilters.venue);
-      updateParam("min_citations", newFilters.min_citations);
-      updateParam("max_citations", newFilters.max_citations);
+      updateParam("min_citation_count", newFilters.min_citation_count ?? newFilters.min_citations);
+      updateParam("max_citation_count", newFilters.max_citation_count ?? newFilters.max_citations);
+      updateParam("journal_quartile", newFilters.journal_quartile);
       
-      if (newFilters.category && newFilters.category.length > 0) {
-        params.set("category", newFilters.category.join(","));
+      const selectedFields = newFilters.field_of_study ?? newFilters.category;
+      if (selectedFields && selectedFields.length > 0) {
+        params.set("field_of_study", selectedFields.join(","));
       } else {
-        params.delete("category");
+        params.delete("field_of_study");
       }
 
       updateParam("open_access", newFilters.openAccessOnly);

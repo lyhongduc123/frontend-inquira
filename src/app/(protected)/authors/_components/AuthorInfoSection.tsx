@@ -20,7 +20,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AuthorDetailWithPapers } from "@/types/author.type";
+import { AuthorDetailWithPapersDTO } from "@/types/author.type";
 import {
   CheckCircle2,
   ExternalLink,
@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 
 interface AuthorInfoSectionProps {
-  author?: AuthorDetailWithPapers;
+  author?: AuthorDetailWithPapersDTO;
   isLoading?: boolean;
 }
 
@@ -150,15 +150,15 @@ export function AuthorInfoSection({
                       </Badge>
                     </HoverCardTrigger>
                     <HoverCardContent className="text-sm text-card-foreground gap-2">
-                      <TypographyH4 className="text-sm text-primary-foreground mb-2">
+                      <TypographyH4 className="text-sm mb-2 text-special">
                         Author processed
                       </TypographyH4>
                       We use combined datas from{" "}
-                      <span className="text-primary-foreground font-semibold">
+                      <span className="text-special font-semibold">
                         Semantic Scholar
                       </span>{" "}
                       and{" "}
-                      <span className="text-primary-foreground font-semibold">
+                      <span className="text-special font-semibold">
                         Openalex
                       </span>{" "}
                       to build the author profile. The author data is refreshed{" "}
@@ -173,14 +173,7 @@ export function AuthorInfoSection({
                     Processing author data...
                   </Badge>
                 )}
-                {author?.isProcessed && !shouldShowProcessing && (
-                  <Badge
-                    variant="outline"
-                    className="text-sm border-green-300 text-green-700"
-                  >
-                    Processing Complete
-                  </Badge>
-                )}
+
 
                 <ConflictBadge isConflict={author?.isConflict} />
               </VStack>
@@ -268,13 +261,13 @@ const ConflictBadge = ({ isConflict }: { isConflict?: boolean }) => {
           </Badge>
         </HoverCardTrigger>
         <HoverCardContent className="text-sm text-card-foreground">
-          <TypographyH4 className="text-sm text-primary-foreground mb-2">
+          <TypographyH4 className="text-sm text-special mb-2">
             No data conflict detected
           </TypographyH4>
           We have not detected any conflicting information for this author
           between both sources. But we still recommend reviewing the data for
           yourself on{" "}
-          <span className="text-primary-foreground font-semibold">
+          <span className="text-special font-semibold">
             Google Scholar
           </span>
         </HoverCardContent>

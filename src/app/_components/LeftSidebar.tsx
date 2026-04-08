@@ -1,6 +1,6 @@
 "use client";
 
-import { BookmarkIcon, MessageSquarePlus } from "lucide-react";
+import { BookmarkIcon, MessageSquarePlus, SearchIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +34,8 @@ import { useConversation } from "@/hooks/use-conversation";
 import { TypographyP } from "@/components/global/typography";
 import { Command } from "@/components/ui/command";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { HStack } from "@/components/layout/hstack";
+import { Button } from "@/components/ui/button";
 
 export function LeftSidebar() {
   const router = useRouter();
@@ -43,7 +45,6 @@ export function LeftSidebar() {
   const {
     currentConversationId,
     deleteConversation: deleteConversationAction,
-    resetConversation,
   } = useConversation();
 
   const newConversationId = useConversationStore(
@@ -94,7 +95,6 @@ export function LeftSidebar() {
   ]);
 
   const handleNewConversation = () => {
-    resetConversation();
     router.push("/");
   };
 
@@ -141,10 +141,7 @@ export function LeftSidebar() {
       <SidebarHeader className="py-4">
         <Brand showText={isOpen} />
         <SidebarMenu>
-          <NewChatButton
-            isOpen={isOpen}
-            onClick={handleNewConversation}
-          />
+          <NewChatButton isOpen={isOpen} onClick={handleNewConversation} />
           <BookmarkButton
             isOpen={isOpen}
             onClick={() => {
@@ -157,9 +154,21 @@ export function LeftSidebar() {
       <SidebarContent>
         {isOpen && (
           <SidebarGroup className="w-full min-w-0 gap-1">
-            <SidebarGroupLabel className="select-none">
-              Your conversations
-            </SidebarGroupLabel>
+            <HStack>
+              <SidebarGroupLabel className="select-none">
+                Your conversations
+              </SidebarGroupLabel>
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="has-[>svg]:p-0 p-0"
+              >
+                <Link href="/conversations" className="ml-auto">
+                  <SearchIcon className="size-4" />
+                </Link>
+              </Button>
+            </HStack>
             {!isAuthenticated ? (
               <Box className="py-4 px-2">
                 <VStack className="w-full gap-2">
@@ -255,7 +264,13 @@ export function LeftSidebar() {
   );
 }
 
-const NewChatButton = ({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) => {
+const NewChatButton = ({
+  isOpen,
+  onClick,
+}: {
+  isOpen: boolean;
+  onClick: () => void;
+}) => {
   return (
     <SidebarMenuButton
       onClick={onClick}
@@ -264,14 +279,18 @@ const NewChatButton = ({ isOpen, onClick }: { isOpen: boolean; onClick: () => vo
     >
       <MessageSquarePlus />
       {isOpen && <span>New Chat</span>}
-      {isOpen && <Kbd className="ml-auto">
-        Alt + N
-      </Kbd>}
+      {isOpen && <Kbd className="ml-auto">Alt + N</Kbd>}
     </SidebarMenuButton>
-  )
+  );
 };
 
-const BookmarkButton = ({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) => {
+const BookmarkButton = ({
+  isOpen,
+  onClick,
+}: {
+  isOpen: boolean;
+  onClick: () => void;
+}) => {
   return (
     <SidebarMenuButton
       onClick={onClick}
@@ -280,9 +299,7 @@ const BookmarkButton = ({ isOpen, onClick }: { isOpen: boolean; onClick: () => v
     >
       <BookmarkIcon />
       {isOpen && <span>Bookmarks</span>}
-      {isOpen && <Kbd className="ml-auto">
-        Alt + B
-      </Kbd>}
+      {isOpen && <Kbd className="ml-auto">Alt + B</Kbd>}
     </SidebarMenuButton>
-  )
+  );
 };

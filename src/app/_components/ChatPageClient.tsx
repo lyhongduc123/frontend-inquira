@@ -23,6 +23,7 @@ import { useDetailSidebarStore } from "@/store/paper-detail-sidebar-store";
 import { PaperMetadata } from "@/types/paper.type";
 import { consumeChatLaunchPayload, consumeScopedChatSelection } from "@/lib/scoped-chat-selection";
 import { useSearchFilters } from "@/hooks/use-search-filters";
+import { ShareConversationButton } from "./ShareConversationButton";
 
 interface ChatPageClientProps {
   routeConversationId?: string;
@@ -79,7 +80,6 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
         latestAppliedRouteConversationIdRef.current !== routeConversationId
         || currentConversationId !== routeConversationId
       ) {
-        // Skip loading if we are already streaming this conversation (prevents flicker on initial message)
         const isCurrentlyStreaming = useConversationStore.getState().messages.some(m => !m.done);
         if (isCurrentlyStreaming && currentConversationId === routeConversationId) {
              console.log("Skipping loadConversation as it matches active stream:", routeConversationId);
@@ -87,7 +87,6 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
              return;
         }
 
-        // Skip loading if we just created this conversation (prevents disconnect after creation)
         const isNewConversation = useConversationStore.getState().newConversationId === routeConversationId;
         if (isNewConversation) {
           console.log("Skipping loadConversation for newly created conversation:", routeConversationId);
@@ -114,17 +113,14 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
 
   const onConversationCreated = useCallback(
     (conversationId: string) => {
-      // Update store immediately
       const store = useConversationStore.getState();
       store.setCurrentConversationId(conversationId);
       store.setNewConversationId(conversationId);
       
       // Update URL without triggering a full page re-mount (Gemini-like)
       // This keeps the useChat hook alive and streaming correctly
+      // Push make the URL reflect the new conversation ID without reloading the page
       window.history.replaceState(null, "", `/conversation/${conversationId}`);
-      
-      // Note: We don't use router.push here because it might cause a re-mount 
-      // of the ChatPageClient, which would kill the active stream.
     },
     [],
   );
@@ -166,7 +162,6 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     if (hasInitializedRootStateRef.current) return;
 
     if (currentConversationId !== null || messages.length > 0) {
-      console.log("Root route detected with active conversation state. Clearing...");
       resetConversation();
       clearMessages();
     }
@@ -320,6 +315,11 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
               <QueryNavigator
                 messages={messages}
                 onQueryClick={handleQueryClick}
+              />
+            }
+            rightContent={
+              <ShareConversationButton 
+                url={window.location.href}
               />
             }
           ></Header>

@@ -28,7 +28,7 @@ export function Header({
         </Box>
       )}
 
-      <HStack className="items-center gap-2 shrink-0 min-w-32">
+      <HStack className="items-center gap-2 shrink-0">
         {rightContent}
       </HStack>
     </HStack>

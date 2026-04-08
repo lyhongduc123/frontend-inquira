@@ -6,22 +6,29 @@ import { TypographyP } from "@/components/global/typography";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ReferencedPaper } from "@/types/paper.type";
 import { PaperCard } from "./PaperCard";
+import { Button } from "@/components/ui/button";
 
 interface PaperReferenceViewProps {
   references: ReferencedPaper[];
   isLoading?: boolean;
+  canLoadMore?: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
 }
 
 export function PaperReferenceView({
   references,
   isLoading = false,
+  canLoadMore = false,
+  onLoadMore,
+  isLoadingMore = false,
 }: PaperReferenceViewProps) {
   return (
     <VStack className="gap-6">
       {/* Papers that cite this paper */}
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Papers Referenced ({references.length})</CardTitle>
+          <CardTitle>Referenced papers ({references.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -43,6 +50,16 @@ export function PaperReferenceView({
               {references.map((reference, idx) => (
                 <PaperCard key={idx} paper={reference.citedPaper!} idx={idx} />
               ))}
+              {canLoadMore && (
+                <Button
+                  variant="outline"
+                  onClick={onLoadMore}
+                  disabled={isLoadingMore}
+                  className="w-full"
+                >
+                  {isLoadingMore ? "Loading..." : "Load more"}
+                </Button>
+              )}
             </VStack>
           )}
         </CardContent>

@@ -1,4 +1,4 @@
-import { CoAuthor } from "@/types/author.type";
+import { CoAuthorDTO } from "@/types/author.type";
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import { TypographyP } from "@/components/global/typography";
 import { AuthorItem, AuthorItemSkeleton } from "./AuthorItem";
 
 interface CoAuthorsListProps {
-  coAuthors?: CoAuthor[];
+  coAuthors?: CoAuthorDTO[];
   isLoading?: boolean;
 }
 

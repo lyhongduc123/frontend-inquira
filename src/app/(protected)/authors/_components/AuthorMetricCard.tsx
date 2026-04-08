@@ -9,7 +9,7 @@ export function AuthorMetricCard({title, children, }: AuthorMetricCardProps) {
   return (
     <Card className="border-0 bg-background">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="text-sm">{title}</CardTitle>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>

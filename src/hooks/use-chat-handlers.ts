@@ -1,20 +1,11 @@
 import { useCallback } from "react";
-import { StreamEventPayload } from "@/lib/stream/stream";
 import { SearchFilters } from "@/app/_components/FilterPanel";
 import { transformFiltersForBackend } from "@/lib/filter-utils";
-
-// Support both legacy and event-driven payloads
-type SendMessagePayload = StreamEventPayload | {
-  query: string;
-  conversationId?: string;
-  filters?: Record<string, unknown>;
-  pipeline?: "research" | "agent";
-  clientMessageId?: string;
-};
+import { ChatSendMessagePayload } from "@/types/chat.type";
 
 interface ChatHandlersParams {
   currentConversationId: string | null;
-  sendMessage: (payload: SendMessagePayload) => Promise<void>;
+  sendMessage: (payload: ChatSendMessagePayload) => Promise<void>;
   resetConversation: () => void;
   clearMessages: () => void;
   searchFilters?: SearchFilters;
@@ -57,7 +48,7 @@ export function useChatHandlers({
       filters: Object.keys(transformedFilters).length > 0 ? transformedFilters : undefined,
       pipeline: pipeline,
       useHybridPipeline: useHybridPipeline,
-    } as SendMessagePayload);
+    } as ChatSendMessagePayload);
   }, [sendMessage, currentConversationId, searchFilters, selectedScopedPaperIds, pipeline, useHybridPipeline]);
   
   return {

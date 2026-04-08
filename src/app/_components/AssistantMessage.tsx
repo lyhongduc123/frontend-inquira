@@ -2,7 +2,14 @@
 
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, ChevronUp, ClipboardIcon, ClipboardPasteIcon, RefreshCw } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ClipboardIcon,
+  ClipboardPasteIcon,
+  RefreshCw,
+} from "lucide-react";
 import type { PaperMetadata } from "@/types/paper.type";
 import type { ScopedCitationRef } from "@/lib/scoped-citation-utils";
 import { AssistantMessageBody } from "./AssistantMessageBody";
@@ -43,7 +50,8 @@ export function AssistantMessage({
   onTogglePaperSelection,
 }: AssistantMessageProps) {
   const citedPapers = getCitedPapers(text, sources);
-  const { openPaper, closeSidebar, content, contentType } = useDetailSidebar();
+  const { openPaper, openReferenceList, closeSidebar, content, contentType } =
+    useDetailSidebar();
   const [tabsValue, setTabsValue] = useState<string | null>(null);
 
   const handleOpenPaper = (paper: PaperMetadata) => {
@@ -61,6 +69,26 @@ export function AssistantMessage({
   const handleTabChange = (value: string) => {
     setTabsValue((prev) => (prev === value ? null : value));
   };
+
+  const handleOpenReferenceDetail = () => {
+    const firstReference = citedPapers[0];
+    if (!firstReference) {
+      return;
+    }
+
+    const isSameReferenceOpen =
+      !!content &&
+      contentType === "reference" &&
+      content.paperId === firstReference.paperId;
+
+    if (isSameReferenceOpen) {
+      closeSidebar();
+      return;
+    }
+
+    openReferenceList(citedPapers);
+  };
+
   return (
     <Box className="min-w-0">
       {isAnalyzing && !text ? (
@@ -106,17 +134,14 @@ export function AssistantMessage({
                 <ChevronDown className="ml-1 h-3 w-3" />
               ) : <ChevronUp className="ml-1 h-3 w-3" />}
             </TabsTrigger>
-            <TabsTrigger
-              value="references"
-              onClick={() => handleTabChange("references")}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenReferenceDetail}
+              disabled={citedPapers.length === 0}
             >
-              References
-              {tabsValue === "references" ? (
-                <ChevronDown className="ml-1 h-3 w-3" />
-              ) : (
-                <ChevronUp className="ml-1 h-3 w-3" />
-              )}
-            </TabsTrigger>
+              References ({citedPapers.length})
+            </Button>
             <ExportDropdown />
           </TabsList>
           
@@ -149,37 +174,6 @@ export function AssistantMessage({
                       ))}
                     </VStack>
                   )}
-                </TabsContent>
-              </motion.div>
-            )}
-            {tabsValue === "references" && (
-              <motion.div
-                key="references"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
-              >
-                <TabsContent value="references">
-                  {citedPapers.length > 0 ? (
-                    <VStack className="mt-2 space-y-2 min-w-0">
-                      {citedPapers.map((source, j) => (
-                        <PaperCard
-                          key={source.paperId || j}
-                          idx={j}
-                          paperMetadata={source}
-                          isViewing={
-                            !!content &&
-                            contentType === "paper" &&
-                            content.paperId === source.paperId
-                          }
-                          isSelected={selectedPaperIds.includes(source.paperId)}
-                          onSelect={() => onTogglePaperSelection?.(source)}
-                          onView={handleOpenPaper}
-                        />
-                      ))}
-                    </VStack>
-                  ) : null}
                 </TabsContent>
               </motion.div>
             )}

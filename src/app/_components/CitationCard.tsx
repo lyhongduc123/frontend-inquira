@@ -1,12 +1,9 @@
-import {
-  TypographyH4,
-  TypographyP,
-} from "@/components/global/typography";
+import { TypographyH4, TypographyP } from "@/components/global/typography";
 import { HStack } from "@/components/layout/hstack";
 import { VStack } from "@/components/layout/vstack";
 import { C_BULLET } from "@/core";
 import type { PaperMetadata } from "@/types/paper.type";
-import { BookOpenIcon } from "lucide-react";
+import { ArrowUpRightIcon, BookOpenIcon, Link } from "lucide-react";
 import { ActionButtonGroup } from "./_shared/ActionButtonGroup";
 import { Separator } from "@/components/ui/separator";
 import { InfoItem } from "./_shared/InfoItem";
@@ -44,12 +41,9 @@ export function CitationCard({
           </TypographyH4>
         </HStack>
         <HStack className="gap-1 items-center min-w-0 text-black dark:text-white">
-          <InfoItem number={Number(paperDetail.year)} />
+          <InfoItem number={Number(paperDetail.year) || "n.d."} />
           <span className="text-muted-foreground">{C_BULLET}</span>
-          <InfoItem
-            number={paperDetail.citationCount}
-            label={"citations"}
-          />
+          <InfoItem number={paperDetail.citationCount} label={"citations"} />
           <span className="text-muted-foreground">{C_BULLET}</span>
           {authors.length > 0 && (
             <TypographyP className="text-xs line-clamp-1">
@@ -68,15 +62,16 @@ export function CitationCard({
         </HStack>
       </VStack>
       <Separator />
-      <HStack className="gap-1 items-center justify-between">
-        {paperDetail.externalIds?.DOI && (
+      <HStack className="gap-2 items-center justify-between">
+        {paperDetail.externalIds?.doi && (
           <a
-            href={`https://doi.org/${paperDetail.externalIds?.DOI}`}
+            href={`https://doi.org/${paperDetail.externalIds?.doi}`}
             target="_blank"
             rel="noopener noreferrer"
+            className="truncate text-ellipsis"
           >
-            <TypographyP className="text-xs text-muted-foreground underline">
-              DOI: {paperDetail.externalIds?.DOI}
+            <TypographyP className="text-xs text-muted-foreground underline truncate">
+              DOI: {paperDetail.externalIds?.doi}
             </TypographyP>
           </a>
         )}

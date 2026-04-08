@@ -1,4 +1,4 @@
-import { QuartileBreakdown } from "@/types/author.type";
+import { QuartileBreakdownDTO } from "@/types/author.type";
 import { VStack } from "@/components/layout/vstack";
 import { HStack } from "@/components/layout/hstack";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,7 @@ import { TypographyP } from "@/components/global/typography";
 import { AuthorMetricCard } from "./AuthorMetricCard";
 
 interface QuartileChartProps {
-  quartileBreakdown: QuartileBreakdown;
+  quartileBreakdown: QuartileBreakdownDTO;
 }
 
 export function QuartileChart({ quartileBreakdown }: QuartileChartProps) {
@@ -16,10 +16,10 @@ export function QuartileChart({ quartileBreakdown }: QuartileChartProps) {
   );
 
   const quartiles = [
-    { label: "Q1", count: quartileBreakdown.Q1, color: "bg-green-500" },
-    { label: "Q2", count: quartileBreakdown.Q2, color: "bg-blue-500" },
-    { label: "Q3", count: quartileBreakdown.Q3, color: "bg-yellow-500" },
-    { label: "Q4", count: quartileBreakdown.Q4, color: "bg-orange-500" },
+    { label: "Q1", count: quartileBreakdown.q1, color: "bg-green-500" },
+    { label: "Q2", count: quartileBreakdown.q2, color: "bg-blue-500" },
+    { label: "Q3", count: quartileBreakdown.q3, color: "bg-yellow-500" },
+    { label: "Q4", count: quartileBreakdown.q4, color: "bg-orange-500" },
     {
       label: "Unknown",
       count: quartileBreakdown.unknown,

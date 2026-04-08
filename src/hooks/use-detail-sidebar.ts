@@ -10,7 +10,18 @@ import type { PaperMetadata } from "@/types/paper.type";
 export function useDetailSidebar() {
   const manager = useSidebarManager();
   const rightSidebar = manager.use("right");
-  const { open, close, isOpen, contentType, content } = useDetailSidebarStore();
+  const {
+    open,
+    close,
+    isOpen,
+    contentType,
+    content,
+    openReferences,
+    referencePapers,
+    openPaperFromReferences,
+    backToReferences,
+    canBackToReferences,
+  } = useDetailSidebarStore();
   const clearActiveCitation = useCitationSelectionStore(
     (state) => state.clearActiveCitation,
   );
@@ -34,6 +45,21 @@ export function useDetailSidebar() {
     rightSidebar?.setOpen(true);
   };
 
+  const openReferenceList = (references: PaperMetadata[]) => {
+    openReferences(references);
+    rightSidebar?.setOpen(true);
+  };
+
+  const openPaperFromReferenceList = (paper: PaperMetadata) => {
+    openPaperFromReferences(paper);
+    rightSidebar?.setOpen(true);
+  };
+
+  const goBackToReferences = () => {
+    backToReferences();
+    rightSidebar?.setOpen(true);
+  };
+
   const closeSidebar = () => {
     close();
     rightSidebar?.setOpen(false);
@@ -44,9 +70,14 @@ export function useDetailSidebar() {
     isOpen,
     contentType,
     content,
+    referencePapers,
+    canBackToReferences,
     open,
     openPaper,
     openReference,
+    openReferenceList,
+    openPaperFromReferenceList,
+    goBackToReferences,
     closeSidebar
   };
 }

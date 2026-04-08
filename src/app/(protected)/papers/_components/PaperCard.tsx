@@ -7,7 +7,7 @@ import { VStack } from "@/components/layout/vstack";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { AuthorMetadata } from "@/types/author.type";
+import { AuthorMetadataDTO } from "@/types/author.type";
 import { PaperMetadata } from "@/types/paper.type";
 import { BookOpen, Users } from "lucide-react";
 
@@ -18,7 +18,7 @@ interface PaperCardProps {
 
 export function PaperCard({ paper, idx }: PaperCardProps) {
     console.log("Rendering PaperCard for paper:", paper);
-  const formatAuthors = (authorsArr: AuthorMetadata[]) => {
+  const formatAuthors = (authorsArr: AuthorMetadataDTO[]) => {
     if (!authorsArr?.length) return "";
     if (authorsArr.length <= 3) {
       return authorsArr.map((author) => author.name).join(", ");

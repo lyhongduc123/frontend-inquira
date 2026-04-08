@@ -19,7 +19,7 @@ import {
   ItemHeader,
   ItemTitle,
 } from "@/components/ui/item";
-import { AuthorMetadata } from "@/types/author.type";
+import { AuthorMetadataDTO } from "@/types/author.type";
 import { ActionButtonGroup } from "./_shared/ActionButtonGroup";
 import { Badge } from "@/components/ui/badge";
 import QuartileBadge from "./_shared/QuartileBadge";
@@ -45,7 +45,7 @@ export function PaperDetailContent({ paper }: PaperDetailContentProps) {
                   href={`/authors/${authors[0]?.authorId || "#"}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+                  className="inline-flex items-center gap-1 text-xs text-special hover:underline"
                 >
                   {mainAuthor}
                 </Link>
@@ -136,7 +136,7 @@ export function PaperDetailFooter({ paperMetadata, onAddToChat }: PaperDetailFoo
   );
 }
 
-const AuthorList = (authors: AuthorMetadata[]) => {
+const AuthorList = (authors: AuthorMetadataDTO[]) => {
   if (authors.length === 0) {
     return <TypographyP variant="muted">No authors available.</TypographyP>;
   }

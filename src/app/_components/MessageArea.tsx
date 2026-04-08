@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/empty";
 import { Brand } from "@/components/global/brand";
 import { MessageSection } from "./MessageSection";
-import { QueryProgress } from "./QueryProgress";
+import { ProgressEventSheet } from "./ProgressEventSheet";
 import { Box } from "@/components/layout/box";
 import { useProgressStore } from "@/store/progress-store";
 import { Separator } from "@/components/ui/separator";
@@ -80,7 +80,6 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
         }
       },
       scrollToLatestQuery: () => {
-        // Find the last user message
         const lastUserMessageIndex = messages
           .map((m, i) => (m.role === "user" ? i : -1))
           .filter((i) => i !== -1)
@@ -227,7 +226,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
                 </EmptyMedia>
                 <div className="space-y-2 text-center">
                   <EmptyTitle className="text-2xl font-semibold">
-                    Welcome to Exegent
+                    Welcome to Inquira
                   </EmptyTitle>
                   <EmptyDescription className="text-base text-muted-foreground max-w-md">
                     Your AI-powered research assistant. Ask questions and get
@@ -287,13 +286,14 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
                     isAnalyzing={isAnalyzing && i === messages.length - 1}
                   />
                   {shouldShowProgress && (
-                    <Box className="mt-2">
-                      <QueryProgress 
+                    <VStack className="gap-2 mt-2">
+                      <Separator />
+                      <ProgressEventSheet 
                         queryId={!hasStoredProgress ? messageQueryId : undefined} 
                         sourceCount={Array.isArray(nextMessage?.paperSnapshots) ? nextMessage.paperSnapshots.length : undefined}
                         progressData={progressData}
                       />
-                    </Box>
+                    </VStack>
                   )}
                 </Box>
                 {shouldShowGradient && (
