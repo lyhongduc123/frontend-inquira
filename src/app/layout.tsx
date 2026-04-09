@@ -51,7 +51,7 @@ export default function RootLayout({
           >
             <MainLayout>
               {children}
-              <Toaster />
+              <Toaster richColors />
             </MainLayout>
           </ThemeProvider>
         </QueryProvider>

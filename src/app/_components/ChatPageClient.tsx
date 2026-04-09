@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { LoadingState } from "@/app/_components/LoadingState";
 import { EmptyState } from "@/app/_components/EmptyState";
 import { ChatView } from "@/app/_components/ChatView";
@@ -24,6 +24,8 @@ import { PaperMetadata } from "@/types/paper.type";
 import { consumeChatLaunchPayload, consumeScopedChatSelection } from "@/lib/scoped-chat-selection";
 import { useSearchFilters } from "@/hooks/use-search-filters";
 import { ShareConversationButton } from "./ShareConversationButton";
+import { useScopedPaperSelection } from "@/hooks/use-scoped-paper-selection";
+
 
 interface ChatPageClientProps {
   routeConversationId?: string;
@@ -41,10 +43,6 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     pipeline,
     setParams,
   } = useSearchFilters();
-
-  const [selectedScopedPapers, setSelectedScopedPapers] = useState<
-    PaperMetadata[]
-  >([]);
 
   const handlePipelineChange = useCallback((newPipeline: "research" | "agent") => {
     setParams(searchFilters, newPipeline);
@@ -125,29 +123,6 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     [],
   );
 
-  useEffect(() => {
-    const pendingScopedSelection = consumeScopedChatSelection();
-    if (pendingScopedSelection.length === 0) return;
-
-    queueMicrotask(() => {
-      setSelectedScopedPapers((prev) => {
-        const mergedMap = new Map<string, PaperMetadata>();
-
-        for (const paper of prev) {
-          mergedMap.set(paper.paperId, paper);
-        }
-
-        for (const paper of pendingScopedSelection) {
-          if (paper?.paperId) {
-            mergedMap.set(paper.paperId, paper);
-          }
-        }
-
-        return Array.from(mergedMap.values());
-      });
-    });
-  }, []);
-
   const { messages, isStreaming, sendMessage, clearMessages, retry } = useChat({
     onConversationCreated,
   });
@@ -195,28 +170,23 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     return map;
   }, [messages]);
 
-  const toggleScopedPaper = useCallback(
-    (paperId: string) => {
-      const paper = availablePapersMap.get(paperId);
-      if (!paper) return;
+  const {
+    selectedScopedPapers,
+    selectedScopedPaperIds,
+    mergeScopedPapers,
+    toggleScopedPaper,
+    removeScopedPaper,
+    clearScopedPapers,
+  } = useScopedPaperSelection(availablePapersMap);
 
-      setSelectedScopedPapers((prev) => {
-        if (prev.some((p) => p.paperId === paperId)) {
-          return prev.filter((p) => p.paperId !== paperId);
-        }
-        return [...prev, paper];
-      });
-    },
-    [availablePapersMap],
-  );
+  useEffect(() => {
+    const pendingScopedSelection = consumeScopedChatSelection();
+    if (pendingScopedSelection.length === 0) return;
 
-  const removeScopedPaper = useCallback((paperId: string) => {
-    setSelectedScopedPapers((prev) => prev.filter((p) => p.paperId !== paperId));
-  }, []);
-
-  const clearScopedPapers = useCallback(() => {
-    setSelectedScopedPapers([]);
-  }, []);
+    queueMicrotask(() => {
+      mergeScopedPapers(pendingScopedSelection);
+    });
+  }, [mergeScopedPapers]);
 
   const { handleSend } = useChatHandlers({
     currentConversationId,
@@ -224,7 +194,7 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     resetConversation,
     clearMessages,
     searchFilters,
-    selectedScopedPaperIds: selectedScopedPapers.map((paper) => paper.paperId),
+    selectedScopedPaperIds,
     pipeline,
   });
 
@@ -249,14 +219,7 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
 
     if (scopedPapers.length > 0) {
       queueMicrotask(() => {
-        setSelectedScopedPapers((prev) => {
-          const merged = new Map<string, PaperMetadata>();
-
-          for (const paper of prev) merged.set(paper.paperId, paper);
-          for (const paper of scopedPapers) merged.set(paper.paperId, paper);
-
-          return Array.from(merged.values());
-        });
+        mergeScopedPapers(scopedPapers);
       });
     }
 
@@ -294,6 +257,7 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     sendMessage,
     showContent,
     handlePipelineChange,
+    mergeScopedPapers,
   ]);
 
   return (

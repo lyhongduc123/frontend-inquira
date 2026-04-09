@@ -11,7 +11,7 @@ export function ShareConversationButton({ url }: ShareConversationButtonProps) {
     if (!url) return;
     navigator.clipboard.writeText(url);
     toast.info("Copied to clipboard!", {
-        position: "top-center"
+      position: "top-center",
     });
   };
 

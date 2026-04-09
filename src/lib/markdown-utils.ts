@@ -6,9 +6,9 @@ import {
 } from "@/lib/scoped-citation-utils";
 import type { ScopedCitationRef } from "@/lib/scoped-citation-utils";
 
-const LEGACY_FORMAT_REGEX = /\[(\d+)\]\(([^)]+)\)/g;
-const SCOPED_CITATION_REGEX = /\(cite:([^|)]+)\|([^|)]+)(?:\|(\d+)\|(\d+))?\)/g;
-const CITATIONS_REGEX = /\(cite:([^)]+)\)/g;
+export const LEGACY_FORMAT_REGEX = /\[(\d+)\]\(([^)]+)\)/g;
+export const SCOPED_CITATION_REGEX = /\(cite:([^|)]+)\|([^|)]+)(?:\|(\d+)\|(\d+))?\)/g;
+export const CITATIONS_REGEX = /\(cite:([^)]+)\)/g;
 
 function escapeHtmlAttribute(value: string): string {
   return value

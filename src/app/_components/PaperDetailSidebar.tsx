@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -12,20 +12,13 @@ import { PaperDetailContent, PaperDetailFooter } from "./PaperDetailContent";
 import type { PaperMetadata } from "@/types/paper.type";
 import { HStack } from "@/components/layout/hstack";
 import { useDetailSidebar } from "@/hooks/use-detail-sidebar";
-import { Box } from "@/components/layout/box";
 import { TypographyH3 } from "@/components/global/typography";
-import { VStack } from "@/components/layout/vstack";
-import { PaperCard } from "./PaperCard";
 
 export function PaperDetailSidebar() {
   const {
     contentType,
     content,
     closeSidebar,
-    referencePapers,
-    openPaperFromReferenceList,
-    goBackToReferences,
-    canBackToReferences,
   } = useDetailSidebar();
 
   const paper = (
@@ -41,17 +34,6 @@ export function PaperDetailSidebar() {
       <SidebarHeader className="border-b px-4 py-2.5 bg-background">
         <HStack className="justify-between items-center">
           <HStack className="items-center gap-2">
-            {contentType === "paper" && canBackToReferences ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={goBackToReferences}
-                className="shrink-0"
-                aria-label="Back to references"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            ) : null}
             <TypographyH3 className="capitalize">{contentType}</TypographyH3>
           </HStack>
           <Button
@@ -65,18 +47,7 @@ export function PaperDetailSidebar() {
         </HStack>
       </SidebarHeader>
       <SidebarContent className="p-4 bg-background overflow-hidden!">
-        {contentType === "reference" ? (
-          <VStack className="gap-2 overflow-auto">
-            {referencePapers.map((source, idx) => (
-              <PaperCard
-                key={source.paperId || idx}
-                idx={idx}
-                paperMetadata={source}
-                onView={openPaperFromReferenceList}
-              />
-            ))}
-          </VStack>
-        ) : paper ? (
+        {paper ? (
           <PaperDetailContent paper={paper} />
         ) : null}
       </SidebarContent>
@@ -84,7 +55,7 @@ export function PaperDetailSidebar() {
         {contentType === "paper" ? (
           <PaperDetailFooter paperMetadata={paper as PaperMetadata} />
         ) : (
-          <Box />
+          null
         )}
       </SidebarFooter>
     </Sidebar>

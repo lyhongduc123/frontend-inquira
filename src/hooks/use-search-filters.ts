@@ -1,17 +1,37 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { SearchFilters } from "@/app/_components/FilterPanel";
 
+const PIPELINE_STORAGE_KEY = "exegent_chat_pipeline_mode";
+
 /**
- * Hook to manage search filters via URL parameters.
- * This ensures filters are persistent across page refreshes and sharable via URL.
+ * Hook to manage search filters via URL parameters
+ * and chat pipeline mode via localStorage.
  */
 export function useSearchFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [pipeline, setPipeline] = useState<"research" | "agent">(() => {
+    if (typeof window !== "undefined") {
+      const storedPipeline = window.localStorage.getItem(PIPELINE_STORAGE_KEY);
+      if (storedPipeline === "research" || storedPipeline === "agent") {
+        return storedPipeline;
+      }
+    }
 
-  const state = useMemo((): { filters: SearchFilters; pipeline: "research" | "agent" } => {
+    const legacyModeParam = searchParams.get("mode");
+    if (legacyModeParam === "agent" || legacyModeParam === "research") {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(PIPELINE_STORAGE_KEY, legacyModeParam);
+      }
+      return legacyModeParam;
+    }
+
+    return "research";
+  });
+
+  const filters = useMemo((): SearchFilters => {
     const f: SearchFilters = {};
 
     const authorName = searchParams.get("author_name") || searchParams.get("author");
@@ -66,10 +86,6 @@ export function useSearchFilters() {
     const topJournals = searchParams.get("top_journals");
     if (topJournals === "true") f.topJournalsOnly = true;
 
-    // Handle pipeline mode
-    const pipelineParam = searchParams.get("mode");
-    const mode = (pipelineParam === "agent" ? "agent" : "research") as "research" | "agent";
-
     // Handle legacy yearRange for UI compatibility if needed
     if (f.year_min !== undefined || f.year_max !== undefined) {
       f.yearRange = {
@@ -78,15 +94,22 @@ export function useSearchFilters() {
       };
     }
 
-    return { filters: f, pipeline: mode };
+    return f;
   }, [searchParams]);
+
+  const persistPipeline = useCallback((newPipeline: "research" | "agent") => {
+    setPipeline(newPipeline);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PIPELINE_STORAGE_KEY, newPipeline);
+    }
+  }, []);
 
   const setParams = useCallback(
     (newFilters: SearchFilters, newPipeline?: "research" | "agent") => {
       const params = new URLSearchParams(searchParams.toString());
 
       // Helper to set or delete param
-      const updateParam = (key: string, value: any) => {
+      const updateParam = (key: string, value: unknown) => {
         if (value !== undefined && value !== null && value !== "" && value !== false) {
           params.set(key, String(value));
         } else {
@@ -118,23 +141,27 @@ export function useSearchFilters() {
       updateParam("exclude_preprints", newFilters.excludePreprints);
       updateParam("top_journals", newFilters.topJournalsOnly);
 
+      if (params.has("mode")) {
+        params.delete("mode");
+      }
+
       if (newPipeline) {
-        params.set("mode", newPipeline);
+        persistPipeline(newPipeline);
       }
 
       const queryString = params.toString();
       router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, { scroll: false });
     },
-    [pathname, router, searchParams]
+    [pathname, persistPipeline, router, searchParams]
   );
 
   const clearFilters = useCallback(() => {
-    setParams({}, state.pipeline);
-  }, [setParams, state.pipeline]);
+    setParams({}, pipeline);
+  }, [setParams, pipeline]);
 
   return {
-    filters: state.filters,
-    pipeline: state.pipeline,
+    filters,
+    pipeline,
     setParams,
     clearFilters,
   };

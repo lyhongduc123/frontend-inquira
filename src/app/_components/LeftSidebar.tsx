@@ -1,7 +1,7 @@
 "use client";
 
 import { BookmarkIcon, MessageSquarePlus, SearchIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -94,6 +94,26 @@ export function LeftSidebar() {
     refetch,
   ]);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => onShortcut(e);
+
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  const onShortcut = useEffectEvent((e: KeyboardEvent) => {
+    if (e.altKey && e.key.toLowerCase() === "n") {
+      console.log("New conversation shortcut triggered");
+      e.preventDefault();
+      handleNewConversation();
+    }
+    if (e.altKey && e.key.toLowerCase() === "b") {
+      console.log("Bookmarks shortcut triggered");
+      e.preventDefault();
+      router.push("/bookmarks");
+    }
+  });
+
   const handleNewConversation = () => {
     router.push("/");
   };
@@ -160,7 +180,7 @@ export function LeftSidebar() {
               </SidebarGroupLabel>
               <Button
                 asChild
-                variant="ghost"
+                variant="icon"
                 size="icon"
                 className="has-[>svg]:p-0 p-0"
               >
