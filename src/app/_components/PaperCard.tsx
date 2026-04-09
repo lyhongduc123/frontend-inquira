@@ -60,8 +60,9 @@ export function PaperCard({
     influentialCitationCount,
     pdfUrl,
     externalIds,
+    tldr
   } = paperMetadata;
-  const displayText = abstract;
+  const displayText = tldr;
 
   const formatAuthors = (authorsArr: AuthorMetadataDTO[]) => {
     if (!authorsArr?.length) return "";
@@ -173,6 +174,7 @@ export function PaperCard({
                 size="xs"
                 className="mt-1 line-clamp-3"
               >
+                <span className="font-semibold">Summary:</span> {displayText}
                 {displayText}
               </TypographyP>
             ) : (
@@ -182,7 +184,7 @@ export function PaperCard({
             )}
           </VStack>
           {/* Citation Levels */}
-          <Box className="min-h-4">
+          {/* <Box className="min-h-4">
             {(citationLevel() || influentialLevel()) && (
               <HStack className="gap-2 min-h-4">
                 <SignalBadge
@@ -203,7 +205,7 @@ export function PaperCard({
                 />
               </HStack>
             )}
-          </Box>
+          </Box> */}
           <Box className="@container w-full mt-2">
             <HStack className="w-full justify-between items-center gap-2 min-w-0">
               <HStack className="items-center gap-2 @sm:gap-4 min-w-0 flex-1">

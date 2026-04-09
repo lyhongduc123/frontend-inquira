@@ -58,28 +58,28 @@ export function AuthorMetricsSection({ author }: AuthorMetricsCardsProps) {
   return (
     <Box>
       <VStack className="gap-6">
-        <Box className="grid grid-cols-2 gap-0">
+        <Card className="grid grid-cols-2 gap-8">
           {metrics.map((metric) => (
-            <Card key={metric.title} className="bg-background border-0">
-              <CardContent>
-                <HStack className="items-start justify-between">
-                  <VStack className="gap-1 flex-1">
-                    <TypographyH2 className=" font-bold">
-                      {metric.value}
-                    </TypographyH2>
-                    <TypographyP
-                      size="sm"
-                      variant="muted"
-                      className="font-semibold"
-                    >
-                      {metric.title.toUpperCase()}
-                    </TypographyP>
-                  </VStack>
-                </HStack>
-              </CardContent>
-            </Card>
+            <CardContent
+              key={metric.title}
+            >
+              <HStack className="items-start justify-between">
+                <VStack className="gap-1 flex-1">
+                  <TypographyH2 className="font-bold">
+                    {metric.value}
+                  </TypographyH2>
+                  <TypographyP
+                    size="sm"
+                    variant="muted"
+                    className="font-semibold"
+                  >
+                    {metric.title.toUpperCase()}
+                  </TypographyP>
+                </VStack>
+              </HStack>
+            </CardContent>
           ))}
-        </Box>
+        </Card>
       </VStack>
     </Box>
   );

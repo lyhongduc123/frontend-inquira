@@ -7,7 +7,7 @@ interface AuthorMetricCardProps {
 
 export function AuthorMetricCard({title, children, }: AuthorMetricCardProps) {
   return (
-    <Card className="border-0 bg-background">
+    <Card className="">
       <CardHeader>
         <CardTitle className="text-sm">{title}</CardTitle>
       </CardHeader>

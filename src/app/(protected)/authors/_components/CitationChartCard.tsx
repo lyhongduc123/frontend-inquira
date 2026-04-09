@@ -33,7 +33,7 @@ export function CitationChartCard({ countsByYear }: CitationChartCardProps) {
     },
   } satisfies ChartConfig;
   return (
-    <AuthorMetricCard title="CITATIONS OVER TIME">
+    <AuthorMetricCard title="YEARLY CITATIONS">
       <ChartContainer
         config={chartConfig}
         className="w-full h-full min-h-[250px]"
