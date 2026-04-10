@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ACCESS_TOKEN_COOKIE_KEY } from "./core";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const token = req.cookies.get(ACCESS_TOKEN_COOKIE_KEY)?.value;
 
   const isProtectedRoute = req.nextUrl.pathname.startsWith("/papers") ||
