@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useProgressStore } from "@/store/progress-store";
+import type { ProgressStep } from "@/store/progress-store";
 import {
   Loader2,
   Sparkles,
   Search,
   ListOrdered,
   ListTodo,
-  ChevronRightIcon,
 } from "lucide-react";
 import { TypographyP } from "@/components/global/typography";
 import { HStack } from "@/components/layout/hstack";
@@ -23,14 +23,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { EventType } from "@/lib/stream/event.types";
 import { Streamdown } from "streamdown";
-import { Box } from "@/components/layout/box";
 import { cn } from "@/lib/utils";
 import pluralize from "pluralize";
 import * as changeCase from "change-case";
@@ -42,13 +36,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
-interface ProgressStep {
-  type: string;
-  content?: string; // Optional: only for reasoning
-  metadata?: Record<string, unknown>;
-  timestamp: number;
-}
 
 interface QueryProgressProps {
   queryId?: string | null;
@@ -64,13 +51,12 @@ interface QueryProgressProps {
   };
 }
 
-export function QueryProgress({
+export function ProgressEventSheet({
   queryId,
   sourceCount,
   progressData,
 }: QueryProgressProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [openItem, setOpenItem] = useState<string | undefined>(undefined);
   const queryProgressFromStore = useProgressStore((state) =>
     queryId ? state.getQueryProgress(queryId) : undefined,
   );
@@ -124,15 +110,16 @@ export function QueryProgress({
               {hasNoEventsYet
                 ? "Processing..."
                 : queryProgress.isComplete
-                  ? `${pluralize("source", queryProgress.totalSteps ?? 0, true)}`
+                  ? `${pluralize("source", completedSourceCount ?? 0, true)}`
                   : `${changeCase.capitalCase(currentLabel)}...`}
             </TypographyP>
           </HStack>
         </>
       </Button>
-      {!queryProgress.isComplete && (
-        <VStack className="gap-2 min-w-0 px-4 py-2 border rounded-xl bg-muted/10">
-          {!hasNoEventsYet && latestStep?.type !== EventType.REASONING && (
+      {!queryProgress.isComplete &&
+        !hasNoEventsYet &&
+        latestStep?.type !== EventType.REASONING && (
+          <VStack className="gap-2 min-w-0 px-4 py-2 border rounded-xl bg-muted/10 mt-1">
             <HStack className="items-center gap-2 min-w-0">
               <Loader2
                 size={14}
@@ -142,17 +129,13 @@ export function QueryProgress({
                 {changeCase.capitalCase(currentLabel)}
               </TypographyP>
             </HStack>
-          )}
-
-          {!hasNoEventsYet && latestStep?.type !== EventType.REASONING && (
             <TypographyP size="sm" variant="muted" className="leading-relaxed">
               <OpacityShimmer>
                 {latestStep ? parseContent(latestStep) : null}
               </OpacityShimmer>
             </TypographyP>
-          )}
-        </VStack>
-      )}
+          </VStack>
+        )}
 
       <SheetContent
         side="right"

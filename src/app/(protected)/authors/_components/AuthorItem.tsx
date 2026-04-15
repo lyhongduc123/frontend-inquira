@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { C_BULLET } from "@/core";
-import { CoAuthor } from "@/types/author.type";
+import { CoAuthorDTO } from "@/types/author.type";
 import Link from "next/link";
 import pluralize from "pluralize";
 
 interface AuthorCardProps {
-  author: CoAuthor;
+  author: CoAuthorDTO;
 }
 
 export function AuthorItem({ author }: AuthorCardProps) {

@@ -52,7 +52,7 @@ export function PublicationTimeline({
   } satisfies ChartConfig;
 
   return (
-    <AuthorMetricCard title="PUBLICATION TIMELINE">
+    <AuthorMetricCard title="YEARLY PUBLICATIONS">
       <ChartContainer
         className="w-full h-64 min-h-[200px]"
         config={chartConfig}

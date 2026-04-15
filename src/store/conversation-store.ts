@@ -80,10 +80,11 @@ export const useConversationStore = create<ConversationState>((set) => ({
       return {
         currentConversationId: null,
         currentConversationTitle: undefined,
-        messages: [],
         isLoadingMessages: false,
+        newConversationId: null,
+        pendingConversationDraft: null,
         abortStream: null,
         latestMetadataEvent: null,
-      };
+      }
     }),
 }));

@@ -14,7 +14,6 @@ import {
 } from "@/components/global/typography";
 import type { JournalData, PaperDetail } from "@/types/paper.type";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatter } from "@/lib/utils/date";
 import {
   HoverCard,
   HoverCardContent,
@@ -22,14 +21,15 @@ import {
 } from "@/components/ui/hover-card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { formatDate } from "date-fns";
 
 interface PaperMetadataSectionProps {
   paper: PaperDetail;
 }
 
 export function PaperMetadataSection({ paper }: PaperMetadataSectionProps) {
-  const doiLink = paper.externalIds?.DOI
-    ? `https://doi.org/${paper.externalIds.DOI}`
+  const doiLink = paper.externalIds?.doi
+    ? `https://doi.org/${paper.externalIds.doi}`
     : null;
 
   console.log(doiLink);
@@ -61,11 +61,18 @@ export function PaperMetadataSection({ paper }: PaperMetadataSectionProps) {
         <VStack className="gap-4">
           {/* Metadata Row */}
           <HStack className="gap-4 flex-wrap items-center text-sm text-muted-foreground">
-            {paper.publicationDate && (
+            {paper.publicationDate ? (
               <HStack className="gap-1.5 items-center">
                 <TypographyP size="sm" variant="muted">
                   Published at{" "}
-                  {formatter.format(new Date(paper.publicationDate))}
+                  {formatDate(new Date(paper.publicationDate), "PPP")}
+                </TypographyP>
+              </HStack>
+            ) : (
+              <HStack className="gap-1.5 items-center">
+                <TypographyP size="sm" variant="muted">
+                  Published in{" "}
+                  {paper.year}
                 </TypographyP>
               </HStack>
             )}
@@ -161,7 +168,7 @@ const PaperJournalSection = ({
               {journal?.publisher && (
                 <TypographyP size="sm">{journal.publisher}</TypographyP>
               )}
-              <TypographyP size="sm" variant="white">
+              <TypographyP size="sm">
                 SJR Score: {journal?.sjrScore || "N/A"} | H-index:{" "}
                 {journal?.hIndex || "N/A"}
               </TypographyP>
@@ -229,7 +236,7 @@ function JournalRankBar({ quartile }: JournalMetrics) {
 
   return (
     <HStack className="gap-1 items-center">
-      <TypographyP size="sm" variant="white">
+      <TypographyP size="sm">
         {quartile} Quartile:
       </TypographyP>
       {[1, 2, 3, 4].map((bar) => (

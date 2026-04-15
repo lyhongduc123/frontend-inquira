@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Conversation } from "@/types/conversation.type";
+import { ConversationDTO } from "@/types/conversation.type";
 import { EllipsisVerticalIcon, Trash2 } from "lucide-react";
 import { TypographyP } from "@/components/global/typography";
 import { Box } from "@/components/layout/box";
@@ -20,7 +20,7 @@ import { SidebarMenuButton } from "@/components/ui/sidebar";
 
 interface ConversationCardProps {
   currentConversationId: string;
-  conversation: Conversation;
+  conversation: ConversationDTO;
   onClick: () => void;
   onDelete?: (id: string) => Promise<void>;
   isOpen?: boolean;

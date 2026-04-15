@@ -73,7 +73,7 @@ class ApiClient {
    * Refresh the access token using httpOnly cookie
    */
   private async refreshAccessToken(): Promise<void> {
-    const { logout, isAuthenticated } = useAuthStore.getState();
+    const { isAuthenticated } = useAuthStore.getState();
 
     try {
       const response = await fetch("/api/auth/refresh", {
@@ -90,23 +90,95 @@ class ApiClient {
 
     } catch (error) {
       if (isAuthenticated) {
-        await logout();
+        // Avoid recursive network calls during refresh failure handling.
+        // Just clear local auth state; explicit logout action can still call API.
+        useAuthStore.setState({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          hasCheckedAuth: true,
+        });
       }
       throw error;
     }
   }
 
-  /**
-   * Make an authenticated request with automatic token refresh
-   */
-  async request<T = unknown>(
+  private async buildApiError(response: Response): Promise<ApiError> {
+    const errorText = await response.text();
+    let errorBody: Record<string, unknown> | null = null;
+
+    try {
+      errorBody = JSON.parse(errorText);
+    } catch {
+
+    }
+
+    let errorCode: ErrorCode = ErrorCode.INTERNAL_ERROR;
+
+    if (typeof errorBody?.code === "string") {
+      errorCode = this.normalizeErrorCode(errorBody.code);
+    } else {
+      switch (response.status) {
+        case 400:
+          errorCode = ErrorCode.BAD_REQUEST;
+          break;
+        case 401:
+          errorCode = ErrorCode.UNAUTHORIZED;
+          break;
+        case 403:
+          errorCode = ErrorCode.FORBIDDEN;
+          break;
+        case 404:
+          errorCode = ErrorCode.NOT_FOUND;
+          break;
+        case 409:
+          errorCode = ErrorCode.CONFLICT;
+          break;
+        case 422:
+          errorCode = ErrorCode.VALIDATION_ERROR;
+          break;
+        case 503:
+          errorCode = ErrorCode.SERVICE_UNAVAILABLE;
+          break;
+        case 504:
+          errorCode = ErrorCode.TIMEOUT_ERROR;
+          break;
+        default:
+          errorCode = response.status >= 500
+            ? ErrorCode.INTERNAL_ERROR
+            : ErrorCode.BAD_REQUEST;
+      }
+    }
+
+    const detailMessage = typeof errorBody?.detail === "string" ? errorBody.detail : null;
+    const errorMessageField = typeof errorBody?.error === "string" ? errorBody.error : null;
+    const errorMessage =
+      detailMessage ||
+      errorMessageField ||
+      this.getDefaultMessageForCode(errorCode, response.status) ||
+      errorText ||
+      `Request failed with status ${response.status}`;
+
+    const errorDetails =
+      errorBody && typeof errorBody.details === "object" && errorBody.details !== null
+        ? (errorBody.details as Record<string, unknown>)
+        : undefined;
+
+    return new ApiError(
+      errorMessage,
+      errorCode,
+      response.status,
+      errorDetails
+    );
+  }
+
+  async requestRaw(
     endpoint: string,
     config: RequestConfig = {}
-  ): Promise<T> {
+  ): Promise<Response> {
     const { skipAuth = false, skipRetry = false, ...fetchConfig } = config;
 
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
       ...(fetchConfig.headers as Record<string, string>),
     };
 
@@ -116,7 +188,6 @@ class ApiClient {
       credentials: "include",
     });
 
-    // Handle 401 errors (expired token)
     if (response.status === 401 && !skipRetry && !skipAuth) {
       if (!this.isRefreshing) {
         this.isRefreshing = true;
@@ -126,11 +197,10 @@ class ApiClient {
           this.isRefreshing = false;
           this.onRefreshed();
 
-          // Retry the original request with new token (now in cookie)
           response = await fetch(endpoint, {
             ...fetchConfig,
             headers,
-            credentials: "include", // Include httpOnly cookies
+            credentials: "include",
           });
         } catch (error) {
           this.isRefreshing = false;
@@ -141,89 +211,43 @@ class ApiClient {
         await new Promise<void>((resolve, reject) => {
           this.subscribeTokenRefresh((error) => {
             if (error) {
-              reject(error); 
+              reject(error);
             } else {
               resolve();
             }
           });
         });
 
-        // Retry the original request with new token (now in cookie)
         response = await fetch(endpoint, {
           ...fetchConfig,
           headers,
-          credentials: "include", 
+          credentials: "include",
         });
       }
     }
 
+    return response;
+  }
+
+  /**
+   * Make an authenticated request with automatic token refresh
+   */
+  async request<T = unknown>(
+    endpoint: string,
+    config: RequestConfig = {}
+  ): Promise<T> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(config.headers as Record<string, string>),
+    };
+
+    const response = await this.requestRaw(endpoint, {
+      ...config,
+      headers,
+    });
+
     if (!response.ok) {
-      const errorText = await response.text();
-      let errorBody: Record<string, unknown> | null = null;
-
-      try {
-        errorBody = JSON.parse(errorText);
-      } catch {
-
-      }
-
-      let errorCode: ErrorCode = ErrorCode.INTERNAL_ERROR;
-
-      if (typeof errorBody?.code === "string") {
-        errorCode = this.normalizeErrorCode(errorBody.code);
-      } else {
-        switch (response.status) {
-          case 400:
-            errorCode = ErrorCode.BAD_REQUEST;
-            break;
-          case 401:
-            errorCode = ErrorCode.UNAUTHORIZED;
-            break;
-          case 403:
-            errorCode = ErrorCode.FORBIDDEN;
-            break;
-          case 404:
-            errorCode = ErrorCode.NOT_FOUND;
-            break;
-          case 409:
-            errorCode = ErrorCode.CONFLICT;
-            break;
-          case 422:
-            errorCode = ErrorCode.VALIDATION_ERROR;
-            break;
-          case 503:
-            errorCode = ErrorCode.SERVICE_UNAVAILABLE;
-            break;
-          case 504:
-            errorCode = ErrorCode.TIMEOUT_ERROR;
-            break;
-          default:
-            errorCode = response.status >= 500 
-              ? ErrorCode.INTERNAL_ERROR 
-              : ErrorCode.BAD_REQUEST;
-        }
-      }
-
-      const detailMessage = typeof errorBody?.detail === "string" ? errorBody.detail : null;
-      const errorMessageField = typeof errorBody?.error === "string" ? errorBody.error : null;
-      const errorMessage =
-        detailMessage ||
-        errorMessageField ||
-        this.getDefaultMessageForCode(errorCode, response.status) ||
-        errorText ||
-        `Request failed with status ${response.status}`;
-
-      const errorDetails =
-        errorBody && typeof errorBody.details === "object" && errorBody.details !== null
-          ? (errorBody.details as Record<string, unknown>)
-          : undefined;
-      
-      throw new ApiError(
-        errorMessage,
-        errorCode,
-        response.status,
-        errorDetails
-      );
+      throw await this.buildApiError(response);
     }
 
     const requestId = response.headers.get("X-Request-ID");
@@ -285,6 +309,22 @@ class ApiClient {
 
   async delete<T = unknown>(endpoint: string, config?: RequestConfig): Promise<T> {
     return await this.request<T>(endpoint, { ...config, method: "DELETE" });
+  }
+
+  async getRaw(endpoint: string, config?: RequestConfig): Promise<Response> {
+    return await this.requestRaw(endpoint, { ...config, method: "GET" });
+  }
+
+  async postRaw(
+    endpoint: string,
+    data?: unknown,
+    config?: RequestConfig
+  ): Promise<Response> {
+    return await this.requestRaw(endpoint, {
+      ...config,
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    });
   }
 }
 

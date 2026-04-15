@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get('page') || '1';
     const pageSize = searchParams.get('page_size') || '20';
     const archived = searchParams.get('archived');
+    const query = searchParams.get('query');
+    const searchMessages = searchParams.get('search_messages');
 
     const params = new URLSearchParams({
       page,
@@ -18,6 +20,12 @@ export async function GET(request: NextRequest) {
 
     if (archived !== null) {
       params.append('archived', archived);
+    }
+    if (query) {
+      params.append('query', query);
+    }
+    if (searchMessages !== null) {
+      params.append('search_messages', searchMessages);
     }
 
     // Forward cookies from request to backend

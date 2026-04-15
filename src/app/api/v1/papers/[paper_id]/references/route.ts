@@ -11,14 +11,14 @@ export async function GET(
   try {
     const { paper_id } = await params;
     const searchParams = request.nextUrl.searchParams;
-    const page = searchParams.get('page') || '1';
-    const pageSize = searchParams.get('page_size') || '20';
+    const offset = searchParams.get('offset') || '0';
+    const limit = searchParams.get('limit') || '20';
     const sortBy = searchParams.get('sort_by');
     const order = searchParams.get('order');
 
     const queryParams = new URLSearchParams({
-      page,
-      page_size: pageSize,
+      offset,
+      limit,
     });
 
     if (sortBy) queryParams.append('sort_by', sortBy);

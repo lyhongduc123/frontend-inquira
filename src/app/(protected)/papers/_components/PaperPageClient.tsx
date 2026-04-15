@@ -33,23 +33,44 @@ import { PaperMetadata } from "@/types/paper.type";
 
 
 export function PaperPageClient() {
+  const PAGE_SIZE = 20;
   const params = useParams();
   const paperId = params.id as string;
   const { toggleSidebar } = useSidebar();
 
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [activeTab, setActiveTab] = useState("abstract");
+  const [citationsLimit, setCitationsLimit] = useState(PAGE_SIZE);
+  const [referencesLimit, setReferencesLimit] = useState(PAGE_SIZE);
 
   const { data: paper, isLoading, isError, error } = usePaperDetail(paperId);
 
-  const { data: citationsData, isLoading: citationsLoading } =
-    usePaperCitations(paperId, activeTab === "citations");
+  const {
+    data: citationsData,
+    isLoading: citationsLoading,
+    isFetching: citationsFetching,
+  } = usePaperCitations(paperId, activeTab === "citations", {
+    offset: 0,
+    limit: citationsLimit,
+  });
 
-  const { data: referencesData, isLoading: referencesLoading } =
-    usePaperReferences(paperId, activeTab === "references");
+  const {
+    data: referencesData,
+    isLoading: referencesLoading,
+    isFetching: referencesFetching,
+  } = usePaperReferences(paperId, activeTab === "references", {
+    offset: 0,
+    limit: referencesLimit,
+  });
 
   const citations = citationsData?.data || [];
   const references = referencesData?.data || [];
+  const hasMoreCitations =
+    (citationsData?.next ?? null) !== null ||
+    ((citationsData?.total ?? 0) > citations.length);
+  const hasMoreReferences =
+    (referencesData?.next ?? null) !== null ||
+    ((referencesData?.total ?? 0) > references.length);
 
   console.log("PaperDetailsPageContent rendered with paper:", paper);
   console.log("Citations:", citations);
@@ -67,6 +88,14 @@ export function PaperPageClient() {
 
   const handleBookmark = () => {
     setIsBookmarked(!isBookmarked);
+  };
+
+  const handleLoadMoreCitations = () => {
+    setCitationsLimit((prev) => prev + PAGE_SIZE);
+  };
+
+  const handleLoadMoreReferences = () => {
+    setReferencesLimit((prev) => prev + PAGE_SIZE);
   };
 
   const handleSendMessage = (msg: string) => {
@@ -148,15 +177,20 @@ export function PaperPageClient() {
                     </TabsContent>
                     <TabsContent value="citations" className="mt-4">
                       <PaperCitationsView
-                        paper={paper}
                         citations={citations}
-                        isLoading={citationsLoading}
+                        isLoading={citationsLoading || citationsFetching}
+                        canLoadMore={hasMoreCitations}
+                        onLoadMore={handleLoadMoreCitations}
+                        isLoadingMore={citationsFetching}
                       />
                     </TabsContent>
                     <TabsContent value="references" className="mt-4">
                       <PaperReferenceView
                         references={references}
-                        isLoading={referencesLoading}
+                        isLoading={referencesLoading || referencesFetching}
+                        canLoadMore={hasMoreReferences}
+                        onLoadMore={handleLoadMoreReferences}
+                        isLoadingMore={referencesFetching}
                       />
                     </TabsContent>
                   </Tabs>

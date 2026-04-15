@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { bookmarksApi } from "@/lib/api/bookmarks-api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { TriangleAlert } from "lucide-react";
+import { BookDashedIcon, TriangleAlert } from "lucide-react";
 
 interface BookmarkAreaProps {
   data?: Bookmark[];
@@ -93,9 +93,14 @@ export function BookmarkArea({
     return (
       <Empty>
         <EmptyContent>
-          <EmptyTitle className="text-center">
+          <EmptyHeader>
+            <EmptyMedia>
+              <BookDashedIcon className="size-16 text-muted-foreground" />
+            </EmptyMedia>
+          </EmptyHeader>
+          <EmptyDescription className="text-center">
             Your bookmark list is empty.
-          </EmptyTitle>
+          </EmptyDescription>
         </EmptyContent>
       </Empty>
     );

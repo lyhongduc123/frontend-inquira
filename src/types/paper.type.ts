@@ -1,4 +1,4 @@
-import { AuthorMetadata } from './author.type'
+import { AuthorMetadataDTO } from './author.type'
 
 export interface JournalData {
   title: string
@@ -28,7 +28,7 @@ export interface PaperMetadata {
   title: string
   abstract?: string | null
   tldr?: string
-  authors: AuthorMetadata[]
+  authors: AuthorMetadataDTO[]
   year?: number | null
   publicationDate?: string | null
   venue?: string | null
@@ -58,9 +58,10 @@ export interface PaperDetail {
   paperId: string
   title: string
   abstract: string
-  authors: AuthorMetadata[]
+  authors: AuthorMetadataDTO[]
   journal?: JournalData | null
   publicationDate?: string | null
+  year?: number | null
   venue?: string | null
   issn?: string[] | null
   issnL?: string | null
@@ -77,8 +78,6 @@ export interface PaperDetail {
   citationStyles?: Record<string, string> | null
   topics?: Array<Record<string, unknown>> | null
   keywords?: Array<Record<string, unknown>> | null
-  concepts?: Array<Record<string, unknown>> | null
-  meshTerms?: Array<Record<string, unknown>> | null
   citationPercentile?: Record<string, unknown> | null
   fwci?: number | null
   authorTrustScore?: number | null
@@ -95,7 +94,6 @@ export interface PaperDetail {
   createdAt: string
   updatedAt: string
   lastAccessedAt?: string | null
-  sjrData?: JournalData | null
 }
 
 /**

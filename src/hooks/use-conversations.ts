@@ -1,16 +1,25 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { conversationsApi } from "@/lib/api/conversations-api";
 import {
-  ConversationListResponse,
-  Conversation,
+  ConversationListResponseDTO,
+  ConversationDTO,
 } from "@/types/conversation.type";
 import { useQueryWithError } from "./use-query-with-error";
 
 export const conversationKeys = {
   all: ["conversations"] as const,
   lists: () => [...conversationKeys.all, "list"] as const,
-  list: (page: number, pageSize: number, archived?: boolean) =>
-    [...conversationKeys.lists(), { page, pageSize, archived }] as const,
+  list: (
+    page: number,
+    pageSize: number,
+    archived?: boolean,
+    query?: string,
+    searchMessages?: boolean,
+  ) =>
+    [
+      ...conversationKeys.lists(),
+      { page, pageSize, archived, query, searchMessages },
+    ] as const,
   details: () => [...conversationKeys.all, "detail"] as const,
   detail: (id: string) => [...conversationKeys.details(), id] as const,
 };
@@ -19,18 +28,41 @@ interface UseConversationsOptions {
   page?: number;
   pageSize?: number;
   archived?: boolean;
+  query?: string;
+  searchMessages?: boolean;
   enabled?: boolean;
 }
 
 export function useConversations(options: UseConversationsOptions = {}) {
-  const { page = 1, pageSize = 20, archived = false, enabled = true } = options;
+  const {
+    page = 1,
+    pageSize = 20,
+    archived = false,
+    query,
+    searchMessages = true,
+    enabled = true,
+  } = options;
+
+  const listKey = conversationKeys.list(
+    page,
+    pageSize,
+    archived,
+    query,
+    searchMessages,
+  );
 
   const queryClient = useQueryClient();
 
   const conversationsQuery = useQueryWithError({
-    queryKey: conversationKeys.list(page, pageSize, archived),
+    queryKey: listKey,
     queryFn: () =>
-      conversationsApi.list({ page, page_size: pageSize, archived }),
+      conversationsApi.list({
+        page,
+        page_size: pageSize,
+        archived,
+        query,
+        search_messages: searchMessages,
+      }),
     enabled,
     staleTime: Infinity, // Never mark as stale - only refetch on explicit invalidation
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
@@ -43,12 +75,10 @@ export function useConversations(options: UseConversationsOptions = {}) {
       conversationsApi.delete(conversationId),
     onMutate: async (conversationId) => {
       await queryClient.cancelQueries({ queryKey: conversationKeys.lists() });
-      const previousData = queryClient.getQueryData(
-        conversationKeys.list(page, pageSize, archived)
-      );
+      const previousData = queryClient.getQueryData(listKey);
       queryClient.setQueryData(
-        conversationKeys.list(page, pageSize, archived),
-        (old: ConversationListResponse | undefined) => {
+        listKey,
+        (old: ConversationListResponseDTO | undefined) => {
           if (!old || !old.items) return old;
           return {
             ...old,
@@ -63,7 +93,7 @@ export function useConversations(options: UseConversationsOptions = {}) {
     onError: (_err, _conversationId, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(
-          conversationKeys.list(page, pageSize, archived),
+          listKey,
           context.previousData
         );
       }
@@ -73,13 +103,13 @@ export function useConversations(options: UseConversationsOptions = {}) {
     },
   });
 
-  const addConversationOptimistically = (conversation: Conversation) => {
+  const addConversationOptimistically = (conversation: ConversationDTO) => {
     queryClient.setQueryData(
-      conversationKeys.list(page, pageSize, archived),
-      (old: ConversationListResponse | undefined) => {
+      listKey,
+      (old: ConversationListResponseDTO | undefined) => {
         if (!old || !old.items) return old;
         const exists = old.items.some(
-          (c: Conversation) => c.id === conversation.id,
+          (c: ConversationDTO) => c.id === conversation.id,
         );
         if (exists) return old;
         return {

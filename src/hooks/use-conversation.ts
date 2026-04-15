@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { conversationsApi } from "@/lib/api/conversations-api";
 import { Message } from "@/types/message.type";
 import { useConversationStore } from "@/store/conversation-store";
-import { Conversation } from "@/types/conversation.type";
+import { ConversationDTO } from "@/types/conversation.type";
 import { PaperMetadata } from "@/types/paper.type";
 import { toast } from "sonner";
 import { getErrorMessage, isNotFoundError } from "@/lib/react-query/error-utils";
@@ -38,7 +38,7 @@ export function useConversation() {
   const latestLoadRequestRef = useRef<number>(0);
 
   const createConversation = useCallback(
-    async (title?: string): Promise<Conversation> => {
+    async (title?: string): Promise<ConversationDTO> => {
       const requestId = ++latestCreateRequestRef.current;
 
       const normalizedTitle = (title || "New conversation").trim() || "New conversation";
@@ -144,9 +144,7 @@ export function useConversation() {
     latestLoadRequestRef.current += 1;
     clearConversation();
     incrementRefreshTrigger();
-    setNewConversationId(null);
-    setPendingConversationDraft(null);
-  }, [clearConversation, incrementRefreshTrigger, setNewConversationId, setPendingConversationDraft]);
+  }, [incrementRefreshTrigger, clearConversation]);
 
   const deleteConversation = useCallback(
     async (conversationId: string) => {

@@ -3,7 +3,7 @@ import { VStack } from "@/components/layout/vstack";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PaperMetadata } from "@/types/paper.type";
-import { AuthorMetadata } from "@/types/author.type";
+import { AuthorMetadataDTO } from "@/types/author.type";
 import { TypographyP } from "@/components/global/typography";
 import { BookOpen, Users, Quote, Zap } from "lucide-react";
 import { Box } from "@/components/layout/box";
@@ -56,7 +56,7 @@ export function AuthorPaperCard({
   } = paperMetadata;
   const displayText = abstract;
 
-  const formatAuthors = (authorsArr: AuthorMetadata[]) => {
+  const formatAuthors = (authorsArr: AuthorMetadataDTO[]) => {
     if (!authorsArr?.length) return null;
 
     const renderName = (name: string, index: number, hasComma: boolean = true) => {
@@ -64,7 +64,7 @@ export function AuthorPaperCard({
         currentAuthorName &&
         name.toLowerCase() === currentAuthorName.toLowerCase();
       return (
-        <span key={`${name}-${index}`} className={cn(isMatch && "font-bold text-secondary")}>
+        <span key={`${name}-${index}`} className={cn(isMatch && "font-bold text-special")}>
           {name}{hasComma && ", "}
         </span>
       );

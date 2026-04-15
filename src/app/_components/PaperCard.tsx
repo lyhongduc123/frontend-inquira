@@ -3,7 +3,7 @@ import { VStack } from "@/components/layout/vstack";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PaperMetadata } from "@/types/paper.type";
-import { AuthorMetadata } from "@/types/author.type";
+import { AuthorMetadataDTO } from "@/types/author.type";
 import { TypographyP } from "@/components/global/typography";
 import {
   BookOpen,
@@ -59,10 +59,12 @@ export function PaperCard({
     citationCount,
     influentialCitationCount,
     pdfUrl,
+    externalIds,
+    tldr
   } = paperMetadata;
-  const displayText = abstract;
+  const displayText = tldr;
 
-  const formatAuthors = (authorsArr: AuthorMetadata[]) => {
+  const formatAuthors = (authorsArr: AuthorMetadataDTO[]) => {
     if (!authorsArr?.length) return "";
     if (authorsArr.length <= 3) {
       return authorsArr.map((author) => author.name).join(", ");
@@ -130,7 +132,7 @@ export function PaperCard({
         <CardTitle className="flex-1 text-sm font-medium min-w-0">
           <HStack className="items-center gap-1 min-w-0">
             <a
-              href={url ?? "#"}
+              href={externalIds?.doi ? `https://doi.org/${externalIds.doi}` : url ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 group-hover:underline line-clamp-1 pr-2 min-w-0 max-w-[90%]"
@@ -172,6 +174,7 @@ export function PaperCard({
                 size="xs"
                 className="mt-1 line-clamp-3"
               >
+                <span className="font-semibold">Summary:</span> {displayText}
                 {displayText}
               </TypographyP>
             ) : (
@@ -181,7 +184,7 @@ export function PaperCard({
             )}
           </VStack>
           {/* Citation Levels */}
-          <Box className="min-h-4">
+          {/* <Box className="min-h-4">
             {(citationLevel() || influentialLevel()) && (
               <HStack className="gap-2 min-h-4">
                 <SignalBadge
@@ -202,7 +205,7 @@ export function PaperCard({
                 />
               </HStack>
             )}
-          </Box>
+          </Box> */}
           <Box className="@container w-full mt-2">
             <HStack className="w-full justify-between items-center gap-2 min-w-0">
               <HStack className="items-center gap-2 @sm:gap-4 min-w-0 flex-1">

@@ -30,6 +30,7 @@ export function AuthorPageClient() {
   } = useAuthorDetails(authorId);
   const previousStatusRef = useRef<string | null>(null);
   const lastNotifiedTerminalKeyRef = useRef<string | null>(null);
+  console.log("Author data:", author);
 
   useEffect(() => {
     const currentStatus = author?.enrichmentStatus?.status ?? null;
