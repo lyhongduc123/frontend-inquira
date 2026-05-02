@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       headers['Authorization'] = authHeader;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/chat/submit`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/agent`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Error in chat submit:', error);
+    console.error('Error in chat agent:', error);
     return new Response('Internal server error', { status: 500 });
   }
 }
