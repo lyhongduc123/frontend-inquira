@@ -30,6 +30,17 @@ export interface BookmarkListResponse {
   limit: number;
 }
 
+export interface BookmarkListParams {
+  skip?: number;
+  limit?: number;
+  query?: string;
+  year?: number;
+  isOpenAccess?: boolean;
+  hasNotes?: boolean;
+  sortBy?: "id" | "citations" | "year";
+  sortOrder?: "asc" | "desc";
+}
+
 export const bookmarksApi = {
   /**
    * Create a new bookmark
@@ -42,9 +53,49 @@ export const bookmarksApi = {
   /**
    * List all bookmarks for the current user
    */
-  async list(skip: number = 0, limit: number = 50): Promise<BookmarkListResponse> {
+  async list(params: BookmarkListParams = {}): Promise<BookmarkListResponse> {
+    const {
+      skip = 0,
+      limit = 50,
+      query,
+      year,
+      isOpenAccess,
+      hasNotes,
+      sortBy,
+      sortOrder,
+    } = params;
+
+    const searchParams = new URLSearchParams({
+      skip: String(skip),
+      limit: String(limit),
+    });
+
+    if (query?.trim()) {
+      searchParams.set("q", query.trim());
+    }
+
+    if (typeof year === "number") {
+      searchParams.set("year", String(year));
+    }
+
+    if (typeof isOpenAccess === "boolean") {
+      searchParams.set("is_open_access", String(isOpenAccess));
+    }
+
+    if (typeof hasNotes === "boolean") {
+      searchParams.set("has_notes", String(hasNotes));
+    }
+
+    if (sortBy) {
+      searchParams.set("sort_by", sortBy);
+    }
+
+    if (sortOrder) {
+      searchParams.set("sort_order", sortOrder);
+    }
+
     const response = await apiClient.get<BookmarkListResponse>(
-      `/api/v1/bookmarks?skip=${skip}&limit=${limit}`
+      `/api/v1/bookmarks?${searchParams.toString()}`
     );
     return response;
   },

@@ -15,6 +15,19 @@ import { bookmarksApi } from "@/lib/api/bookmarks-api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { BookDashedIcon, TriangleAlert } from "lucide-react";
+import { Box } from "@/components/layout/box";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
+import { SortField, SortState } from "./BookmarkPageClient";
 
 interface BookmarkAreaProps {
   data?: Bookmark[];
@@ -25,6 +38,11 @@ interface BookmarkAreaProps {
   selectedScopedPaperIds?: string[];
   onToggleScopedPaper?: (paperId: string, checked: boolean) => void;
   onSetAllScopedPapers?: (paperIds: string[], checked: boolean) => void;
+
+  sort?: SortState;
+  onSortChange?: (field: SortField) => void;
+  filters?: { isOpenAccess?: boolean; hasNotes?: boolean };
+  onFiltersChange?: (filters: { isOpenAccess?: boolean; hasNotes?: boolean }) => void;
 }
 
 export function BookmarkArea({
@@ -36,10 +54,23 @@ export function BookmarkArea({
   selectedScopedPaperIds,
   onToggleScopedPaper,
   onSetAllScopedPapers,
+  onSortChange,
+  onFiltersChange,
+  sort,
+  filters
 }: BookmarkAreaProps) {
   const router = useRouter();
+
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
   const handleRemoveBookmark = async (paperId: string) => {
-    const bookmark = data?.find((b) => b.paperId === paperId);
+    setPendingDeleteId(paperId);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+
+    const bookmark = data?.find((b) => b.paperId === pendingDeleteId);
     if (!bookmark) return;
 
     try {
@@ -50,7 +81,8 @@ export function BookmarkArea({
       toast.error("Failed to remove bookmark");
       console.error("Error removing bookmark:", error);
     }
-  };
+    setPendingDeleteId(null);
+  }
 
   if (isError) {
     return (
@@ -89,31 +121,41 @@ export function BookmarkArea({
     );
   }
 
-  if (isEmpty && !isLoading) {
-    return (
-      <Empty>
-        <EmptyContent>
-          <EmptyHeader>
-            <EmptyMedia>
-              <BookDashedIcon className="size-16 text-muted-foreground" />
-            </EmptyMedia>
-          </EmptyHeader>
-          <EmptyDescription className="text-center">
-            Your bookmark list is empty.
-          </EmptyDescription>
-        </EmptyContent>
-      </Empty>
-    );
-  }
-
   return (
-    <BookmarkList
-      isLoading={isLoading}
-      data={data || []}
-      onRemoveBookmark={handleRemoveBookmark}
-      selectedScopedPaperIds={selectedScopedPaperIds}
-      onToggleScopedPaper={onToggleScopedPaper}
-      onSetAllScopedPapers={onSetAllScopedPapers}
-    />
+    <Box>
+      <AlertDialog
+        open={!!pendingDeleteId}
+        onOpenChange={() => setPendingDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove bookmark?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The bookmark will be permanently
+              removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant={"destructive"} onClick={confirmDelete} className="cursor-pointer">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <BookmarkList
+        isLoading={isLoading}
+        data={data || []}
+        onRemoveBookmark={handleRemoveBookmark}
+        selectedScopedPaperIds={selectedScopedPaperIds}
+        onToggleScopedPaper={onToggleScopedPaper}
+        onSetAllScopedPapers={onSetAllScopedPapers}
+        sort={sort}
+        onSortChange={onSortChange}
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+      />
+    </Box>
   );
 }

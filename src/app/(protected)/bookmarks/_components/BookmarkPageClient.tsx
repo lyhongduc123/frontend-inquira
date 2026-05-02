@@ -2,7 +2,6 @@
 
 import { BookmarkSearchBar } from "./BookmarkSearchBar";
 import { BookmarkArea } from "./BookmarkArea";
-import { Bookmark } from "@/lib/api";
 import { useMemo, useState } from "react";
 import { VStack } from "@/components/layout/vstack";
 import { useBookmarks } from "@/hooks/use-bookmarks";
@@ -14,64 +13,81 @@ import { useRouter } from "next/navigation";
 import { saveChatLaunchPayload } from "@/lib/scoped-chat-selection";
 import { toast } from "sonner";
 import { Box } from "@/components/layout/box";
+import { Checkbox } from "@/components/ui/checkbox";
+import pluralize from "pluralize";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+interface BookmarkFiltersState {
+  isOpenAccess?: boolean;
+  hasNotes?: boolean;
+}
+
+export type SortField = "id" | "citations" | "year";
+type SortOrder = "asc" | "desc";
+export type SortState = {
+  field?: SortField;
+  order: SortOrder;
+};
 
 export function BookmarkPageClient() {
-  const { data: bookmarks, isLoading, isError, refetch } = useBookmarks();
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedScopedPaperIds, setSelectedScopedPaperIds] = useState<string[]>([]);
+  const [filters, setFilters] = useState<BookmarkFiltersState>({});
+  const [sort, setSort] = useState<SortState>({
+    field: undefined,
+    order: "desc",
+  });
+  const [selectedScopedPaperIds, setSelectedScopedPaperIds] = useState<
+    string[]
+  >([]);
 
-  const filteredBookmarks = useMemo(() => {
-    if (!bookmarks?.items) return [];
-    if (!searchQuery.trim()) return bookmarks.items;
+  const listParams = useMemo(
+    () => ({
+      query: searchQuery.trim() || undefined,
+      isOpenAccess: filters.isOpenAccess ? true : undefined,
+      hasNotes: filters.hasNotes ? true : undefined,
+      sortBy: sort.field,
+      sortOrder: sort.field ? sort.order : undefined,
+      skip: 0,
+      limit: 50,
+    }),
+    [searchQuery, filters, sort],
+  );
 
-    const query = searchQuery.toLowerCase();
-    return bookmarks.items.filter((bookmark: Bookmark) => {
-      const paper = bookmark.paper;
-      if (!paper) return false;
+  const {
+    data: bookmarks,
+    isLoading,
+    isError,
+    refetch,
+  } = useBookmarks(listParams);
 
-      if (paper.title?.toLowerCase().includes(query)) return true;
-      if (
-        paper.authors?.some((author) =>
-          author.name?.toLowerCase().includes(query),
-        )
-      )
-        return true;
-
-      if (paper.venue?.toLowerCase().includes(query)) return true;
-      if (bookmark.notes?.toLowerCase().includes(query)) return true;
-
-      return false;
-    });
-  }, [bookmarks, searchQuery]);
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-  };
-
+  const visibleBookmarks = useMemo(() => bookmarks?.items || [], [bookmarks]);
   const visiblePaperIds = useMemo(
     () =>
       new Set(
-        filteredBookmarks
+        visibleBookmarks
           .map((bookmark) => bookmark.paper?.paperId)
           .filter((paperId): paperId is string => Boolean(paperId)),
       ),
-    [filteredBookmarks],
+    [visibleBookmarks],
   );
-
   const visibleSelectedScopedPaperIds = useMemo(
-    () => selectedScopedPaperIds.filter((paperId) => visiblePaperIds.has(paperId)),
+    () =>
+      selectedScopedPaperIds.filter((paperId) => visiblePaperIds.has(paperId)),
     [selectedScopedPaperIds, visiblePaperIds],
   );
-
   const scopedPapers = useMemo(
     () =>
-      filteredBookmarks
+      visibleBookmarks
         .map((bookmark) => bookmark.paper)
         .filter((paper): paper is NonNullable<typeof paper> => Boolean(paper))
-        .filter((paper) => visibleSelectedScopedPaperIds.includes(paper.paperId)),
-      [filteredBookmarks, visibleSelectedScopedPaperIds],
+        .filter((paper) =>
+          visibleSelectedScopedPaperIds.includes(paper.paperId),
+        ),
+    [visibleBookmarks, visibleSelectedScopedPaperIds],
   );
 
   const toggleScopedPaper = (paperId: string, checked: boolean) => {
@@ -115,32 +131,108 @@ export function BookmarkPageClient() {
     router.push(`/?launch=${encodeURIComponent(launchId)}`);
   };
 
+  const handleSortChange = (field: SortField) => {
+    setSort((prev) => {
+      if (prev.field !== field) {
+        return { field, order: "desc" };
+      }
+
+      if (prev.order === "desc") {
+        return { field, order: "asc" };
+      }
+      return { field: undefined, order: "desc" };
+    });
+  };
+
+  const handleFiltersChange = (patch: Partial<typeof filters>) => {
+    setFilters((prev) => ({
+      ...prev,
+      ...patch,
+    }));
+  };
+
   const scopeIndicator = (
     <HStack className="items-center gap-2 px-1 py-0.5">
       <Badge variant="default" className="text-xs">
         Selected ({scopedPapers.length})
       </Badge>
-      {searchQuery.trim() && (
-        <TypographyP size="xs" variant="muted" className="truncate max-w-[280px]">
-          Filter: {searchQuery.trim()}
-        </TypographyP>
-      )}
     </HStack>
   );
 
   return (
-    <VStack className="relative h-full w-full max-w-7xl p-8 pb-28 gap-4 items-center">
-      <BookmarkSearchBar onSearch={handleSearch} />
-      <BookmarkArea
-        data={filteredBookmarks}
-        isLoading={isLoading}
-        isError={isError}
-        isEmpty={!filteredBookmarks.length && !searchQuery}
-        refetch={refetch}
-        selectedScopedPaperIds={visibleSelectedScopedPaperIds}
-        onToggleScopedPaper={toggleScopedPaper}
-        onSetAllScopedPapers={setAllScopedPapers}
-      />
+    <VStack className="relative h-full w-full max-w-7xl items-center">
+      <VStack className="gap-4 w-full overflow-y-auto p-8 pb-42">
+        <HStack className="items-center gap-2">
+          <Box className="w-1/2">
+            <BookmarkSearchBar value={searchQuery} onSearch={setSearchQuery} />
+          </Box>
+
+          <Label
+            htmlFor="filter-open-access"
+            className={cn(
+              "text-sm items-center p-2 border rounded cursor-pointer",
+              filters.isOpenAccess
+                ? "border-primary bg-primary/10"
+                : "hover:bg-muted",
+            )}
+          >
+            <Checkbox
+              id="filter-open-access"
+              aria-label="Open Access"
+              checked={filters.isOpenAccess || false}
+              onCheckedChange={(checked) =>
+                handleFiltersChange({
+                  isOpenAccess: checked ? true : undefined,
+                })
+              }
+            />
+            Open Access
+          </Label>
+          <Label htmlFor="filter-has-notes"
+            className={cn(
+              "text-sm items-center p-2 border rounded cursor-pointer",
+              filters.hasNotes
+                ? "border-primary bg-primary/10"
+                : "hover:bg-muted",
+            )}>
+            <Checkbox
+              id="filter-has-notes"
+              aria-label="Has Notes"
+              checked={filters.hasNotes || false}
+              onCheckedChange={(checked) =>
+                handleFiltersChange({ hasNotes: checked ? true : undefined })
+              }
+            />
+            Has Notes
+          </Label>
+        </HStack>
+        <HStack className="w-1/2 items-center gap-2">
+          <HStack className="items-center gap-2">
+            <Badge variant="default" className="ml-auto ">
+              {pluralize("result", bookmarks?.total || 0, true)}
+            </Badge>
+          </HStack>
+        </HStack>
+        <BookmarkArea
+          data={visibleBookmarks}
+          isLoading={isLoading}
+          isError={isError}
+          isEmpty={
+            !visibleBookmarks.length &&
+            !searchQuery &&
+            !filters.isOpenAccess &&
+            !filters.hasNotes
+          }
+          refetch={refetch}
+          selectedScopedPaperIds={visibleSelectedScopedPaperIds}
+          onToggleScopedPaper={toggleScopedPaper}
+          onSetAllScopedPapers={setAllScopedPapers}
+          sort={sort}
+          filters={filters}
+          onSortChange={handleSortChange}
+          onFiltersChange={handleFiltersChange}
+        />
+      </VStack>
       <Box className="absolute bottom-0 left-0 right-0">
         <ChatInput
           onSend={handleSendToMainChat}

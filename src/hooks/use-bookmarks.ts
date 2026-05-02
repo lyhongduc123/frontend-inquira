@@ -4,16 +4,42 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { bookmarksApi, type Bookmark, type CreateBookmarkRequest, type UpdateBookmarkRequest } from "@/lib/api";
+import type { BookmarkListParams } from "@/lib/api/bookmarks-api";
 import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from "@/lib/react-query/react-query-utils";
 import { useBookmarkStore } from "@/store/bookmark-store";
 import { useQueryWithError } from "./use-query-with-error";
 
-export function useBookmarks(skip: number = 0, limit: number = 50) {
+export function useBookmarks(params: BookmarkListParams = {}) {
+  const {
+    skip = 0,
+    limit = 50,
+    query,
+    year,
+    isOpenAccess,
+    hasNotes,
+    sortBy,
+    sortOrder,
+  } = params;
+
+  const normalizedQuery = query?.trim() || undefined;
+
   return useQueryWithError({
-    queryKey: ["bookmarks", skip, limit],
-    queryFn: () => bookmarksApi.list(skip, limit),
+    queryKey: ["bookmarks", skip, limit, normalizedQuery, year, isOpenAccess, hasNotes, sortBy, sortOrder],
+    queryFn: () =>
+      bookmarksApi.list({
+        skip,
+        limit,
+        query: normalizedQuery,
+        year,
+        isOpenAccess,
+        hasNotes,
+        sortBy,
+        sortOrder,
+      }),
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
+    staleTime: 0,
+    refetchOnMount: "always",
   }, 'Failed to load bookmarks');
 }
 

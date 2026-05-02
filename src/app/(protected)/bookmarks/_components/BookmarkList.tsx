@@ -5,7 +5,14 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpDown, MessageSquarePlus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDownIcon,
+  MessageSquarePlus,
+  SortAscIcon,
+  Trash2,
+} from "lucide-react";
 import { Bookmark, bookmarksApi } from "@/lib/api";
 import {
   Sheet,
@@ -28,6 +35,9 @@ import { Box } from "@/components/layout/box";
 import { useRouter } from "next/navigation";
 import { saveChatLaunchPayload } from "@/lib/scoped-chat-selection";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TypographyP } from "@/components/global/typography";
+import { cn, formatCustomDate, formatDateTime } from "@/lib/utils";
+import { SortField, SortState } from "./BookmarkPageClient";
 
 interface BookmarkListProps {
   isLoading?: boolean;
@@ -36,6 +46,14 @@ interface BookmarkListProps {
   selectedScopedPaperIds?: string[];
   onToggleScopedPaper?: (paperId: string, checked: boolean) => void;
   onSetAllScopedPapers?: (paperIds: string[], checked: boolean) => void;
+
+  sort?: SortState;
+  filters?: { isOpenAccess?: boolean; hasNotes?: boolean };
+  onSortChange?: (sort: SortField) => void;
+  onFiltersChange?: (filters: {
+    isOpenAccess?: boolean;
+    hasNotes?: boolean;
+  }) => void;
 }
 
 export function BookmarkList({
@@ -45,6 +63,11 @@ export function BookmarkList({
   selectedScopedPaperIds = [],
   onToggleScopedPaper,
   onSetAllScopedPapers,
+
+  sort,
+  filters,
+  onSortChange,
+  onFiltersChange,
 }: BookmarkListProps) {
   const router = useRouter();
   const [selectedBookmark, setSelectedBookmark] = useState<Bookmark | null>(
@@ -62,8 +85,11 @@ export function BookmarkList({
     selectedScopedPaperIds.includes(paperId),
   ).length;
 
-  const allSelected = selectablePaperIds.length > 0 && selectedCount === selectablePaperIds.length;
-  const someSelected = selectedCount > 0 && selectedCount < selectablePaperIds.length;
+  const allSelected =
+    selectablePaperIds.length > 0 &&
+    selectedCount === selectablePaperIds.length;
+  const someSelected =
+    selectedCount > 0 && selectedCount < selectablePaperIds.length;
 
   const handleAddToChat = (bookmark: Bookmark) => {
     if (!bookmark.paper) {
@@ -112,6 +138,9 @@ export function BookmarkList({
   const columns: ColumnDef<Bookmark>[] = [
     {
       id: "scoped",
+      size: 40,
+      minSize: 40,
+      maxSize: 40,
       header: () => (
         <Checkbox
           checked={allSelected ? true : someSelected ? "indeterminate" : false}
@@ -141,24 +170,17 @@ export function BookmarkList({
     },
     {
       id: "index",
+      size: 40,
       header: "#",
       cell: ({ row }) => (
-        <div className="text-muted-foreground w-[5%] whitespace-nowrap">
+        <div className="text-muted-foreground whitespace-nowrap">
           {row.index + 1}
         </div>
       ),
     },
     {
       accessorKey: "paper.title",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Title
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: "Title",
       cell: ({ row }) => (
         <div className="max-w-md">
           <div className="font-medium line-clamp-2 truncate">
@@ -175,28 +197,47 @@ export function BookmarkList({
         </div>
       ),
     },
-    {
-      accessorKey: "notes",
-      header: "Notes",
-      cell: ({ row }) => (
-        <div className="w-full line-clamp-2 truncate">
-          <span className="text-sm text-muted-foreground">
-            {row.original.notes || "—"}
-          </span>
-        </div>
-      ),
-    },
+    // {
+    //   accessorKey: "paper.authors",
+    //   header: "Authors",
+    //   cell: ({ row }) => (
+    //     <div className="max-w-sm">
+    //       <span className="text-sm line-clamp-2 truncate">
+    //         {row.original.paper?.authors
+    //           ?.map((a) => a.name)
+    //           .join(", ") || "—"}
+    //       </span>
+    //     </div>
+    //   ),
+    // },
     {
       accessorKey: "paper.citationCount",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Citations
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      size: 80,
+      header: () => {
+        const isActive = sort?.field === "citations";
+        const isAsc = sort?.order === "asc";
+        return (
+          <Button
+            variant="clean"
+            size="icon"
+            onClick={() => {
+              onSortChange?.("citations");
+            }}
+            className="w-fit cursor-pointer hover:text-special"
+          >
+            Citations
+            {isActive ? (
+              isAsc ? (
+                <ArrowUp className="size-4" />
+              ) : (
+                <ArrowDown className="size-4" />
+              )
+            ) : (
+              <ArrowUpDownIcon className="size-4" />
+            )}
+          </Button>
+        );
+      },
       cell: ({ row }) => (
         <span className="font-semibold">
           {row.original.paper?.citationCount ?? 0}
@@ -205,15 +246,32 @@ export function BookmarkList({
     },
     {
       accessorKey: "paper.year",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Year
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      size: 50,
+      header: () => {
+        const isActive = sort?.field === "year";
+        const isAsc = sort?.order === "asc";
+        return (
+          <Button
+            variant="clean"
+            size="icon"
+            onClick={() => {
+              onSortChange?.("year");
+            }}
+            className="w-fit cursor-pointer hover:text-special"
+          >
+            Year
+            {isActive ? (
+              isAsc ? (
+                <ArrowUp className="size-4" />
+              ) : (
+                <ArrowDown className="size-4" />
+              )
+            ) : (
+              <ArrowUpDownIcon className="size-4" />
+            )}
+          </Button>
+        );
+      },
       cell: ({ row }) => (
         <span className="text-sm">{row.original.paper?.year ?? "—"}</span>
       ),
@@ -231,6 +289,7 @@ export function BookmarkList({
     },
     {
       accessorKey: "paper.isOpenAccess",
+      size: 60,
       header: "Access",
       cell: ({ row }) => (
         <Badge
@@ -241,48 +300,29 @@ export function BookmarkList({
       ),
     },
     {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const bookmark = row.original;
-        return (
-          <HStack className="gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAddToChat(bookmark);
-              }}
-              aria-label="Add paper to chat"
-            >
-              <MessageSquarePlus className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemoveBookmark(bookmark.paperId);
-              }}
-              aria-label="Remove bookmark"
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </HStack>
-        );
-      },
+      accessorKey: "notes",
+      header: "Notes",
+      cell: ({ row }) => (
+        <div className="w-full line-clamp-2 truncate">
+          <span className="text-sm text-muted-foreground">
+            {row.original.notes || "—"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "saveDate",
+      size: 100,
+      header: "Saved Date",
+      cell: ({ row }) => (
+        <div>
+          <span className="text-sm text-muted-foreground line-clamp-1 truncate">
+            {formatDateTime(row.original.createdAt)}
+          </span>
+        </div>
+      ),
     },
   ];
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-[400px] w-full" />
-      </div>
-    );
-  }
 
   return (
     <>
@@ -318,7 +358,7 @@ export function BookmarkList({
                     onChange={(e) => setEditedNotes(e.target.value)}
                     placeholder="Add your notes about this paper..."
                     className="min-h-[150px]"
-                  />  
+                  />
                   <HStack className="gap-2 justify-end">
                     <Button
                       variant="outline"
