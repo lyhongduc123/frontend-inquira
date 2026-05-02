@@ -7,8 +7,9 @@ export function usePaperDetail(paperId: string) {
     queryKey: ['paper', paperId],
     queryFn: () => papersApi.get(paperId),
     enabled: !!paperId,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 10 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
   }, 'Failed to load paper details')

@@ -1,4 +1,4 @@
-import { TypographyH1, TypographyH2, TypographyH3 } from "@/components/global/typography";
+import { TypographyH1, TypographyH2, TypographyH3, TypographyH4 } from "@/components/global/typography";
 import { Box } from "@/components/layout/box";
 
 interface UserMessageProps {
@@ -7,10 +7,10 @@ interface UserMessageProps {
 
 export function UserMessage({ text }: UserMessageProps) {
   return (
-    <Box className="w-full">
-      <TypographyH3>
+    <Box className="w-fit rounded-xl bg-secondary/80 dark:bg-primary/80 px-4 py-2">
+      <TypographyH4>
         {text}
-      </TypographyH3>
+      </TypographyH4>
     </Box>
   );
 }

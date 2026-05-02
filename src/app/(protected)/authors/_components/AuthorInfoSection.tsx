@@ -95,6 +95,11 @@ export function AuthorInfoSection({
   const primaryInstitution = sortedInstitutions[0];
   const fieldsToShow = uniqueFields.slice(0, 8);
 
+  const queryParts = [
+    `${author?.name ?? ""}`,
+    author?.papers?.[0]?.title ? `${author.papers[0].title}` : null,
+  ].filter(Boolean);
+
   return (
     <Card className="overflow-hidden border-2 shadow-lg transition-all hover:shadow-xl">
       <CardContent className="px-6">
@@ -132,12 +137,36 @@ export function AuthorInfoSection({
                   <HStack className="gap-2 items-center flex-wrap">
                     <UniversityIcon className="h-3.5 w-3.5 text-muted-foreground" />
                     <TypographyP size="sm" variant="muted">
-                      {primaryInstitution.name}
+                      {primaryInstitution.institution?.name}
                     </TypographyP>
                   </HStack>
                 ) : (
                   <TypographyP size="sm" variant="muted">
                     Institution not available
+                  </TypographyP>
+                )}
+                {fieldsToShow.length > 0 ? (
+                  <HStack className="gap-2 flex-wrap">
+                    <TypographyP
+                      size="xs"
+                      variant="muted"
+                      className="font-semibold"
+                    >
+                      Research Fields:
+                    </TypographyP>
+                    {fieldsToShow.map((field, idx) => (
+                      <Badge
+                        key={idx}
+                        variant="outline"
+                        className="text-xs px-2 py-0.5"
+                      >
+                        {field}
+                      </Badge>
+                    ))}
+                  </HStack>
+                ) : (
+                  <TypographyP size="xs" variant="muted">
+                    Research fields are not available yet.
                   </TypographyP>
                 )}
               </VStack>
@@ -174,35 +203,10 @@ export function AuthorInfoSection({
                   </Badge>
                 )}
 
-
                 <ConflictBadge isConflict={author?.isConflict} />
               </VStack>
             </HStack>
 
-            {fieldsToShow.length > 0 ? (
-              <HStack className="gap-2 flex-wrap">
-                <TypographyP
-                  size="xs"
-                  variant="muted"
-                  className="font-semibold"
-                >
-                  Research Fields:
-                </TypographyP>
-                {fieldsToShow.map((field, idx) => (
-                  <Badge
-                    key={idx}
-                    variant="outline"
-                    className="text-xs px-2 py-0.5"
-                  >
-                    {field}
-                  </Badge>
-                ))}
-              </HStack>
-            ) : (
-              <TypographyP size="xs" variant="muted">
-                Research fields are not available yet.
-              </TypographyP>
-            )}
             <HStack className="gap-2 items-start min-w-[190px]">
               <AuthorLink
                 href={author?.homepageUrl || ""}
@@ -216,8 +220,8 @@ export function AuthorInfoSection({
               />
               <AuthorLink
                 href={
-                  "https://scholar.google.com/scholar?q=author:" +
-                  encodeURIComponent(author?.name || "")
+                  "https://scholar.google.com/scholar?q=" +
+                  encodeURIComponent(queryParts.join(" "))
                 }
                 text="Google Scholar"
                 icon={<ExternalLink className="size-3.5" />}
@@ -267,9 +271,7 @@ const ConflictBadge = ({ isConflict }: { isConflict?: boolean }) => {
           We have not detected any conflicting information for this author
           between both sources. But we still recommend reviewing the data for
           yourself on{" "}
-          <span className="text-special font-semibold">
-            Google Scholar
-          </span>
+          <span className="text-special font-semibold">Google Scholar</span>
         </HoverCardContent>
       </HoverCard>
     );
@@ -286,8 +288,8 @@ const ConflictBadge = ({ isConflict }: { isConflict?: boolean }) => {
           Data conflict detected
         </TypographyH4>
         We have detected conflicting information for this author based on
-        citations, publications,... Please review the data about the author by
-        yourself.
+        citations, publications,... between sources. Please review the data
+        about the author by yourself.
       </HoverCardContent>
     </HoverCard>
   );

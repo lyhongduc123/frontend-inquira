@@ -8,7 +8,13 @@ import { HStack } from "@/components/layout/hstack";
 import type { PaperMetadata } from "@/types/paper.type";
 import { Box } from "@/components/layout/box";
 import { Button } from "@/components/ui/button";
-import { BookOpenIcon, ChevronRight, InfoIcon, MessageSquarePlusIcon } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpenIcon,
+  ChevronRight,
+  InfoIcon,
+  MessageSquarePlusIcon,
+} from "lucide-react";
 import { InfoItem } from "./_shared/InfoItem";
 import { C_BULLET } from "@/core";
 import {
@@ -70,6 +76,26 @@ export function PaperDetailContent({ paper }: PaperDetailContentProps) {
               className="items-start"
               labelClassName="line-clamp-2 max-w-[70%]"
             />
+            <HStack className="gap-2 items-start">
+              <a
+                href={"https://www.doi.org/" + paper.externalIds?.doi}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-muted-foreground border-b border-current"
+              >
+                <ArrowUpRight className="size-4" />
+                DOI
+              </a>
+              <a
+                href={paper.url || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-muted-foreground border-b border-current"
+              >
+                <ArrowUpRight className="size-4" />
+                Semantic Scholar
+              </a>
+            </HStack>
           </VStack>
           <VStack className="gap-2 justify-start">
             <QuartileBadge quartile={paper.journal?.sjrBestQuartile} />
@@ -77,26 +103,36 @@ export function PaperDetailContent({ paper }: PaperDetailContentProps) {
         </HStack>
       </VStack>
       <Separator />
-      <Tabs defaultValue="abstract" className="w-full flex flex-col flex-1 min-h-0">
+      <Tabs
+        defaultValue="abstract"
+        className="w-full flex flex-col flex-1 min-h-0"
+      >
         <TabsList variant={"line"} className="justify-start">
           <TabsTrigger value="abstract">Abstract</TabsTrigger>
           <TabsTrigger value="authors">Authors</TabsTrigger>
           <TabsTrigger value="summary">Tags</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="abstract" className="mt-2 flex-1 overflow-y-auto min-h-0">
+        <TabsContent
+          value="abstract"
+          className="mt-2 flex-1 overflow-y-auto min-h-0"
+        >
           <TypographyP className="text-sm leading-relaxed">
             {linkify(paper.abstract || "No abstract available.")}
           </TypographyP>
         </TabsContent>
 
-        <TabsContent value="authors" className="mt-2 flex-1 overflow-y-auto min-h-0">
+        <TabsContent
+          value="authors"
+          className="mt-2 flex-1 overflow-y-auto min-h-0"
+        >
           {AuthorList(authors)}
         </TabsContent>
 
         <TabsContent value="summary" className="mt-2">
           <TypographyP variant="muted" className="text-sm">
-            AI-generated summary coming soon...
+            Coming soon: key topics, methods, and findings extracted from the
+            paper to provide a quick overview of its content and contributions.
           </TypographyP>
         </TabsContent>
       </Tabs>
@@ -109,7 +145,10 @@ interface PaperDetailFooterProps {
   onAddToChat?: () => void;
 }
 
-export function PaperDetailFooter({ paperMetadata, onAddToChat }: PaperDetailFooterProps) {
+export function PaperDetailFooter({
+  paperMetadata,
+  onAddToChat,
+}: PaperDetailFooterProps) {
   if (!paperMetadata) return null;
   return (
     <HStack className="w-full gap-2 items-center justify-between">
@@ -119,7 +158,7 @@ export function PaperDetailFooter({ paperMetadata, onAddToChat }: PaperDetailFoo
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Button>
+          <Button className="cursor-pointer">
             <InfoIcon className="size-4" />
             View Details
           </Button>
@@ -138,7 +177,11 @@ export function PaperDetailFooter({ paperMetadata, onAddToChat }: PaperDetailFoo
 
 const AuthorList = (authors: AuthorMetadataDTO[]) => {
   if (authors.length === 0) {
-    return <TypographyP variant="muted">No authors available.</TypographyP>;
+    return (
+      <TypographyP variant="muted" size="sm">
+        No authors available.
+      </TypographyP>
+    );
   }
   return (
     <VStack className="gap-2">
@@ -163,7 +206,6 @@ const AuthorList = (authors: AuthorMetadataDTO[]) => {
   );
 };
 
-
 const linkify = (text: string) => {
   const urlRegex = /(https?:\/\/[^\s]+[^\s.,!?;:])/g;
 
@@ -180,6 +222,6 @@ const linkify = (text: string) => {
       </a>
     ) : (
       part
-    )
+    ),
   );
 };

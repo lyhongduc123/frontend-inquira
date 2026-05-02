@@ -10,6 +10,7 @@ export type ChatSendMessagePayload =
       query: string;
       conversationId?: string;
       filters?: Record<string, unknown>;
+      paperIds?: string[];
       pipeline?: "research" | "agent";
       clientMessageId?: string;
     };

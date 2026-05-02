@@ -43,7 +43,7 @@ export function PaperReferenceView({
             </VStack>
           ) : references.length === 0 ? (
             <TypographyP className="text-muted-foreground">
-              No references found for this paper.
+              No references found indexed for this paper.
             </TypographyP>
           ) : (
             <VStack className="gap-4">

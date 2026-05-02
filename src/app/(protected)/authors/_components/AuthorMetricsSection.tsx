@@ -58,7 +58,7 @@ export function AuthorMetricsSection({ author }: AuthorMetricsCardsProps) {
   return (
     <Box>
       <VStack className="gap-6">
-        <Card className="grid grid-cols-2 gap-8">
+        <Card className="grid grid-cols-1 sm:grid-cols-2 gap-8">
           {metrics.map((metric) => (
             <CardContent
               key={metric.title}

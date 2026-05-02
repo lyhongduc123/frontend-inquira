@@ -26,9 +26,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import pluralize from "pluralize";
 import { InfoItem } from "@/app/_components/_shared/InfoItem";
 import { C_BULLET } from "@/core";
-import { formatDate } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { formatCustomDate } from "@/lib/utils/date";
+import * as changeCase from "change-case";
 
 interface ConversationAreaProps {
   data?: ConversationDTO[];
@@ -50,16 +50,16 @@ function ConversationRow({ conversation }: { conversation: ConversationDTO }) {
   console.log("conversation", conversation);
 
   const lastUpdated = conversation.lastUpdated
-    ? formatCustomDate(conversation.lastUpdated)
+    ? changeCase.sentenceCase(formatCustomDate(conversation.lastUpdated))
     : "Unknown";
   return (
     <Card
       onClick={() => router.push(`/conversation/${conversation.id}`)}
-      className="w-full rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/40"
+      className="rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/40 hover:border-primary hover:cursor-pointer"
     >
-      <HStack className="w-full items-start justify-between gap-3">
-        <VStack className="min-w-0 flex-1 gap-1">
-          <TypographyP className="truncate text-base font-medium">
+      <HStack className="w-full items-start justify-between gap-3 min-w-0">
+        <VStack className="gap-1 min-w-0 overflow-hidden">
+          <TypographyP className="w-full text-ellipsis line-clamp-2">
             {conversation.title || "New Conversation"}
           </TypographyP>
           <HStack className="items-center gap-2 text-xs">
@@ -82,8 +82,14 @@ function ConversationRow({ conversation }: { conversation: ConversationDTO }) {
 function ConversationRowSkeleton() {
   return (
     <VStack className="w-full rounded-xl border bg-card p-4">
-      <Skeleton className="h-5 w-3/5" />
-      <Skeleton className="h-4 w-2/5" />
+      <HStack className="justify-between">
+        <Skeleton className="h-5 w-3/5" />
+        <Skeleton className="h-4 w-16" />
+      </HStack>
+      <HStack className="items-center gap-2 pt-2">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-32" />
+      </HStack>
     </VStack>
   );
 }
@@ -173,15 +179,14 @@ export function ConversationArea({
   }
 
   return (
-    <ScrollArea className="h-full w-full pr-4">
-      <VStack className="w-full gap-3">
-        {data?.map((conversation, index) => (
-          <VStack key={conversation.id} className="w-full gap-3">
-            <ConversationRow conversation={conversation} />
-            {index !== data.length - 1 && <Separator />}
-          </VStack>
-        ))}
-      </VStack>
+    <ScrollArea className="flex-1 min-h-0 pr-4">
+        <VStack className="gap-3 min-w-0">
+          {data?.map((conversation, index) => (
+            // <VStack key={index} className="w-full gap-3">
+            <ConversationRow key={index} conversation={conversation} />
+            // </VStack>
+          ))}
+        </VStack>
     </ScrollArea>
   );
 }

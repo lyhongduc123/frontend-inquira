@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useConversations } from "@/hooks/use-conversations";
 import { ConversationSearchBar } from "./ConversationSearchBar";
 import { ConversationArea } from "./ConversationArea";
+import { Box } from "@/components/layout/box";
 
 export function ConversationsPageClient() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,14 +22,14 @@ export function ConversationsPageClient() {
   });
 
   return (
-    <VStack className="h-full w-full max-w-5xl gap-4 p-8">
+    <VStack className="w-full max-w-5xl gap-4 p-8 min-h-0">
       <ConversationSearchBar onSearch={setSearchQuery} />
 
       <HStack className="items-center gap-2 px-1">
         <Badge variant="default">Results: {total}</Badge>
         {searchQuery.trim() && (
           <TypographyP size="xs" variant="muted" className="truncate">
-            Query: {searchQuery.trim()}
+            Finding: {searchQuery.trim()}
           </TypographyP>
         )}
       </HStack>

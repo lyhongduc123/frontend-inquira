@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { conversationsApi } from "@/lib/api/conversations-api";
+import { useAuthStore } from "@/store/auth-store";
 import {
   ConversationListResponseDTO,
   ConversationDTO,
@@ -10,6 +11,7 @@ export const conversationKeys = {
   all: ["conversations"] as const,
   lists: () => [...conversationKeys.all, "list"] as const,
   list: (
+    userId: number | null,
     page: number,
     pageSize: number,
     archived?: boolean,
@@ -18,7 +20,7 @@ export const conversationKeys = {
   ) =>
     [
       ...conversationKeys.lists(),
-      { page, pageSize, archived, query, searchMessages },
+      { userId, page, pageSize, archived, query, searchMessages },
     ] as const,
   details: () => [...conversationKeys.all, "detail"] as const,
   detail: (id: string) => [...conversationKeys.details(), id] as const,
@@ -43,7 +45,10 @@ export function useConversations(options: UseConversationsOptions = {}) {
     enabled = true,
   } = options;
 
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+
   const listKey = conversationKeys.list(
+    userId,
     page,
     pageSize,
     archived,

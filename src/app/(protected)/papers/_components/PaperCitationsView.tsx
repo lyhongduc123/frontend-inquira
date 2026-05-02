@@ -43,7 +43,7 @@ export function PaperCitationsView({
             </VStack>
           ) : citations.length === 0 ? (
             <TypographyP className="text-muted-foreground">
-              No citations found for this paper.
+              No citations indexed found for this paper.
             </TypographyP>
           ) : (
             <VStack className="gap-4">

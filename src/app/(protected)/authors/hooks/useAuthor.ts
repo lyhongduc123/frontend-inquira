@@ -1,6 +1,7 @@
 import { authorApi, type AuthorListParams } from '@/lib/api/author-api'
 import { defaultRetry, defaultRetryDelay } from '@/lib/react-query/react-query-utils'
 import { useQueryWithError } from '@/hooks/use-query-with-error'
+import { useQuery } from '@tanstack/react-query'
 
 /**
  * Fetch a single author by ID
@@ -43,6 +44,25 @@ export function useAuthorDetails(authorId: string, enabled: boolean = true) {
     retry: defaultRetry,
     retryDelay: defaultRetryDelay,
   }, 'Failed to load author details')
+}
+
+/**
+ * Fetch paginated papers for an author
+ */
+export function useAuthorPapers(
+  authorId: string,
+  offset: number = 0,
+  limit: number = 20,
+  enabled: boolean = true,
+) {
+  return useQuery({
+    queryKey: ['author', authorId, 'papers', offset, limit],
+    queryFn: () => authorApi.getAuthorPapers(authorId, offset, limit, 'year', 'desc'),
+    enabled: !!authorId && enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: defaultRetry,
+    retryDelay: defaultRetryDelay,
+  })
 }
 
 /**

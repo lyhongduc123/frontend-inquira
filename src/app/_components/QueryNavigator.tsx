@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { Message } from "@/types/message.type";
 import { Button } from "@/components/ui/button";
 import { ChevronDownIcon, CircleDot, CircleXIcon, TargetIcon } from "lucide-react";
@@ -25,8 +25,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useQueryNavigatorStore } from "@/store/query-navigator-store";
-import { useConversation } from "@/hooks/use-conversation";
 import { useConversationStore } from "@/store/conversation-store";
+import { messagesApi } from "@/lib/api/messages-api";
+import { toast } from "sonner";
 
 interface QueryNavigatorProps {
   messages: Message[];
@@ -39,10 +40,81 @@ function QueryNavigatorComponent({
   onQueryClick,
   activeQueryIndex,
 }: QueryNavigatorProps) {
-  const { currentConversationTitle } = useConversationStore();
+  const setMessages = useConversationStore((state) => state.setMessages);
   const activeQueryIndexFromStore = useQueryNavigatorStore(
     (state) => state.activeQueryIndex,
   );
+  const [deletingQueryIndex, setDeletingQueryIndex] = useState<number | null>(null);
+
+  const getDeletionIndexes = (allMessages: Message[], userMessageIndex: number): Set<number> => {
+    const indexesToDelete = new Set<number>([userMessageIndex]);
+
+    for (let i = userMessageIndex + 1; i < allMessages.length; i += 1) {
+      const currentMessage = allMessages[i];
+      if (currentMessage.role === "user") {
+        break;
+      }
+      if (currentMessage.role === "assistant") {
+        indexesToDelete.add(i);
+        break;
+      }
+    }
+
+    return indexesToDelete;
+  };
+
+  const handleDeleteQuery = async (queryOriginalIndex: number) => {
+    if (deletingQueryIndex !== null) {
+      return;
+    }
+
+    const targetMessage = messages[queryOriginalIndex];
+    if (!targetMessage || targetMessage.role !== "user") {
+      return;
+    }
+
+    const previousMessages = messages;
+    const indexesToDelete = getDeletionIndexes(previousMessages, queryOriginalIndex);
+    const nextMessages = previousMessages.filter(
+      (_message, index) => !indexesToDelete.has(index),
+    );
+
+    setDeletingQueryIndex(queryOriginalIndex);
+    setMessages(nextMessages);
+
+    try {
+      if (typeof targetMessage.id === "number") {
+        await messagesApi.delete(targetMessage.id, {
+          softDelete: true,
+          deleteAssistantReplyForUser: true,
+        });
+      }
+
+      const nextUserQueryIndex = nextMessages.findIndex(
+        (message, index) => index >= queryOriginalIndex && message.role === "user",
+      );
+      if (nextUserQueryIndex >= 0) {
+        onQueryClick(nextUserQueryIndex);
+        return;
+      }
+
+      const remainingUserIndexes = nextMessages
+        .map((message, index) => (message.role === "user" ? index : -1))
+        .filter((index) => index >= 0);
+      const previousUserIndex = remainingUserIndexes[remainingUserIndexes.length - 1];
+      if (typeof previousUserIndex === "number") {
+        onQueryClick(previousUserIndex);
+      }
+    } catch (error) {
+      setMessages(previousMessages);
+      toast.error("Failed to delete query", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setDeletingQueryIndex(null);
+    }
+  };
+
   const currentActiveQueryIndex =
     activeQueryIndex ?? activeQueryIndexFromStore ?? undefined;
 
@@ -114,7 +186,8 @@ function QueryNavigatorComponent({
                     <Button
                       variant="icon"
                       size="icon"
-                      onClick={() => onQueryClick(query.originalIndex)}
+                      disabled={deletingQueryIndex !== null}
+                      onClick={() => handleDeleteQuery(query.originalIndex)}
                       className="text-destructive"
                     >
                       <CircleXIcon />

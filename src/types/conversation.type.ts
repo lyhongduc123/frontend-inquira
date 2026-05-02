@@ -1,5 +1,6 @@
 import { PaperMetadata } from "./paper.type";
 import { ScopedCitationRef } from "@/lib/scoped-citation-utils";
+import { ProgressEvent } from "@/lib/stream/event.types";
 
 /**
  * Conversation Types - Aligned with Backend Schemas
@@ -25,8 +26,9 @@ export interface MessageDTO {
   paperSnapshots?: PaperMetadata[] | null;
   progressEvents?: Array<{
     type: string;
-    content: string;
-    metadata?: Record<string, unknown>;
+    content?: string;
+    metadata?: Record<string, any> | null;
+    pipeline_type?: string | null;
     timestamp: number;
   }> | null;
   scopedQuoteRefs?: ScopedCitationRef[] | null;

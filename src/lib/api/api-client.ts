@@ -87,6 +87,7 @@ class ApiClient {
       if (!response.ok) {
         throw new Error("Token refresh failed");
       }
+      await response.text();
 
     } catch (error) {
       if (isAuthenticated) {

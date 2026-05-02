@@ -114,12 +114,11 @@ export function PaperCard({
   return (
     <Card
       className={cn(
-        "group relative gap-2 p-3 transition hover:bg-card/40 hover:border-primary cursor-pointer min-w-0",
+        "group relative gap-2 p-3 transition hoverb:g-card/40 hover:border-primary cursor-pointer min-w-0",
         isViewing && "bg-card/40 border-primary",
         isSelected && "ring-2 ring-primary ring-offset-2",
       )}
       onClick={onCardView}
-      
     >
       <CardHeader className="relative flex flex-row items-center justify-between space-y-0 min-w-0">
         <Checkbox
@@ -153,7 +152,7 @@ export function PaperCard({
       <CardContent className="relative">
         <VStack className="w-full gap-2">
           <VStack className="flex-1 w-full">
-            {authors && (
+            {authors && authors.length > 0 && (
               <HStack className="flex-wrap items-center gap-3 text-sm text-accent">
                 <HStack className="min-w-0 items-center gap-1">
                   <Users className="h-4 w-4 shrink-0 -translate-y-0.5" />

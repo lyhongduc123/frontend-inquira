@@ -2,8 +2,10 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  useCallback,
   useEffect,
   useRef,
+  useState,
   forwardRef,
   useImperativeHandle,
 } from "react";
@@ -35,9 +37,6 @@ interface MessageAreaProps {
   messages: Message[];
   isStreaming: boolean;
   isAnalyzing?: boolean;
-  onRetry?: () => void;
-  selectedPaperIds?: string[];
-  onTogglePaperSelection?: (paperId: string) => void;
   onActiveQueryIndexChange?: (index: number | null) => void;
 }
 
@@ -48,9 +47,6 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       messages,
       isStreaming,
       isAnalyzing,
-      onRetry,
-      selectedPaperIds = [],
-      onTogglePaperSelection,
       onActiveQueryIndexChange,
     },
     ref,
@@ -58,10 +54,19 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const isAtBottomRef = useRef(true);
     const messageRefs = useRef<(HTMLElement | null)[]>([]);
-    const previousLastUserMessageIndex = useRef<number>(-1);
-    const previousMessagesLengthRef = useRef<number>(0);
+    const lastAnchoredUserMessageKeyRef = useRef<string | null>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const waitingSpacerRef = useRef<HTMLDivElement>(null);
     const activeQueryIndexRef = useRef<number | null>(null);
+    const [waitingSpacerHeight, setWaitingSpacerHeight] = useState(0);
     const activeQueryId = useProgressStore((state) => state.activeQueryId);
+
+    const getLatestUserMessageIndex = useCallback(() => {
+      for (let i = messages.length - 1; i >= 0; i -= 1) {
+        if (messages[i]?.role === "user") return i;
+      }
+      return -1;
+    }, [messages]);
 
     // Expose scrollToMessage function and activeQueryIndex to parent
     useImperativeHandle(ref, () => ({
@@ -74,7 +79,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
         if (messageElement && scrollContainer) {
           const offsetTop = messageElement.offsetTop;
           scrollContainer.scrollTo({
-            top: offsetTop - 100, // 100px offset from top for better visibility
+            top: offsetTop, 
             behavior: "smooth",
           });
         }
@@ -94,7 +99,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
           if (messageElement && scrollContainer) {
             const offsetTop = messageElement.offsetTop;
             scrollContainer.scrollTo({
-              top: offsetTop - 100, // Position below header
+              top: offsetTop,
               behavior: "smooth",
             });
           }
@@ -114,7 +119,8 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
         const distance =
           viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
 
-        isAtBottomRef.current = distance < 100;
+        const nextIsAtBottom = distance < 100;
+        isAtBottomRef.current = nextIsAtBottom;
 
         const currentTop = viewport.scrollTop + 100;
         let currentActiveIndex: number | null = null;
@@ -162,21 +168,19 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
     }, [messages, isStreaming]);
 
     useEffect(() => {
-      const prevLength = previousMessagesLengthRef.current;
-      const currentLength = messages.length;
-      previousMessagesLengthRef.current = currentLength;
+      const latestUserIndex = getLatestUserMessageIndex();
 
-      if (currentLength !== prevLength + 1) {
+      if (latestUserIndex < 0) return;
+
+      const latestUserMessage = messages[latestUserIndex];
+      const messageKey =
+        (latestUserMessage.metadata?.client_message_id as string | undefined)
+        || (latestUserMessage.metadata?.query_id as string | undefined)
+        || `${latestUserIndex}-${latestUserMessage.text}`;
+
+      if (messageKey === lastAnchoredUserMessageKeyRef.current) {
         return;
       }
-
-      const last = messages[currentLength - 1];
-      if (!last || last.role !== "user") {
-        return;
-      }
-
-      const lastUserMessageIndex = currentLength - 1;
-      if (lastUserMessageIndex === previousLastUserMessageIndex.current) return;
 
       const viewport = scrollAreaRef.current?.querySelector(
         "[data-radix-scroll-area-viewport]",
@@ -184,20 +188,22 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
 
       if (!viewport) return;
 
-      const messageElement = messageRefs.current[lastUserMessageIndex];
+      const messageElement = messageRefs.current[latestUserIndex];
+      if (!messageElement) return;
 
-      if (messageElement) {
-        previousLastUserMessageIndex.current = lastUserMessageIndex;
-        isAtBottomRef.current = true;
-        requestAnimationFrame(() => {
-          const offsetTop = messageElement.offsetTop;
-          viewport.scrollTo({ 
-            top: offsetTop - 100, // Position below header (100px offset)
-            behavior: "smooth" 
-          });
+      lastAnchoredUserMessageKeyRef.current = messageKey;
+
+      requestAnimationFrame(() => {
+        const offsetTop = messageElement.offsetTop;
+        viewport.scrollTo({
+          top: Math.max(0, offsetTop),
+          behavior: "smooth",
         });
-      }
-    }, [messages]);
+      });
+
+      // Keep query anchored while waiting for the first assistant chunk.
+      isAtBottomRef.current = false;
+    }, [getLatestUserMessageIndex, messages]);
 
     useEffect(() => {
       const viewport = scrollAreaRef.current?.querySelector(
@@ -206,7 +212,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
 
       if (!viewport) return;
 
-      previousLastUserMessageIndex.current = -1;
+      lastAnchoredUserMessageKeyRef.current = null;
       activeQueryIndexRef.current = null;
       onActiveQueryIndexChange?.(null);
 
@@ -214,6 +220,64 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
         viewport.scrollTo({ top: 0, behavior: "auto" });
       });
     }, [conversationKey, onActiveQueryIndexChange]);
+
+    const lastMessage = messages[messages.length - 1];
+    const waitingForAssistantFirstChunk = Boolean(
+      isStreaming
+      && lastMessage?.role === "assistant"
+      && !lastMessage?.done
+      && !lastMessage?.isError
+      && !lastMessage?.text?.trim(),
+    );
+
+    useEffect(() => {
+      if (!waitingForAssistantFirstChunk) {
+        return;
+      }
+
+      const viewport = scrollAreaRef.current?.querySelector(
+        "[data-radix-scroll-area-viewport]",
+      ) as HTMLElement | null;
+      const content = contentRef.current;
+      const latestUserIndex = getLatestUserMessageIndex();
+      const latestUserElement =
+        latestUserIndex >= 0 ? messageRefs.current[latestUserIndex] : null;
+
+      if (!viewport || !content || !latestUserElement) return;
+
+      const updateSpacer = () => {
+        const targetSpace = Math.max(180, Math.round(viewport.clientHeight * 1));
+        const currentSpacer = waitingSpacerRef.current?.offsetHeight ?? 0;
+        const nonSpacerBelow = Math.max(
+          0,
+          content.scrollHeight
+          - (latestUserElement.offsetTop + latestUserElement.offsetHeight)
+          - currentSpacer,
+        );
+        const nextSpacer = Math.max(0, targetSpace - nonSpacerBelow);
+
+        setWaitingSpacerHeight((prev) =>
+          Math.abs(prev - nextSpacer) > 1 ? nextSpacer : prev,
+        );
+      };
+
+      updateSpacer();
+
+      const resizeObserver = new ResizeObserver(() => {
+        updateSpacer();
+      });
+
+      resizeObserver.observe(viewport);
+      resizeObserver.observe(content);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }, [
+      waitingForAssistantFirstChunk,
+      getLatestUserMessageIndex,
+      messages,
+    ]);
 
     if (!messages || messages.length === 0) {
       return (
@@ -242,7 +306,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
 
     return (
       <ScrollArea ref={scrollAreaRef} className="h-full flex-1">
-        <Box className="pb-32">
+        <Box ref={contentRef} className="pb-46">
           {messages.map((m, i) => {
             const isUserMessage = m.role === "user";
             const nextMessage = messages[i + 1];
@@ -280,9 +344,6 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
                   <MessageSection 
                     isUserMessage={isUserMessage} 
                     message={m} 
-                    onRetry={onRetry}
-                    selectedPaperIds={selectedPaperIds}
-                    onTogglePaperSelection={onTogglePaperSelection}
                     isAnalyzing={isAnalyzing && i === messages.length - 1}
                   />
                   {shouldShowProgress && (
@@ -305,6 +366,14 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
               </Box>
             );
           })}
+          {waitingForAssistantFirstChunk && (
+            <Box
+              ref={waitingSpacerRef}
+              className="mx-auto max-w-4xl w-full"
+              style={{ height: `${waitingSpacerHeight}px` }}
+              aria-hidden="true"
+            />
+          )}
         </Box>
       </ScrollArea>
     );

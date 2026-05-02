@@ -57,10 +57,7 @@ export interface SearchFilters {
   topJournalsOnly?: boolean;
 }
 
-export function FilterPanel({
-  open,
-  onOpenChange,
-}: FilterPanelProps) {
+export function FilterPanel({ open, onOpenChange }: FilterPanelProps) {
   const { filters, setParams } = useSearchFilters();
   const [localFilters, setLocalFilters] = useState<SearchFilters>(filters);
 
@@ -366,18 +363,18 @@ const CategoryFilter = ({
     onCategoryChange(updated.length > 0 ? updated : []);
   };
 
-  const hasCategory = category && category.length > 0;
+  // const hasCategory = category && category.length > 0;
 
-  function handleClear() {
-    onCategoryChange([]);
-  }
+  // function handleClear() {
+  //   onCategoryChange([]);
+  // }
 
   return (
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value="category">
         <AccordionTrigger>Field of Study</AccordionTrigger>
         <AccordionContent>
-          <VStack className="gap-4">
+          <VStack className="">
             <HStack className="flex items-center justify-between">
               {/* <Button
                 variant="secondary"
@@ -393,15 +390,15 @@ const CategoryFilter = ({
               <VStack className="gap-2 pl-1 pr-2">
                 {CATEGORY_OPTIONS.map((field) => (
                   <HStack key={field} className="items-start gap-2">
-                    <Checkbox
-                      id={`category-${field}`}
-                      checked={category?.includes(field) || false}
-                      onCheckedChange={() => handleToggle(field)}
-                    />
                     <Label
                       htmlFor={`category-${field}`}
-                      className="cursor-pointer leading-tight"
+                      className="cursor-pointer leading-tight text-md"
                     >
+                      <Checkbox
+                        id={`category-${field}`}
+                        checked={category?.includes(field) || false}
+                        onCheckedChange={() => handleToggle(field)}
+                      />
                       {field}
                     </Label>
                   </HStack>
@@ -428,7 +425,9 @@ const PaperTypeFilter = ({
   journalQuartile?: "Q1" | "Q2" | "Q3" | "Q4";
   onOpenAccessChange: (value: boolean | undefined) => void;
   onExcludePreprintsChange: (value: boolean | undefined) => void;
-  onJournalQuartileChange: (value: "Q1" | "Q2" | "Q3" | "Q4" | undefined) => void;
+  onJournalQuartileChange: (
+    value: "Q1" | "Q2" | "Q3" | "Q4" | undefined,
+  ) => void;
 }) => {
   return (
     <VStack className="gap-3">
@@ -464,13 +463,20 @@ const PaperTypeFilter = ({
       </HStack>
 
       <VStack className="gap-1.5">
-        <Label htmlFor="journal-quartile" className="text-xs text-muted-foreground">
+        <Label
+          htmlFor="journal-quartile"
+          className="text-xs text-muted-foreground"
+        >
           Journal Quartile
         </Label>
         <Select
           value={journalQuartile || "all"}
           onValueChange={(value) => {
-            onJournalQuartileChange(value === "all" ? undefined : (value as "Q1" | "Q2" | "Q3" | "Q4"));
+            onJournalQuartileChange(
+              value === "all"
+                ? undefined
+                : (value as "Q1" | "Q2" | "Q3" | "Q4"),
+            );
           }}
         >
           <SelectTrigger id="journal-quartile" className="h-9 w-32">

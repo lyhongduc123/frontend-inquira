@@ -21,41 +21,45 @@ import { PaperDetailSidebar } from "@/app/_components/PaperDetailSidebar";
 import { QueryNavigator } from "@/app/_components/QueryNavigator";
 import { useDetailSidebarStore } from "@/store/paper-detail-sidebar-store";
 import { PaperMetadata } from "@/types/paper.type";
-import { consumeChatLaunchPayload, consumeScopedChatSelection } from "@/lib/scoped-chat-selection";
+import {
+  consumeChatLaunchPayload,
+  consumeScopedChatSelection,
+} from "@/lib/scoped-chat-selection";
 import { useSearchFilters } from "@/hooks/use-search-filters";
 import { ShareConversationButton } from "./ShareConversationButton";
 import { useScopedPaperSelection } from "@/hooks/use-scoped-paper-selection";
-
 
 interface ChatPageClientProps {
   routeConversationId?: string;
   launchKeyFromQuery?: string;
 }
 
-export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: ChatPageClientProps) {
+type ChatMode = "empty" | "loading" | "active";
+
+export function ChatPageClient({
+  routeConversationId,
+  launchKeyFromQuery,
+}: ChatPageClientProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
   const canRenderConversationRoute = Boolean(routeConversationId);
-  const showContent = canRenderConversationRoute || (!isAuthLoading && isAuthenticated);
+  const showContent =
+    canRenderConversationRoute || (!isAuthLoading && isAuthenticated);
 
-  const {
-    filters: searchFilters,
-    pipeline,
-    setParams,
-  } = useSearchFilters();
+  const { filters: searchFilters, pipeline, setParams } = useSearchFilters();
 
-  const handlePipelineChange = useCallback((newPipeline: "research" | "agent") => {
-    setParams(searchFilters, newPipeline);
-  }, [searchFilters, setParams]);
+  const handlePipelineChange = useCallback(
+    (newPipeline: "research" | "agent") => {
+      setParams(searchFilters, newPipeline);
+    },
+    [searchFilters, setParams],
+  );
 
   const { isOpen: isDetailSidebarOpen, close: closeDetailSidebar } =
     useDetailSidebarStore();
 
-  const {
-    messageAreaRef,
-    handleQueryClick,
-    handleActiveQueryIndexChange,
-  } = useViewMode();
+  const { messageAreaRef, handleQueryClick, handleActiveQueryIndexChange } =
+    useViewMode();
 
   const {
     currentConversationId,
@@ -75,19 +79,32 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
 
     if (routeConversationId) {
       if (
-        latestAppliedRouteConversationIdRef.current !== routeConversationId
-        || currentConversationId !== routeConversationId
+        latestAppliedRouteConversationIdRef.current !== routeConversationId ||
+        currentConversationId !== routeConversationId
       ) {
-        const isCurrentlyStreaming = useConversationStore.getState().messages.some(m => !m.done);
-        if (isCurrentlyStreaming && currentConversationId === routeConversationId) {
-             console.log("Skipping loadConversation as it matches active stream:", routeConversationId);
-             latestAppliedRouteConversationIdRef.current = routeConversationId;
-             return;
+        const isCurrentlyStreaming = useConversationStore
+          .getState()
+          .messages.some((m) => !m.done);
+        if (
+          isCurrentlyStreaming &&
+          currentConversationId === routeConversationId
+        ) {
+          console.log(
+            "Skipping loadConversation as it matches active stream:",
+            routeConversationId,
+          );
+          latestAppliedRouteConversationIdRef.current = routeConversationId;
+          return;
         }
 
-        const isNewConversation = useConversationStore.getState().newConversationId === routeConversationId;
+        const isNewConversation =
+          useConversationStore.getState().newConversationId ===
+          routeConversationId;
         if (isNewConversation) {
-          console.log("Skipping loadConversation for newly created conversation:", routeConversationId);
+          console.log(
+            "Skipping loadConversation for newly created conversation:",
+            routeConversationId,
+          );
           latestAppliedRouteConversationIdRef.current = routeConversationId;
           return;
         }
@@ -106,26 +123,38 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     currentConversationId,
     loadConversation,
     routeConversationId,
-    showContent
+    showContent,
   ]);
 
-  const onConversationCreated = useCallback(
-    (conversationId: string) => {
-      const store = useConversationStore.getState();
-      store.setCurrentConversationId(conversationId);
-      store.setNewConversationId(conversationId);
-      
-      // Update URL without triggering a full page re-mount (Gemini-like)
-      // This keeps the useChat hook alive and streaming correctly
-      // Push make the URL reflect the new conversation ID without reloading the page
-      window.history.replaceState(null, "", `/conversation/${conversationId}`);
-    },
-    [],
-  );
+  const onConversationCreated = useCallback((conversationId: string) => {
+    const store = useConversationStore.getState();
+    store.setCurrentConversationId(conversationId);
+    store.setNewConversationId(conversationId);
 
-  const { messages, isStreaming, sendMessage, clearMessages, retry } = useChat({
+    // Update URL without triggering a full page re-mount (Gemini-like)
+    // This keeps the useChat hook alive and streaming correctly
+    // Push make the URL reflect the new conversation ID without reloading the page
+    window.history.replaceState(null, "", `/conversation/${conversationId}`);
+  }, []);
+
+  const {
+    messages,
+    isStreaming,
+    sendMessage,
+    clearMessages,
+    pendingInputMessage,
+    clearPendingInputMessage,
+  } = useChat({
     onConversationCreated,
   });
+
+  const chatMode: ChatMode = useMemo(() => {
+    if (isLoadingMessages) return "loading";
+    if (!showContent && messages.length === 0) return "empty";
+    if (!canRenderConversationRoute && messages.length === 0) return "empty";
+    if (!isLoadingMessages && messages.length === 0) return "loading";
+    return "active";
+  }, [isLoadingMessages, messages.length, showContent]);
 
   useEffect(() => {
     if (!showContent) return;
@@ -195,8 +224,13 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     clearMessages,
     searchFilters,
     selectedScopedPaperIds,
-    pipeline,
   });
+
+  useEffect(() => {
+    if (selectedScopedPaperIds.length > 0 && pipeline === "agent") {
+      handlePipelineChange("research");
+    }
+  }, [selectedScopedPaperIds.length, pipeline, handlePipelineChange]);
 
   useEffect(() => {
     if (!showContent || routeConversationId) return;
@@ -213,8 +247,8 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     const launchPayload = consumeChatLaunchPayload(launchKeyFromQuery);
     if (!launchPayload) return;
 
-    const scopedPapers = (launchPayload.scopedPapers || []).filter(
-      (paper) => Boolean(paper?.paperId),
+    const scopedPapers = (launchPayload.scopedPapers || []).filter((paper) =>
+      Boolean(paper?.paperId),
     );
 
     if (scopedPapers.length > 0) {
@@ -247,7 +281,8 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
     void sendMessage({
       query: initialQuery,
       conversationId: launchPayload.conversationId || undefined,
-      filters: Object.keys(requestFilters).length > 0 ? requestFilters : undefined,
+      filters:
+        Object.keys(requestFilters).length > 0 ? requestFilters : undefined,
       pipeline: launchPayload.pipeline || pipeline,
     });
   }, [
@@ -282,39 +317,42 @@ export function ChatPageClient({ routeConversationId, launchKeyFromQuery }: Chat
               />
             }
             rightContent={
-              <ShareConversationButton 
-                url={window.location.href}
-              />
+              <ShareConversationButton url={window.location.href} />
             }
           ></Header>
         )}
         <VStack className="relative flex-1 overflow-hidden gap-0 min-w-0">
-          {isLoadingMessages ? (
-            <LoadingState />
-          ) : messages.length === 0 ? (
+          {chatMode === "loading" && <LoadingState />}
+          {chatMode === "empty" && (
             <EmptyState
               key={`empty-${currentConversationId ?? "new"}`}
               onSend={handleSend}
               isDisabled={isStreaming}
+              prefillMessage={pendingInputMessage}
+              onPrefillConsumed={clearPendingInputMessage}
               selectedScopedPapers={selectedScopedPapers}
               onRemoveScopedPaper={removeScopedPaper}
               onClearScopedPapers={clearScopedPapers}
             />
-          ) : (
+          )}
+          {chatMode === "active" && (
             <ChatView
               key={`chat-${routeConversationId ?? currentConversationId ?? "new"}`}
-              conversationKey={routeConversationId ?? currentConversationId ?? "new"}
+              conversationKey={
+                routeConversationId ?? currentConversationId ?? "new"
+              }
               messages={messages}
               onSend={handleSend}
               isStreaming={isStreaming}
               onQueryClick={handleQueryClick}
               onActiveQueryIndexChange={handleActiveQueryIndexChange}
               messageAreaRef={messageAreaRef}
+              prefillMessage={pendingInputMessage}
+              onPrefillConsumed={clearPendingInputMessage}
               selectedScopedPapers={selectedScopedPapers}
               onToggleScopedPaper={toggleScopedPaper}
               onRemoveScopedPaper={removeScopedPaper}
               onClearScopedPapers={clearScopedPapers}
-              onRetry={retry}
               isAuthenticated={isAuthenticated}
             />
           )}

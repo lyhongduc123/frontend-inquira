@@ -5,8 +5,9 @@ import { useConversation } from "./use-conversation";
 import { useConversationStore } from "@/store/conversation-store";
 import { chatApi } from "@/lib/api/chat-api";
 import { useProgressStore } from "@/store/progress-store";
-import { MetadataEvent, ProgressEvent, StreamEvent, ConversationEvent } from "@/lib/stream/event.types";
+import { MetadataEvent, ProgressEvent, ConversationEvent } from "@/lib/stream/event.types";
 import { ChatSubmitResponse } from "@/types/task.type";
+import { toast } from "sonner";
 
 interface UseChatOptions {
   apiEndpoint?: string;
@@ -47,12 +48,11 @@ function isAbortError(error: unknown): boolean {
 
 export function useChat(options: UseChatOptions = {}) {
   const {
-    apiEndpoint = "/api/v1/chat/stream",
     onConversationCreated,
     onProgress,
     onError: onErrorCallback,
   } = options;
-  const { createConversation } = useConversation();
+  useConversation();
 
   const messages = useConversationStore((state) => state.messages);
   const latestMetadataEvent = useConversationStore(
@@ -71,6 +71,7 @@ export function useChat(options: UseChatOptions = {}) {
     lastFailedQuery: null,
     lastClientMessageId: null,
   });
+  const [pendingInputMessage, setPendingInputMessage] = useState<string | null>(null);
 
   const accumulatedTextRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -117,11 +118,11 @@ export function useChat(options: UseChatOptions = {}) {
         isRetry = false,
         clientMessageId,
         pipeline = "research",
-        useHybridPipeline,
         model,
         filters,
       } = payload;
       let finalConversationId = conversationId;
+      let hasHandledFailure = false;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort(ABORT_REASON);
       }
@@ -237,22 +238,29 @@ export function useChat(options: UseChatOptions = {}) {
           }
         },
         onError: (error: Error) => {
-          if (isAbortError(error)) {
+          if (isAbortError(error) || hasHandledFailure) {
             return;
           }
 
+          hasHandledFailure = true;
           console.error("Stream error:", error);
-          
+
           updateLastMessage({
-            text: error.message || "Error: Failed to get response from server.",
+            text: "",
             done: true,
             isError: true,
+            metadata: {
+              ...(useConversationStore.getState().messages.at(-1)?.metadata || {}),
+              error_message: error.message,
+            },
           });
 
           if (currentQueryIdRef.current) {
             completeQuery(currentQueryIdRef.current);
           }
 
+          setPendingInputMessage(query);
+          toast.error("Something wrong happened, please try again");
           onErrorCallback?.();
           setStreamState({
             isStreaming: false,
@@ -288,8 +296,29 @@ export function useChat(options: UseChatOptions = {}) {
             throw new Error(`Failed to submit agent task: ${response.status} ${errorText}`);
           }
 
-          const submitData = (await response.json()) as { data: ChatSubmitResponse };
-          const taskId = submitData.data.taskId;
+          const submitData = (await response.json()) as
+            | { data?: ChatSubmitResponse }
+            | ChatSubmitResponse;
+          const submitPayload = "data" in submitData && submitData.data
+            ? submitData.data
+            : (submitData as ChatSubmitResponse);
+
+          const taskId = submitPayload.taskId;
+          const submittedConversationId = submitPayload.conversationId;
+
+          if (
+            submittedConversationId
+            && submittedConversationId !== finalConversationId
+          ) {
+            finalConversationId = submittedConversationId;
+            activeConversationIdRef.current = submittedConversationId;
+
+            if (currentQueryIdRef.current) {
+              startQuery(currentQueryIdRef.current, query, submittedConversationId);
+            }
+
+            onConversationCreated?.(submittedConversationId);
+          }
 
           // Step 2: Stream events for the task
           const streamUrl = chatApi.getStreamEventsUrl(taskId);
@@ -306,7 +335,10 @@ export function useChat(options: UseChatOptions = {}) {
               query,
               conversationId: finalConversationId || undefined,
               pipeline: pipeline as "research",
-              filters: filters as any,
+              filters,
+              paperIds: Array.isArray(filters?.paperIds)
+                ? (filters.paperIds as string[])
+                : undefined,
               model: model || undefined,
               clientMessageId: messageId,
             },
@@ -322,6 +354,11 @@ export function useChat(options: UseChatOptions = {}) {
           return;
         }
 
+        if (hasHandledFailure) {
+          return;
+        }
+        hasHandledFailure = true;
+
         console.error("Streaming error:", error);
         
         if (
@@ -329,9 +366,15 @@ export function useChat(options: UseChatOptions = {}) {
           activeConversationIdRef.current
         ) {
           updateLastMessage({
-            text: error instanceof Error ? error.message : "Error: Failed to get response from server.",
+            text: "",
             done: true,
             isError: true,
+            metadata: {
+              ...(useConversationStore.getState().messages.at(-1)?.metadata || {}),
+              error_message: error instanceof Error
+                ? error.message
+                : "Error: Failed to get response from server.",
+            },
           });
         }
 
@@ -340,6 +383,8 @@ export function useChat(options: UseChatOptions = {}) {
         }
 
         onErrorCallback?.();
+        setPendingInputMessage(query);
+        toast.error("Something wrong happened, please try again");
         setStreamState({
           isStreaming: false,
           isAnalyzing: false,
@@ -356,18 +401,17 @@ export function useChat(options: UseChatOptions = {}) {
       }
     },
     [
-      apiEndpoint,
       onConversationCreated,
       onProgress,
       onErrorCallback,
       resetStreamState,
       addAssistantMessage,
       updateLastMessage,
-      createConversation,
       startQuery,
       addProgress,
       completeQuery,
       setLatestMetadataEvent,
+      setMessages,
     ],
   );
 
@@ -406,6 +450,10 @@ export function useChat(options: UseChatOptions = {}) {
     resetStreamState();
   }, [setMessages, resetStreamState]);
 
+  const clearPendingInputMessage = useCallback(() => {
+    setPendingInputMessage(null);
+  }, []);
+
   const setMessagesDirectly = useCallback(
     (newMessages: Message[]) => {
       setMessages(newMessages);
@@ -423,5 +471,7 @@ export function useChat(options: UseChatOptions = {}) {
     retry,
     clearMessages,
     setMessages: setMessagesDirectly,
+    pendingInputMessage,
+    clearPendingInputMessage,
   };
 }

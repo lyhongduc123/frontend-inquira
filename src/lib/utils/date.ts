@@ -16,3 +16,8 @@ export function formatCustomDate(targetDate: string) {
   // yyyy: 4-digit year (2026)
   return format(date, "MMM d, yyyy");
 }
+
+export function formatDateTime(targetDate: string) {
+  const date = new Date(targetDate);
+  return format(date, "MMM d, yyyy");
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useProgressStore } from "@/store/progress-store";
 import type { ProgressStep } from "@/store/progress-store";
@@ -9,7 +9,9 @@ import {
   Sparkles,
   Search,
   ListOrdered,
-  ListTodo,
+  Compass,
+  Database,
+  Globe,
 } from "lucide-react";
 import { TypographyP } from "@/components/global/typography";
 import { HStack } from "@/components/layout/hstack";
@@ -36,6 +38,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Icon } from "@iconify/react";
 
 interface QueryProgressProps {
   queryId?: string | null;
@@ -57,6 +60,8 @@ export function ProgressEventSheet({
   progressData,
 }: QueryProgressProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const suffleText = useShuffleText();
+
   const queryProgressFromStore = useProgressStore((state) =>
     queryId ? state.getQueryProgress(queryId) : undefined,
   );
@@ -67,6 +72,10 @@ export function ProgressEventSheet({
   }
 
   const displayThoughts = queryProgress.steps || [];
+  const pipelineType =
+    displayThoughts.length > 0
+      ? displayThoughts[0].pipeline_type ?? displayThoughts[0].pipelineType ?? null
+      : null;
   const receivedStepsCount = displayThoughts.length;
   const hasNoEventsYet = !queryProgress.isComplete && receivedStepsCount === 0;
   const stepsCount = queryProgress.totalSteps || receivedStepsCount;
@@ -99,20 +108,26 @@ export function ProgressEventSheet({
       >
         <>
           <HStack className="items-center gap-2 min-w-0">
-            <ListTodo size={14} className="text-secondary shrink-0" />
+            {/* <ListTodo size={14} className="text-secondary shrink-0" /> */}
+            {pipelineType === "research" && (
+              <Icon icon="fluent-color:search-sparkle-16" />
+            )}
+            {pipelineType === "agent" && (
+              <Icon icon="fluent-color:bot-24" />
+            )}
             <TypographyP size="xs" weight="medium" className="truncate">
               {pluralize("step", stepsCount, true)}
             </TypographyP>
           </HStack>
           {C_BULLET}
           <HStack className="items-center gap-1 min-w-0">
-            <TypographyP size="xs" className="truncate">
+            <OpacityShimmer className="text-xs" isActive={!queryProgress.isComplete}>
               {hasNoEventsYet
-                ? "Processing..."
+                ? `${suffleText}...`
                 : queryProgress.isComplete
                   ? `${pluralize("source", completedSourceCount ?? 0, true)}`
                   : `${changeCase.capitalCase(currentLabel)}...`}
-            </TypographyP>
+            </OpacityShimmer>
           </HStack>
         </>
       </Button>
@@ -235,11 +250,10 @@ const StepAccordion = ({
                     size="sm"
                     weight="medium"
                     className={cn(
-                      "capitalize truncate",
                       isActive ? "text-foreground" : "text-foreground/80",
                     )}
                   >
-                    Step {idx + 1}: {thought.type}
+                    Step {idx + 1}: {changeCase.capitalCase(thought.type)}
                   </TypographyP>
                 </HStack>
               </AccordionTrigger>
@@ -269,8 +283,14 @@ const StepAccordion = ({
 
 const TypeIcon = ({ type }: { type: string }) => {
   switch (type as EventType) {
+    case EventType.PLANNING:
+      return <Compass size={14} className="text-inherit shrink-0" />;
     case EventType.SEARCHING:
       return <Search size={14} className="text-inherit shrink-0" />;
+    case EventType.SEARCHING_EXTERNAL:
+      return <Globe size={14} className="text-inherit shrink-0" />;
+    case EventType.INGESTING_PAPER:
+      return <Database size={14} className="text-inherit shrink-0" />;
     case EventType.RANKING:
       return <ListOrdered size={14} className="text-inherit shrink-0" />;
     case EventType.REASONING:
@@ -310,7 +330,14 @@ const ReasoningRenderer = ({ children }: { children?: string }) => {
 
 function parseContent(step: ProgressStep): ReactNode | string {
   switch (step.type) {
+    case EventType.PLANNING:
+      return (
+        step.content ||
+        `Planning strategy for intent ${String(step.metadata?.intent || "unknown")}`
+      );
+
     case EventType.SEARCHING:
+      console.log("Parsing searching step", step);
       if (!step.metadata?.queries) {
         console.warn("Searching step is missing metadata.queries", step);
         return "Searching academic databases...";
@@ -333,6 +360,49 @@ function parseContent(step: ProgressStep): ReactNode | string {
         step.content ||
         `Ranking ${step.metadata?.total_papers ?? "papers"} by  relevance, filters, and quality...`
       );
+
+    case EventType.SEARCHING_EXTERNAL: {
+      const triedQueries = Array.isArray(step.metadata?.queries)
+        ? (step.metadata.queries as string[])
+        : [];
+      if (triedQueries.length > 0) {
+        return (
+          <VStack>
+            {step.content || "Searching external providers..."}
+            {triedQueries.map((q, idx) => (
+              <span key={idx}>
+                {C_BULLET} {q}
+                {idx < triedQueries.length - 1 && <br />}
+              </span>
+            ))}
+          </VStack>
+        );
+      }
+
+      return step.content || "Searching external provider...";
+    }
+
+    case EventType.INGESTING_PAPER: {
+      const ingestedCount =
+        typeof step.metadata?.ingested_count === "number"
+          ? step.metadata.ingested_count
+          : null;
+      const processedWithPyMuPDF =
+        typeof step.metadata?.processed_with_pymupdf === "number"
+          ? step.metadata.processed_with_pymupdf
+          : null;
+
+      if (ingestedCount !== null) {
+        const processedText =
+          processedWithPyMuPDF !== null
+            ? ` (${processedWithPyMuPDF} parsed with PyMuPDF)`
+            : "";
+        return `${step.content || "Ingesting external papers..."}${processedText}`;
+      }
+
+      return step.content || "Ingesting external papers...";
+    }
+
     case EventType.REASONING:
       if (!step.content) {
         console.warn("Reasoning step is missing content", step);
@@ -349,4 +419,27 @@ function formatDuration(start: number, end: number) {
   return seconds < 60
     ? `${seconds}s`
     : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
+
+const SHUFFLE_WORDS = [
+  "Processing",
+  "Thinking",
+  "Drafting",
+  "Formulating",
+  "Synthesizing",
+  "Refining",
+];
+
+function useShuffleText(interval = 5500) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((prev) => (prev + 1) % SHUFFLE_WORDS.length);
+    }, interval);
+
+    return () => clearInterval(id);
+  }, [interval]);
+
+  return SHUFFLE_WORDS[index];
 }

@@ -1,11 +1,58 @@
 import { useCallback, useRef } from "react";
 import { conversationsApi } from "@/lib/api/conversations-api";
 import { Message } from "@/types/message.type";
+import { MessageProgressEventDTO } from "@/types/message.type";
 import { useConversationStore } from "@/store/conversation-store";
 import { ConversationDTO } from "@/types/conversation.type";
 import { PaperMetadata } from "@/types/paper.type";
 import { toast } from "sonner";
 import { getErrorMessage, isNotFoundError } from "@/lib/react-query/error-utils";
+
+function normalizeProgressEvent(raw: unknown): MessageProgressEventDTO {
+  const src =
+    raw && typeof raw === "object"
+      ? (raw as Record<string, unknown>)
+      : ({} as Record<string, unknown>);
+
+  const metadata =
+    src.metadata && typeof src.metadata === "object"
+      ? { ...(src.metadata as Record<string, unknown>) }
+      : null;
+
+  if (metadata) {
+    const totalPapers = metadata.total_papers ?? metadata.totalPapers;
+    const ingestedCount = metadata.ingested_count ?? metadata.ingestedCount;
+    const processedWithPymupdf =
+      metadata.processed_with_pymupdf ?? metadata.processedWithPymupdf;
+
+    if (typeof totalPapers === "number") {
+      metadata.total_papers = totalPapers;
+    }
+
+    if (typeof ingestedCount === "number") {
+      metadata.ingested_count = ingestedCount;
+    }
+
+    if (typeof processedWithPymupdf === "number") {
+      metadata.processed_with_pymupdf = processedWithPymupdf;
+    }
+  }
+
+  const pipelineType =
+    (typeof src.pipeline_type === "string" && src.pipeline_type) ||
+    (typeof src.pipelineType === "string" && src.pipelineType) ||
+    (typeof metadata?.pipeline_type === "string" && metadata.pipeline_type) ||
+    (typeof metadata?.pipelineType === "string" && metadata.pipelineType) ||
+    null;
+
+  return {
+    type: String(src.type || "unknown"),
+    content: typeof src.content === "string" ? src.content : "",
+    metadata,
+    pipeline_type: pipelineType,
+    timestamp: typeof src.timestamp === "number" ? src.timestamp : Date.now(),
+  };
+}
 
 export function useConversation() {
   const currentConversationId = useConversationStore(
@@ -103,7 +150,9 @@ export function useConversation() {
           text: msg.content,
           done: true,
           paperSnapshots: [...(msg.paperSnapshots || [])] as PaperMetadata[],
-          progressEvents: msg.progressEvents || undefined,
+          progressEvents: Array.isArray(msg.progressEvents)
+            ? msg.progressEvents.map(normalizeProgressEvent)
+            : undefined,
           scopedQuoteRefs: msg.scopedQuoteRefs || undefined,
         }));
 

@@ -3,23 +3,27 @@ import { HStack } from "@/components/layout/hstack";
 import { VStack } from "@/components/layout/vstack";
 import { C_BULLET } from "@/core";
 import type { PaperMetadata } from "@/types/paper.type";
-import { ArrowUpRightIcon, BookOpenIcon, Link } from "lucide-react";
+import { BookOpenIcon, CircleCheckBig, MessageCircle, MessageCirclePlusIcon, MessageSquarePlusIcon } from "lucide-react";
 import { ActionButtonGroup } from "./_shared/ActionButtonGroup";
 import { Separator } from "@/components/ui/separator";
 import { InfoItem } from "./_shared/InfoItem";
+import { Button } from "@/components/ui/button";
 
 interface CitationCardProps {
   isVisible: boolean;
   idx?: number;
   paperDetail?: PaperMetadata;
   handleClick?: () => void;
+  isScopedSelected?: boolean;
+  onToggleScopedPaper?: () => void;
 }
 
 export function CitationCard({
   isVisible,
-  idx,
   paperDetail,
   handleClick,
+  isScopedSelected = false,
+  onToggleScopedPaper,
 }: CitationCardProps) {
   if (!isVisible || !paperDetail) return null;
 
@@ -44,14 +48,16 @@ export function CitationCard({
           <InfoItem number={Number(paperDetail.year) || "n.d."} />
           <span className="text-muted-foreground">{C_BULLET}</span>
           <InfoItem number={paperDetail.citationCount} label={"citations"} />
-          <span className="text-muted-foreground">{C_BULLET}</span>
           {authors.length > 0 && (
-            <TypographyP className="text-xs line-clamp-1">
-              {authors[0].name}
-              <span className="text-muted-foreground">
-                {authors.length > 1 ? `, et al.` : ""}
-              </span>
-            </TypographyP>
+            <>
+              <span className="text-muted-foreground">{C_BULLET}</span>
+              <TypographyP className="text-xs line-clamp-1">
+                {authors[0].name}
+                <span className="text-muted-foreground">
+                  {authors.length > 1 ? `, et al.` : ""}
+                </span>
+              </TypographyP>
+            </>
           )}
         </HStack>
         <HStack className="gap-1 items-center min-w-0">
@@ -63,18 +69,19 @@ export function CitationCard({
       </VStack>
       <Separator />
       <HStack className="gap-2 items-center justify-between">
-        {paperDetail.externalIds?.doi && (
-          <a
-            href={`https://doi.org/${paperDetail.externalIds?.doi}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="truncate text-ellipsis"
-          >
-            <TypographyP className="text-xs text-muted-foreground underline truncate">
-              DOI: {paperDetail.externalIds?.doi}
-            </TypographyP>
-          </a>
-        )}
+        <Button
+          variant={isScopedSelected ? "default" : "outline"}
+          className="cursor-pointer"
+          aria-label={isScopedSelected ? "Remove from scoped papers" : "Add to scoped papers"}
+          onClick={onToggleScopedPaper}
+        >
+          {isScopedSelected ? (
+            <CircleCheckBig className="size-4" />
+          ) : (
+            <MessageCirclePlusIcon className="size-4" />
+          )}
+          {isScopedSelected ? "Scoped" : "Ask"}
+        </Button>
         <ActionButtonGroup paperMetadata={paperDetail} />
       </HStack>
     </VStack>

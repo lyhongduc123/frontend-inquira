@@ -41,7 +41,6 @@ export interface PaperMetadata {
   referenceCount?: number
   relevanceScore?: number | null
   authorTrustScore?: number | null
-  institutionalTrustScore?: number | null
   fwci?: number | null
   isOpenAccess: boolean
   isRetracted: boolean
@@ -81,8 +80,6 @@ export interface PaperDetail {
   citationPercentile?: Record<string, unknown> | null
   fwci?: number | null
   authorTrustScore?: number | null
-  institutionalTrustScore?: number | null
-  networkDiversityScore?: number | null
   isRetracted: boolean
   language?: string | null
   correspondingAuthorIds?: string[] | null

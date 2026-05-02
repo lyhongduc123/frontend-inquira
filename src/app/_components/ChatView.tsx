@@ -13,11 +13,12 @@ interface ChatViewProps {
   isAnalyzing?: boolean;
   messageAreaRef: React.RefObject<MessageAreaRef | null>;
   activeQueryIndex?: number;
+  prefillMessage?: string | null;
+  onPrefillConsumed?: () => void;
 
   onSend: (query: string) => void;
   onQueryClick: (index: number) => void;
   onActiveQueryIndexChange?: (index: number | null) => void;
-  onRetry?: () => void;
   selectedScopedPapers?: PaperMetadata[];
   onToggleScopedPaper?: (paperId: string) => void;
   onRemoveScopedPaper?: (paperId: string) => void;
@@ -35,7 +36,8 @@ export function ChatView({
   isAuthenticated,
   onActiveQueryIndexChange,
   messageAreaRef,
-  onRetry,
+  prefillMessage,
+  onPrefillConsumed,
   selectedScopedPapers = [],
   onToggleScopedPaper,
   onRemoveScopedPaper,
@@ -53,10 +55,7 @@ export function ChatView({
           messages={messages}
           isStreaming={isStreaming}
           isAnalyzing={isAnalyzing}
-          onRetry={onRetry}
           onActiveQueryIndexChange={onActiveQueryIndexChange}
-          selectedPaperIds={selectedScopedPapers.map((paper) => paper.paperId)}
-          onTogglePaperSelection={onToggleScopedPaper}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-t from-background via-background/80 to-transparent" />
       </VStack>
@@ -69,6 +68,8 @@ export function ChatView({
             selectedScopedPapers={selectedScopedPapers}
             onRemoveScopedPaper={onRemoveScopedPaper}
             onClearScopedPapers={onClearScopedPapers}
+            prefillMessage={prefillMessage}
+            onPrefillConsumed={onPrefillConsumed}
             useHybridPipeline={useHybridPipeline}
             setUseHybridPipeline={setUseHybridPipeline}
           />

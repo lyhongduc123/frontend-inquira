@@ -1,1 +1,1 @@
-export { useAuthor, useAuthorDetails, useAuthors, useAuthorStats } from './useAuthor'
+export { useAuthor, useAuthorDetails, useAuthorPapers, useAuthors, useAuthorStats } from './useAuthor'

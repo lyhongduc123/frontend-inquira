@@ -62,46 +62,48 @@ export function ConversationCard({
           )}
           onClick={onClick}
         > */}
-          <Box className="flex-1 min-w-0 select-none">
-            <TypographyP className="text-sm truncate">
-              {conversation.title || "New Conversation"}
-            </TypographyP>
-            {/* <TypographyP className="text-xs text-muted-foreground">
+        <Box className="flex-1 min-w-0 select-none">
+          <TypographyP className="text-sm truncate">
+            {conversation.title || "New Conversation"}
+          </TypographyP>
+          {/* <TypographyP className="text-xs text-muted-foreground">
             {userMsgcount} {" "}
             {pluralize("query", userMsgcount)}
           </TypographyP> */}
-          </Box>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Box
-                onClick={(e) => e.stopPropagation()}
-                className="opacity-0 p-1.5 rounded-full group-hover/card:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-white/10 transition-opacity duration-200"
-              >
-                <EllipsisVerticalIcon className="size-4" />
-              </Box>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="right"
-              align="start"
+        </Box>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Box
               onClick={(e) => e.stopPropagation()}
+              className="opacity-0 p-1.5 rounded-full group-hover/card:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-white/10 transition-opacity duration-200"
             >
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="select-none text-xs text-muted-foreground">
-                  Actions
-                </DropdownMenuLabel>
-                <DropdownMenuItem>Archive</DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={() => {
-                    setShowDeleteDialog(true);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <EllipsisVerticalIcon className="size-4" />
+            </Box>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="right"
+            align="start"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="select-none text-xs text-muted-foreground">
+                Actions
+              </DropdownMenuLabel>
+              {/* <DropdownMenuItem fixedVariant>
+                Archive
+              </DropdownMenuItem> */}
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => {
+                  setShowDeleteDialog(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {/* </HStack> */}
       </SidebarMenuButton>
       <DeleteConversationDialog
@@ -114,13 +116,12 @@ export function ConversationCard({
   );
 }
 
-export function ConversationCardSkeleton({ isOpen }: { isOpen?: boolean }) {
+export function ConversationCardSkeleton({
+  ...props
+}: React.ComponentProps<"div">) {
   return (
-    <HStack>
-      <Box className="flex-1 min-w-0 animate-pulse gap-1">
-        <Skeleton className="h-4 w-full mb-2" />
-        <Skeleton className="h-3 w-1/2" />
-      </Box>
-    </HStack>
+    <Box className="flex-1 min-w-0 animate-pulse gap-1">
+      <Skeleton className="h-8 w-full mb-2" {...props} />
+    </Box>
   );
 }

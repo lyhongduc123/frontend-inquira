@@ -6,6 +6,41 @@ import {
   SCOPED_CITATION_REGEX,
 } from "./markdown-utils";
 
+function getSourceFromCitationToken(
+  token: string,
+  sources?: PaperMetadata[],
+): PaperMetadata | undefined {
+  if (!sources || sources.length === 0) {
+    return undefined
+  }
+
+  const normalized = token.trim()
+  if (!normalized) {
+    return undefined
+  }
+
+  const byPaperId = sources.find((source) => source.paperId === normalized)
+  if (byPaperId) {
+    return byPaperId
+  }
+
+  // Support numeric token as source list index (primarily 0-based).
+  if (/^\d+$/.test(normalized)) {
+    const rawIndex = Number(normalized)
+    if (rawIndex >= 0 && rawIndex < sources.length) {
+      return sources[rawIndex]
+    }
+
+    // Backward-safe fallback for 1-based index inputs.
+    const oneBased = rawIndex - 1
+    if (oneBased >= 0 && oneBased < sources.length) {
+      return sources[oneBased]
+    }
+  }
+
+  return undefined
+}
+
 /**
  * Extracts all paper IDs that are cited in the message text
  * Supports both formats:
@@ -55,7 +90,14 @@ export function getCitedPapers(
     return [];
   }
 
-  const citedIds = new Set(extractCitedPaperIds(text));
+  const citedIds = new Set<string>()
+  for (const token of extractCitedPaperIds(text)) {
+    const source = getSourceFromCitationToken(token, sources)
+    const paperId = source?.paperId
+    if (paperId) {
+      citedIds.add(paperId)
+    }
+  }
 
   return sources.filter(
     (source) => source.paperId && citedIds.has(source.paperId),
@@ -72,7 +114,7 @@ export function getFormattedCitedContent(
   let formattedText;
 
   formattedText = text.replace(LEGACY_FORMAT_REGEX, (match, paperId) => {
-    const paper = cited_sources?.find((s) => s.paperId === paperId);
+    const paper = getSourceFromCitationToken(paperId, cited_sources)
     if (!paper) return match;
 
     const firstAuthor = paper.authors?.[0] ?? "Unknown";
@@ -85,7 +127,7 @@ export function getFormattedCitedContent(
   formattedText = formattedText.replace(
     SCOPED_CITATION_REGEX,
     (match, paperIdRaw, chunkIdRaw,) => {
-      const paper = cited_sources?.find((s) => s.paperId === paperIdRaw);
+      const paper = getSourceFromCitationToken(paperIdRaw, cited_sources)
 
       if (!paper) return match;
 
@@ -101,7 +143,10 @@ export function getFormattedCitedContent(
     const paperIds = content.split(',').map((id: string) => id.trim());
     let final = ""
     for (const paperId of paperIds) {
-      const paper = cited_sources?.find((s) => s.paperId === paperId);
+      const token = paperId.startsWith("cite:")
+        ? paperId.slice(5).trim()
+        : paperId.trim()
+      const paper = getSourceFromCitationToken(token, cited_sources)
       if (!paper) continue;
       const hasManyAuthor = paper.authors && paper.authors.length >= 3;
       const firstAuthor = paper.authors?.[0] ?? "Unknown";

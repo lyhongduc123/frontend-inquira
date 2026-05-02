@@ -14,13 +14,21 @@ export const CitationTrigger = forwardRef<
   HTMLButtonElement,
   CitationTriggerProps
 >(function CitationTrigger(
-  { number, onClick, isSelected},
+  { number, onClick, isSelected, paperDetail },
   ref,
 ) {
   const handleOnClick = (e: React.MouseEvent) => {
     e.preventDefault();
     onClick?.();
   };
+  const authorName = paperDetail?.authors && paperDetail.authors.length > 0
+    ? paperDetail.authors[0].name
+    : "";
+  const triggerLabel = formatLabel({
+    author: authorName,
+    title: paperDetail?.title,
+    year: paperDetail?.year || "",
+  });
 
   return (
     <Button
@@ -33,7 +41,36 @@ export const CitationTrigger = forwardRef<
       )}
       onClick={handleOnClick}
     >
-      {number || "!"}
+      {number ? `${number}` : triggerLabel}
     </Button>
   );
 });
+
+function formatLabel(data: {
+  author?: string;
+  title?: string;
+  year?: number | string;
+}): string {
+  const year = data.year ?? "";
+
+  if (data.author) {
+    return `${getLastNameSafe(data.author)} ${year}`.trim();
+  }
+
+  if (data.title) {
+    const shortTitle = data.title.split(":")[0].slice(0, 30);
+    return `${shortTitle} ${year}`.trim();
+  }
+
+  return `Unknown ${year}`.trim();
+}
+
+export function getLastNameSafe(author: string): string {
+  if (!author) return "";
+
+  const cleaned = author.trim();
+  if (cleaned.includes(",")) {
+    return cleaned.split(",")[0].trim();
+  }
+  return cleaned.split(/\s+/).pop() || "";
+}

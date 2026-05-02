@@ -1,35 +1,22 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { SearchFilters } from "@/app/_components/FilterPanel";
-
-const PIPELINE_STORAGE_KEY = "exegent_chat_pipeline_mode";
+import { usePipelineStore } from "@/store/pipeline-store";
 
 /**
  * Hook to manage search filters via URL parameters
- * and chat pipeline mode via localStorage.
+ * and chat pipeline mode via global store.
  */
 export function useSearchFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [pipeline, setPipeline] = useState<"research" | "agent">(() => {
-    if (typeof window !== "undefined") {
-      const storedPipeline = window.localStorage.getItem(PIPELINE_STORAGE_KEY);
-      if (storedPipeline === "research" || storedPipeline === "agent") {
-        return storedPipeline;
-      }
-    }
-
-    const legacyModeParam = searchParams.get("mode");
-    if (legacyModeParam === "agent" || legacyModeParam === "research") {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(PIPELINE_STORAGE_KEY, legacyModeParam);
-      }
-      return legacyModeParam;
-    }
-
-    return "research";
-  });
+  const persistedPipeline = usePipelineStore((state) => state.pipeline);
+  const hasHydrated = usePipelineStore((state) => state.hasHydrated);
+  const setPipeline = usePipelineStore((state) => state.setPipeline);
+  const pipeline: "research" | "agent" = hasHydrated
+    ? persistedPipeline
+    : "research";
 
   const filters = useMemo((): SearchFilters => {
     const f: SearchFilters = {};
@@ -97,12 +84,14 @@ export function useSearchFilters() {
     return f;
   }, [searchParams]);
 
-  const persistPipeline = useCallback((newPipeline: "research" | "agent") => {
-    setPipeline(newPipeline);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(PIPELINE_STORAGE_KEY, newPipeline);
+  useEffect(() => {
+    const legacyModeParam = searchParams.get("mode");
+    if (legacyModeParam === "agent" || legacyModeParam === "research") {
+      if (legacyModeParam !== persistedPipeline) {
+        setPipeline(legacyModeParam);
+      }
     }
-  }, []);
+  }, [persistedPipeline, searchParams, setPipeline]);
 
   const setParams = useCallback(
     (newFilters: SearchFilters, newPipeline?: "research" | "agent") => {
@@ -146,13 +135,13 @@ export function useSearchFilters() {
       }
 
       if (newPipeline) {
-        persistPipeline(newPipeline);
+        setPipeline(newPipeline);
       }
 
       const queryString = params.toString();
       router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, { scroll: false });
     },
-    [pathname, persistPipeline, router, searchParams]
+    [pathname, router, searchParams, setPipeline]
   );
 
   const clearFilters = useCallback(() => {

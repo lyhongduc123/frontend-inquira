@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/hover-card";
 import { useCitationSelectionStore } from "@/store/citation-selection-store";
 import { Box } from "@/components/layout/box";
+import { useScopedPaperSelection } from "@/hooks/use-scoped-paper-selection";
 
 interface CitationProps {
   number: string;
@@ -37,10 +38,14 @@ export function Citation({
     setActiveCitation,
     clearActiveCitation,
   } = useCitationSelectionStore();
+  const { selectedScopedPaperIds, toggleScopedPaper } =
+    useScopedPaperSelection();
 
   if (!source) {
     return <span>[{number}]</span>;
   }
+
+  const isScopedSelected = selectedScopedPaperIds.includes(source.paperId);
 
   const clickedChunkId =
     variant === "scoped" ? (scopedRef?.chunkId ?? null) : null;
@@ -108,6 +113,12 @@ export function Citation({
             idx={Number(number)}
             paperDetail={source}
             handleClick={handleClick}
+            isScopedSelected={isScopedSelected}
+            onToggleScopedPaper={() => {
+              if (source.paperId) {
+                toggleScopedPaper(source.paperId);
+              }
+            }}
           />
         )}
       </HoverCardContent>

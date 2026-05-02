@@ -89,6 +89,35 @@ export const authorApi = {
   },
 
   /**
+   * Get paginated papers for an author
+   */
+  async getAuthorPapers(
+    authorId: string,
+    offset: number = 0,
+    limit: number = 20,
+    sortBy: string = "year",
+    sortOrder: string = "desc",
+  ): Promise<PaginatedData<any> | null> {
+    try {
+      const queryParams = new URLSearchParams({
+        offset: offset.toString(),
+        limit: limit.toString(),
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      });
+      const response = await apiClient.get<PaginatedData<any>>(
+        `${AUTHORS_BASE}/${authorId}/papers?${queryParams}`,
+      );
+      return response;
+    } catch (error) {
+      if (error instanceof ApiError && error.isStatus(HttpStatus.NOT_FOUND)) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  /**
    * Get author statistics
    */
   async getStats(): Promise<AuthorStats> {

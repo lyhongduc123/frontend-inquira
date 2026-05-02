@@ -39,7 +39,7 @@ export const ActionButtonGroup = ({
       <HStack className="gap-2">
         <Tooltip delayDuration={delayDuration}>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" onClick={onCitationClick}>
+            <Button variant="ghost" size="sm" onClick={onCitationClick} className="cursor-pointer">
               <Quote className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
@@ -56,6 +56,7 @@ export const ActionButtonGroup = ({
               size="sm" 
               onClick={onBookmarkClick}
               disabled={isPending}
+              className="cursor-pointer"
             >
               <Bookmark 
                 className="h-4 w-4 transition-all" 

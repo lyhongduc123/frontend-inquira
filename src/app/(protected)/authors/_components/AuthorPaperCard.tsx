@@ -54,7 +54,9 @@ export function AuthorPaperCard({
     pdfUrl,
     journal,
   } = paperMetadata;
-  const displayText = abstract;
+  const hrefUrl = paperMetadata.externalIds?.doi
+    ? `https://doi.org/${paperMetadata.externalIds.doi}`
+    : url || "#";
 
   const formatAuthors = (authorsArr: AuthorMetadataDTO[]) => {
     if (!authorsArr?.length) return null;
@@ -144,7 +146,7 @@ export function AuthorPaperCard({
         <CardTitle className="flex-1 text-sm font-medium min-w-0">
           <HStack className="items-center gap-1 min-w-0">
             <a
-              href={url ?? "#"}
+              href={hrefUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 group-hover:underline line-clamp-1 pr-2 min-w-0 max-w-[90%]"

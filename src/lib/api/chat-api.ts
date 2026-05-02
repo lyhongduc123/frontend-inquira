@@ -50,14 +50,14 @@ export const chatApi = {
    * Returns immediately with task_id. Use for Agent/Long-running pipelines.
    */
   getSubmitUrl(): string {
-    return `${CHAT_BASE}/submit`;
+    return `${CHAT_BASE}/agent`;
   },
 
   /**
    * Backward-compatible alias for event-driven submit URL.
    */
   getEventDrivenSubmitUrl(): string {
-    return `${CHAT_BASE}/submit`;
+    return `${CHAT_BASE}/agent`;
   },
 
   /**

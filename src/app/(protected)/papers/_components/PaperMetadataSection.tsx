@@ -2,6 +2,7 @@ import {
   UserIcon,
   ArrowUpRightFromSquare,
   InfoIcon,
+  ArrowUpRight,
 } from "lucide-react";
 
 import { VStack } from "@/components/layout/vstack";
@@ -79,12 +80,18 @@ export function PaperMetadataSection({ paper }: PaperMetadataSectionProps) {
 
             {paper.externalIds && (
               <a href={doiLink!} target="_blank" rel="noopener noreferrer">
-                <HStack className="gap-1.5 items-center underline">
-                  <ArrowUpRightFromSquare className="size-4 text-muted-foreground" />
+                <HStack className="gap-1.5 items-center border-b-2 border-muted-foreground">
+                  <ArrowUpRight className="size-4 text-muted-foreground" />
                   DOI
                 </HStack>
               </a>
             )}
+            <a href={paper.url || "#"} target="_blank" rel="noopener noreferrer">
+                <HStack className="gap-1.5 items-center border-b-2 border-muted-foreground">
+                  <ArrowUpRight className="size-4 text-muted-foreground" />
+                  Semantic Scholar
+                </HStack>
+              </a>
           </HStack>
 
           {/* Badges */}

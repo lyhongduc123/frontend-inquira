@@ -36,11 +36,14 @@ import { Command } from "@/components/ui/command";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { HStack } from "@/components/layout/hstack";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { OpacityShimmer } from "@/components/ui/opacity-shimmer";
 
 export function LeftSidebar() {
   const router = useRouter();
   const { open: isOpen } = useSidebar();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthLoading = useAuthStore((state) => state.isLoading);
 
   const {
     currentConversationId,
@@ -148,7 +151,7 @@ export function LeftSidebar() {
 
   return (
     <Sidebar collapsible="icon" side="left">
-      {isAuthenticated && (
+      {(isAuthenticated || isAuthLoading) && (
         <SidebarManagerTrigger
           name="left"
           variant={"default"}
@@ -189,7 +192,11 @@ export function LeftSidebar() {
                 </Link>
               </Button>
             </HStack>
-            {!isAuthenticated ? (
+            {isAuthLoading || isLoading ? (
+              <OpacityShimmer className="py-4 text-center text-sm">
+                Loading conversations...
+              </OpacityShimmer>
+            ) : !isAuthenticated ? (
               <Box className="py-4 px-2">
                 <VStack className="w-full gap-2">
                   <TypographyP>
@@ -200,12 +207,6 @@ export function LeftSidebar() {
                     asking questions, and more.
                   </TypographyP>
                 </VStack>
-              </Box>
-            ) : isLoading ? (
-              <Box>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <ConversationCardSkeleton key={i} />
-                ))}
               </Box>
             ) : conversations.length === 0 && !pendingConversationDraft ? (
               <Box className="py-4 text-center text-sm text-muted-foreground">
@@ -260,7 +261,9 @@ export function LeftSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        {isAuthenticated ? (
+        {isAuthLoading ? (
+          <SidebarUserMenuSkeleton />
+        ) : isAuthenticated ? (
           <SidebarUserMenu />
         ) : (
           <VStack className="w-full gap-2">
@@ -323,3 +326,13 @@ const BookmarkButton = ({
     </SidebarMenuButton>
   );
 };
+
+const SidebarUserMenuSkeleton = () => (
+  <div className="flex items-center gap-2 px-2 py-1">
+    <Skeleton className="h-8 w-8 rounded-lg flex-shrink-0" />
+    <div className="flex flex-col gap-1 flex-1 min-w-0">
+      <Skeleton className="h-3.5 w-24 rounded" />
+      <Skeleton className="h-3 w-32 rounded" />
+    </div>
+  </div>
+);

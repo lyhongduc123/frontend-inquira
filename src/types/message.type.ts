@@ -1,5 +1,6 @@
 import { PaperMetadata } from "./paper.type";
 import { ScopedCitationRef } from "@/lib/scoped-citation-utils";
+import { ProgressEvent } from "@/lib/stream/event.types";
 
 /**
  * Message Types for Chat Interface
@@ -20,7 +21,8 @@ export interface Message {
 
 export interface MessageProgressEventDTO {
   type: string;
-  content?: string; // Optional: only for reasoning events
-  metadata?: Record<string, unknown>;
+  content?: string;
+  metadata?: Record<string, any> | null;
+  pipeline_type?: string | null;
   timestamp: number;
 }

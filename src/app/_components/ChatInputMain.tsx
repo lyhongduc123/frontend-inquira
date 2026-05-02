@@ -83,6 +83,8 @@ export function ChatInputMain({
   useHybridPipeline,
   setUseHybridPipeline,
   blockStart,
+  prefillMessage,
+  onPrefillConsumed,
 }: ChatInputMainProps) {
   const { filters, pipeline, setParams } = useSearchFilters();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -96,10 +98,6 @@ export function ChatInputMain({
     filters.yearRange?.min || filters.yearRange?.max,
   ].filter(Boolean).length;
 
-  const handleFiltersChange = (newFilters: SearchFilters) => {
-    setParams(newFilters, pipeline);
-  };
-
   const handlePipelineChange = (newPipeline: "research" | "agent") => {
     setParams(filters, newPipeline);
   };
@@ -109,8 +107,6 @@ export function ChatInputMain({
     if (pipeline === "agent") return "Agent (Beta)";
     return useHybridPipeline ? "Agent (Beta)" : "Research";
   };
-
-  const isPipelineActive = pipeline === "agent" || useHybridPipeline;
 
   const shouldCollapseScopedPapers =
     selectedScopedPapers.length > SCOPED_PAPER_COLLAPSE_THRESHOLD;
@@ -125,29 +121,29 @@ export function ChatInputMain({
                 variant="secondary"
                 className="max-w-[260px] cursor-default"
               >
-                <TypographyP size="xs" className="truncate">
+                <TypographyP size="sm" className="truncate">
                   Papers ({selectedScopedPapers.length})
                 </TypographyP>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  className="ml-1 h-4 w-4"
+                  className="size-4 cursor-pointer rounded-full dark:hover:bg-primary"
                   onClick={() => onClearScopedPapers?.()}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="size-3" />
                 </Button>
               </Badge>
             </HoverCardTrigger>
             <HoverCardContent className="w-96 p-3">
               <VStack className="items-start gap-2 max-h-64 overflow-y-auto">
-                {selectedScopedPapers.map((paper) => (
+                {selectedScopedPapers.map((paper, index) => (
                   <TypographyP
                     key={paper.paperId}
                     size="xs"
                     className="w-full truncate"
                   >
-                    • {paper.title}
+                    {index + 1}. {paper.title}
                   </TypographyP>
                 ))}
               </VStack>
@@ -166,25 +162,39 @@ export function ChatInputMain({
               </Badge>
             )}
             {selectedScopedPapers.map((paper) => (
-              <Badge
-                key={paper.paperId}
-                variant="secondary"
-                className="max-w-[220px] pr-1"
-              >
-                <TypographyP size="xs" className="truncate">
-                  {paper.title}
-                </TypographyP>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className="ml-1 h-4 w-4"
-                  aria-label={`Remove ${paper.title} from scoped papers`}
-                  onClick={() => onRemoveScopedPaper?.(paper.paperId)}
+              <HoverCard key={paper.paperId}>
+                <HoverCardTrigger asChild>
+                <Badge
+                  key={paper.paperId}
+                  variant="secondary"
+                  className="max-w-[220px] pr-1"
                 >
-                  <X className="h-3 w-3" />
-                </Button>
-              </Badge>
+                  <TypographyP size="sm" className="truncate ">
+                    {paper.authors && `${paper.authors[0] && paper.authors[0].name.split(" ")[1] || "Unknown"} ${paper.year}`}
+                  </TypographyP>
+                  <Button
+                    type="button"
+                    variant="icon"
+                    size="icon-xs"
+                    className="size-4 cursor-pointer rounded-full dark:hover:bg-primary"
+                    aria-label={`Remove ${paper.title} from scoped papers`}
+                    onClick={() => onRemoveScopedPaper?.(paper.paperId)}
+                  >
+                    <X className="size-3" />
+                  </Button>
+                </Badge>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-96 p-3" side="top">
+                  <VStack className="items-start gap-2">
+                    <TypographyP size="sm" className="font-semibold">
+                      {paper.title}
+                    </TypographyP>
+                    <TypographyP size="xs" variant="muted">
+                      {paper.authors && `${paper.authors[0] && paper.authors[0].name || "Unknown"} et al., ${paper.year}`}
+                    </TypographyP>
+                  </VStack>
+                </HoverCardContent>
+              </HoverCard>
             ))}
           </HStack>
         )}
@@ -266,6 +276,8 @@ export function ChatInputMain({
         placeholder={placeholder}
         blockStart={blockStart || scopedBlockStart}
         blockEnd={defaultBlockEnd}
+        prefillMessage={prefillMessage}
+        onPrefillConsumed={onPrefillConsumed}
       />
 
       <FilterPanel

@@ -8,19 +8,12 @@ interface MessageSectionProps {
   isUserMessage: boolean;
   showDivider?: boolean;
   message: Message;
-  onRetry?: () => void;
-  selectedPaperIds?: string[];
-  onTogglePaperSelection?: (paperId: string) => void;
   isAnalyzing?: boolean;
 }
 
 function MessageSectionComponent({
   isUserMessage,
-  showDivider,
   message: m,
-  onRetry,
-  selectedPaperIds = [],
-  onTogglePaperSelection,
   isAnalyzing,
 }: MessageSectionProps) {
   const renderUserMessage = () => {
@@ -29,7 +22,7 @@ function MessageSectionComponent({
 
   const renderAssistantMessage = () => {
     return (
-      <Box>
+      <Box className="min-h-120">
         <AssistantMessage
           isVisible={false}
           text={m.text}
@@ -37,14 +30,7 @@ function MessageSectionComponent({
           scopedQuoteRefs={m.scopedQuoteRefs}
           isDone={m.done}
           isError={m.isError}
-          onRetry={onRetry}
           isAnalyzing={isAnalyzing}
-          selectedPaperIds={selectedPaperIds}
-          onTogglePaperSelection={(paper) => {
-            if (paper.paperId) {
-              onTogglePaperSelection?.(paper.paperId)
-            }
-          }}
         />
       </Box>
     );
@@ -57,5 +43,13 @@ function MessageSectionComponent({
   );
 }
 
-export const MessageSection = memo(MessageSectionComponent);
+export const MessageSection = memo(MessageSectionComponent,
+  (prevProps, nextProps) => {
+    if (prevProps.message.text !== nextProps.message.text) return false;
+    if (prevProps.message.done !== nextProps.message.done) return false;
+    if (prevProps.isAnalyzing !== nextProps.isAnalyzing) return false;
+
+    return prevProps.message.id === nextProps.message.id;
+  }
+);
 MessageSection.displayName = "MessageSection";

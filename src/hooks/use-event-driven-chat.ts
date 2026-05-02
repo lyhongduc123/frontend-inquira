@@ -4,7 +4,7 @@
  * Uses the new event-driven architecture with task submission and resumable streaming.
  * 
  * Architecture:
- * 1. Submit task → POST /api/chat/submit → Get task_id
+ * 1. Submit task → POST /api/chat/agent → Get task_id
  * 2. Stream events → GET /api/chat/stream/{task_id}?from_sequence=N
  * 3. Page reload → Resume from last sequence number
  * 
@@ -295,17 +295,21 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
           eventType: string,
           parsed: Record<string, unknown>,
         ) => {
-          const sequenceValue = Number(parsed.sequence);
-          currentSequence = Number.isFinite(sequenceValue)
-            ? sequenceValue
-            : currentSequence;
+          // Sequence is optional; avoid expensive per-event storage/state churn when absent.
+          const rawSequence = parsed.sequence;
+          const sequenceValue =
+            typeof rawSequence === "number"
+              ? rawSequence
+              : Number.NaN;
 
-          // Update stored sequence
-          localStorage.setItem(TASK_SEQUENCE_KEY, currentSequence.toString());
-          setStreamState((prev) => ({
-            ...prev,
-            lastSequence: currentSequence,
-          }));
+          if (Number.isFinite(sequenceValue) && sequenceValue > currentSequence) {
+            currentSequence = sequenceValue;
+            localStorage.setItem(TASK_SEQUENCE_KEY, currentSequence.toString());
+            setStreamState((prev) => ({
+              ...prev,
+              lastSequence: currentSequence,
+            }));
+          }
 
           // Handle event types
           switch (eventType) {
@@ -342,6 +346,11 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
                   type: progressType as ProgressEvent["type"],
                   content: String(parsed.content || parsed.message || ""),
                   metadata,
+                  pipeline_type:
+                    (typeof parsed.pipeline_type === "string" && parsed.pipeline_type) ||
+                    (typeof parsed.pipeline === "string" && parsed.pipeline) ||
+                    ((parsed.metadata as Record<string, any>)?.pipeline_type as string | null) ||
+                    null,
                 };
                 addProgress(currentQueryIdRef.current, progressEvent);
                 onProgress?.(progressEvent);

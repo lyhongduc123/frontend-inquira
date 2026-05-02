@@ -26,6 +26,7 @@ export interface StreamEventPayload {
   isRetry?: boolean;
   clientMessageId?: string;
   pipeline?: "research" | "agent";
+  paperIds?: string[];
   useHybridPipeline?: boolean; // Deprecated: kept for backward compatibility
 }
 

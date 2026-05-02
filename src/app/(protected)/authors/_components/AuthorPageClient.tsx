@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { notFound, useParams } from "next/navigation";
 import { Box } from "@/components/layout/box";
 import { VStack } from "@/components/layout/vstack";
@@ -12,12 +12,24 @@ import { BookOpen, Users } from "lucide-react";
 import { AuthorMetricsSection } from "./AuthorMetricsSection";
 import { PapersTabs } from "./PaperTabs";
 import { QuartileChart } from "./QuartileChart";
-import { PublicationTimeline } from "./PublicationTimelineCard";
+import { PublicationChartCard } from "./PublicationTimelineCard";
 import { CoAuthorsTabs } from "./CoAuthorsTabs";
 import { AuthorInfoSection } from "./AuthorInfoSection";
-import { useAuthorDetails } from "../hooks";
+import { useAuthorDetails, useAuthorPapers } from "../hooks";
 import { CitationChartCard } from "./CitationChartCard";
 import { toast } from "sonner";
+import type { PaperMetadata } from "@/types/paper.type";
+import { useDetailSidebarStore } from "@/store/paper-detail-sidebar-store";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  PaperDetailContent,
+  PaperDetailFooter,
+} from "@/app/_components/PaperDetailContent";
 
 export function AuthorPageClient() {
   const params = useParams();
@@ -30,7 +42,37 @@ export function AuthorPageClient() {
   } = useAuthorDetails(authorId);
   const previousStatusRef = useRef<string | null>(null);
   const lastNotifiedTerminalKeyRef = useRef<string | null>(null);
-  console.log("Author data:", author);
+
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const [loadedMorePapers, setLoadedMorePapers] = useState<PaperMetadata[]>([]);
+  const [selectedPaper, setSelectedPaper] = useState<{
+    paper: PaperMetadata;
+  } | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const { data: firstPageResponse, isLoading: isFirstPageLoading } =
+    useAuthorPapers(authorId, 0, 20, true);
+  const { data: nextPageResponse, isLoading: isNextPageLoading } =
+    useAuthorPapers(authorId, currentOffset, 20, currentOffset > 0);
+
+  useEffect(() => {
+    setCurrentOffset(0);
+    setLoadedMorePapers([]);
+  }, [authorId]);
+
+  useEffect(() => {
+    if (!nextPageResponse?.items || currentOffset === 0) {
+      return;
+    }
+
+    setLoadedMorePapers((prev) => {
+      const seen = new Set(prev.map((paper) => paper.paperId));
+      const unique = nextPageResponse.items.filter(
+        (paper) => !seen.has(paper.paperId),
+      );
+      return [...prev, ...unique];
+    });
+  }, [nextPageResponse, currentOffset]);
 
   useEffect(() => {
     const currentStatus = author?.enrichmentStatus?.status ?? null;
@@ -74,6 +116,36 @@ export function AuthorPageClient() {
     author?.enrichmentStatus?.taskId,
   ]);
 
+  const handleOnPaperView = (paper: PaperMetadata) => {
+    setSelectedPaper({ paper });
+    setIsSheetOpen(true);
+  };
+
+  const handleLoadMorePapers = () => {
+    setCurrentOffset((prev) => prev + 20);
+  };
+
+  const totalPapersInDb = firstPageResponse?.total ?? 0;
+  const isLoadingMore = isNextPageLoading && currentOffset > 0;
+
+  const allPapers = useMemo(() => {
+    const firstPageItems = firstPageResponse?.items ?? [];
+    if (loadedMorePapers.length === 0) {
+      return firstPageItems;
+    }
+
+    const seen = new Set(firstPageItems.map((paper) => paper.paperId));
+    const dedupedMore = loadedMorePapers.filter((paper) => {
+      if (seen.has(paper.paperId)) {
+        return false;
+      }
+      seen.add(paper.paperId);
+      return true;
+    });
+
+    return [...firstPageItems, ...dedupedMore];
+  }, [firstPageResponse?.items, loadedMorePapers]);
+
   if (error) {
     throw error;
   }
@@ -84,28 +156,19 @@ export function AuthorPageClient() {
 
   return (
     <Box className="bg-linear-to-br from-background via-background overflow-auto">
-      <HStack className="gap-6 max-w-7xl mx-auto p-8 items-start min-w-0">
-        <VStack className="gap-6 w-full flex-1 overflow-hidden">
-          {/* Header Section */}
+      <HStack className="flex-col lg:flex-row gap-6 max-w-7xl mx-auto p-8 items-start min-w-0">
+        <VStack className="gap-6 w-full flex-1 min-w-0 lg:min-w-[600px] overflow-x-auto">
           <AuthorInfoSection
             author={author || undefined}
             isLoading={isLoading}
           />
-          {/* Main Content Tabs */}
+
           <Tabs defaultValue="papers" className="w-full">
             <TabsList variant="line">
               <TabsTrigger value="papers">
                 <BookOpen className="h-4 w-4 mr-2" />
-                Publications ({author?.totalPapers || 0})
+                Publications ({totalPapersInDb})
               </TabsTrigger>
-              {/* <TabsTrigger value="citing">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Citing Authors
-              </TabsTrigger>
-              <TabsTrigger value="referenced">
-                <Award className="h-4 w-4 mr-2" />
-                Referenced Authors
-              </TabsTrigger> */}
               <TabsTrigger value="collaborations">
                 <Users className="h-4 w-4 mr-2" />
                 Collaborations ({author?.coAuthors.length || 0})
@@ -115,9 +178,14 @@ export function AuthorPageClient() {
             <TabsContent value="papers" className="mt-6">
               <VStack className="gap-6">
                 <PapersTabs
-                  papers={author?.papers}
+                  papers={allPapers}
+                  totalPapers={totalPapersInDb}
                   currentAuthorName={author?.displayName || author?.name}
-                  isLoading={isLoading}
+                  onLoadMore={handleLoadMorePapers}
+                  isLoading={isLoading || isFirstPageLoading}
+                  isLoadingMore={isLoadingMore}
+                  selectedPaperId={selectedPaper?.paper.paperId}
+                  onView={handleOnPaperView}
                 />
               </VStack>
             </TabsContent>
@@ -151,20 +219,44 @@ export function AuthorPageClient() {
           </Tabs>
         </VStack>
 
-        {/* Right Sidebar - Metrics Cards */}
-        <VStack className="gap-6 w-96 top-6">
+        <VStack className="gap-6 w-full max-w-96 shrink top-6">
           <AuthorMetricsSection author={author || undefined} />
           {author?.quartileBreakdown && (
             <QuartileChart quartileBreakdown={author.quartileBreakdown} />
           )}
           {author?.countsByYear && (
-            <CitationChartCard countsByYear={author.countsByYear} />
-          )}
-          {author?.papersByYear && (
-            <PublicationTimeline papersByYear={author.papersByYear} />
+            <>
+              <CitationChartCard
+                countsByYear={author.countsByYear}
+                openalexCountsByYear={author.openalexCountsByYear ?? undefined}
+              />
+              <PublicationChartCard
+                countsByYear={author.countsByYear}
+                openalexCountsByYear={author.openalexCountsByYear ?? undefined}
+              />{" "}
+            </>
           )}
         </VStack>
       </HStack>
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 flex flex-col">
+          {selectedPaper?.paper && (
+            <>
+              {/* Header */}
+              <SheetHeader className="border-b px-4 py-3 bg-background">
+                <SheetTitle className="capitalize">Paper Details</SheetTitle>
+              </SheetHeader>
+              <Box className="h-full p-4 overflow-auto">
+                <PaperDetailContent paper={selectedPaper.paper} />
+              </Box>
+              {/* Footer - Reuse PaperDetailFooter */}
+              <Box className="border-t p-4 bg-background">
+                <PaperDetailFooter paperMetadata={selectedPaper.paper} />
+              </Box>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </Box>
   );
 }

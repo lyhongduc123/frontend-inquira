@@ -36,6 +36,7 @@ export interface AuthorDetailDTO {
   authorInstitutions: Array<{
     id: string;
     name: string;
+    institution: Record<string, string> | null;
     country: string | null;
     startDate?: string | null;
     endDate?: string | null;
@@ -55,7 +56,7 @@ export interface AuthorDetailDTO {
   lastPaperIndexedAt: string | null;
   isEnriched: boolean;
   enrichmentStatus: {
-    status: 'needs_enrichment' | 'enriching' | 'completed' | 'failed' | string;
+    status: "needs_enrichment" | "enriching" | "completed" | "failed" | string;
     taskId?: string;
     message?: string;
   } | null;
@@ -65,8 +66,11 @@ export interface AuthorDetailWithPapersDTO extends AuthorDetailDTO {
   papers: PaperMetadata[];
   quartileBreakdown: QuartileBreakdownDTO;
   coAuthors: CoAuthorDTO[];
-  papersByYear: Record<number, number> | null;
-  countsByYear: Record<string, unknown> | null;
+  countsByYear: Record<string, { papers: number; citations: number }> | null;
+  openalexCountsByYear?: Record<
+    string,
+    { papers: number; citations: number }
+  > | null;
   topics: Array<{
     displayName: string;
     count: number;

@@ -3,10 +3,10 @@
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
+  AlertCircle,
   ChevronRight,
   ClipboardIcon,
   ClipboardPasteIcon,
-  RefreshCw,
 } from "lucide-react";
 import type { PaperMetadata } from "@/types/paper.type";
 import type { ScopedCitationRef } from "@/lib/scoped-citation-utils";
@@ -20,8 +20,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMemo, useState } from "react";
-import { ChevronRightIcon, Filter, FilterX } from "lucide-react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { ChevronRightIcon } from "lucide-react";
 import { getCitedPapers, getFormattedCitedContent } from "@/lib/citation-utils";
 import {
   Collapsible,
@@ -35,6 +35,8 @@ import { CITED_ONLY_STORAGE_KEY } from "@/core";
 import { HStack } from "@/components/layout/hstack";
 import ExportButton from "./_shared/ExportButton";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useScopedPaperSelection } from "@/hooks/use-scoped-paper-selection";
 
 interface AssistantMessageProps {
   text: string;
@@ -44,10 +46,7 @@ interface AssistantMessageProps {
   isVisible?: boolean;
   isDone?: boolean;
   isError?: boolean;
-  onRetry?: () => void;
   isAnalyzing?: boolean;
-  selectedPaperIds?: string[];
-  onTogglePaperSelection?: (paper: PaperMetadata) => void;
 }
 
 export function AssistantMessage({
@@ -57,12 +56,13 @@ export function AssistantMessage({
   showDivider = false,
   isDone = false,
   isError = false,
-  onRetry,
   isAnalyzing = false,
-  selectedPaperIds = [],
-  onTogglePaperSelection,
 }: AssistantMessageProps) {
   const { openPaper, closeSidebar, content, contentType } = useDetailSidebar();
+  const {
+    selectedScopedPaperIds,
+    toggleScopedPaper,
+  } = useScopedPaperSelection();
 
   const handleOpenPaper = (paper: PaperMetadata) => {
     const isSamePaperOpen =
@@ -96,17 +96,14 @@ export function AssistantMessage({
         />
       )}
 
-      {isError && onRetry && (
+      {isError && (
         <Box className="mt-4">
-          <Button
-            onClick={onRetry}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Retry
-          </Button>
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>
+              Something wrong happened, please try again
+            </AlertDescription>
+          </Alert>
         </Box>
       )}
 
@@ -115,8 +112,12 @@ export function AssistantMessage({
           <MessageBottomBar
             text={text}
             sources={sources}
-            selectedPaperIds={selectedPaperIds}
-            onTogglePaperSelection={onTogglePaperSelection}
+            selectedPaperIds={selectedScopedPaperIds}
+            onTogglePaperSelection={(paper) => {
+              if (paper.paperId) {
+                toggleScopedPaper(paper.paperId);
+              }
+            }}
             onViewPaper={handleOpenPaper}
             viewingPaperId={
               contentType === "paper" && content ? content.paperId : undefined
@@ -133,11 +134,16 @@ export function AssistantMessage({
 interface ExportDropdownProps {
   text: string;
   papers: PaperMetadata[];
+  cited_papers: PaperMetadata[];
 }
 
-const ExportDropdown = ({ text, papers }: ExportDropdownProps) => {
+const ExportDropdown = ({
+  text,
+  cited_papers,
+  papers,
+}: ExportDropdownProps) => {
   const handleCopyText = () => {
-    const formattedText = getFormattedCitedContent(text, papers);
+    const formattedText = getFormattedCitedContent(text, cited_papers);
     navigator.clipboard.writeText(formattedText);
     toast.success("Copied to clipboard!", {
       position: "top-center",
@@ -146,7 +152,7 @@ const ExportDropdown = ({ text, papers }: ExportDropdownProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="cursor-pointer">
+        <Button variant="outline" className="cursor-pointer">
           <ClipboardIcon className="size-4" />
           <ChevronRight className="size-4" />
         </Button>
@@ -159,10 +165,13 @@ const ExportDropdown = ({ text, papers }: ExportDropdownProps) => {
           <ClipboardPasteIcon className="size-4" />
           Copy text
         </DropdownMenuItem>
-        <DropdownMenuItem className="dark:focus:bg-accent/10 focus:bg-primary/10 focus:text-primary">
-          <ClipboardPasteIcon className="size-4" />
-          Export to CSV
-        </DropdownMenuItem>
+
+        <ExportButton variant={"ghost"} sources={papers} asChild>
+          <DropdownMenuItem className="dark:focus:bg-accent/10 focus:bg-primary/10 focus:text-primary">
+            <ClipboardPasteIcon className="size-4" />
+            Export to CSV
+          </DropdownMenuItem>
+        </ExportButton>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -190,6 +199,19 @@ function MessageBottomBar({
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(CITED_ONLY_STORAGE_KEY) === "1";
   });
+
+  const onShortcut = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "c" && (e.altKey)) {
+      e.preventDefault();
+      setIsOpen(!isOpen);
+    }
+  });
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => onShortcut(e);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const toggleCitedOnly = () => {
     setShowCitedOnly((prev) => {
@@ -235,8 +257,8 @@ function MessageBottomBar({
         <HStack className="items-center gap-2 ">
           <CollapsibleTrigger asChild>
             <Button
-              variant="ghost"
-              className="group h-auto w-fit cursor-pointer justify-between"
+              variant="outline"
+              className="group w-fit cursor-pointer justify-between"
               aria-label="Toggle result list"
             >
               Results
@@ -245,7 +267,8 @@ function MessageBottomBar({
           </CollapsibleTrigger>
           <ExportDropdown
             text={text}
-            papers={visibleSources.map((source) => source.source)}
+            papers={sources}
+            cited_papers={visibleSources.map((source) => source.source)}
           />
         </HStack>
         <HStack className="gap-2 items-center">
@@ -257,12 +280,12 @@ function MessageBottomBar({
             className="cursor-pointer"
           />
           <Label htmlFor="show-cited-only" className="cursor-pointer">
-            Only referenced
+            Cited only
           </Label>
         </HStack>
       </HStack>
 
-      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down duration-500">
+      <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down duration-500">
         <VStack className="mt-2 space-y-2 min-w-0">
           {visibleSources.map(({ source, idx }) => (
             <PaperCard

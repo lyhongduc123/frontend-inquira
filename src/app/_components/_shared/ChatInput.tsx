@@ -12,6 +12,8 @@ export interface BaseChatInputProps {
   className?: string;
   blockStart?: React.ReactNode;
   blockEnd?: React.ReactNode;
+  prefillMessage?: string | null;
+  onPrefillConsumed?: () => void;
 }
 
 export function ChatInput({
@@ -22,6 +24,8 @@ export function ChatInput({
   className,
   blockStart,
   blockEnd,
+  prefillMessage,
+  onPrefillConsumed,
 }: BaseChatInputProps) {
   const [msg, setMsg] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -51,6 +55,17 @@ export function ChatInput({
       handleInput();
     }
   }, [msg]);
+
+  useEffect(() => {
+    if (!prefillMessage) return;
+
+    setMsg(prefillMessage);
+    onPrefillConsumed?.();
+
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
+  }, [prefillMessage, onPrefillConsumed]);
 
   return (
     <Box className={cn("relative", className)}>
