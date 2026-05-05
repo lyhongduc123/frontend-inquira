@@ -29,7 +29,6 @@ export function PaperDetailSidebar() {
     <Sidebar
       side="right"
       collapsible="offcanvas"
-      style={{ "--sidebar-width": "36rem" } as React.CSSProperties}
     >
       <SidebarHeader className="border-b px-4 py-2.5 bg-background">
         <HStack className="justify-between items-center">

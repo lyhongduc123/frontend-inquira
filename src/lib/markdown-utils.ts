@@ -8,7 +8,7 @@ import type { ScopedCitationRef } from "@/lib/scoped-citation-utils";
 
 export const LEGACY_FORMAT_REGEX = /\[(\d+)\]\(([^)]+)\)/g;
 export const SCOPED_CITATION_REGEX = /\(cite:([^|)]+)\|([^|)]+)(?:\|(\d+)\|(\d+))?\)/g;
-export const CITATIONS_REGEX = /\(cite:([^)]+)\)/g;
+export const CITATIONS_REGEX = /\(cite:([^()]+?)\)/g;
 
 function getSourceFromCitationToken(
   token: string,
@@ -36,10 +36,10 @@ function getSourceFromCitationToken(
     }
 
     // Backward-safe fallback for 1-based index inputs.
-    const oneBased = rawIndex - 1
-    if (oneBased >= 0 && oneBased < sources.length) {
-      return sources[oneBased]
-    }
+    // const oneBased = rawIndex - 1
+    // if (oneBased >= 0 && oneBased < sources.length) {
+    //   return sources[oneBased]
+    // }
   }
 
   return undefined
@@ -129,7 +129,7 @@ export function convertCitationsToElements(
       const quote = escapeHtmlAttribute(scopedRef?.quote ?? "");
       const section = escapeHtmlAttribute(scopedRef?.section ?? "");
 
-      return `<scoped-citation data-id="${paperId}" data-number="${number}" data-chunk-id="${chunkId}" data-char-start="${charStart ?? ""}" data-char-end="${charEnd ?? ""}" data-key="${scopedKey}" data-marker="${match}" data-section="${section}" data-quote="${quote}"/>`;
+      return `<scoped data-id="${paperId}" data-number="${number}" data-chunk-id="${chunkId}" data-char-start="${charStart ?? ""}" data-char-end="${charEnd ?? ""}" data-key="${scopedKey}" data-marker="${match}" data-section="${section}" data-quote="${quote}"/>`;
     }
   );
 
@@ -137,7 +137,6 @@ export function convertCitationsToElements(
   result = result.replace(CITATIONS_REGEX, (match, content) => {
     // Split by comma and trim whitespace
     const paperIds = content.split(',').map((id: string) => id.trim());
-    
     // Check if there are multiple cite: prefixes (multiple citations)
     const citations = paperIds
       .map((part: string) => {
@@ -145,13 +144,13 @@ export function convertCitationsToElements(
         const source = getSourceFromCitationToken(token, sources)
         const paperId = source?.paperId
         if (!paperId) {
-          return `<missing-citation />`
+          return `<citation data-id="${1}" data-number="${1}"/>`
         }
 
         const number = citationMap.get(paperId);
         return number !== undefined 
           ? `<citation data-id="${paperId}" data-number="${number}"/>`
-          : `<missing-citation />`;
+          : `<missing />`;
       })
       .filter((citation: string | null) => citation !== null);
     

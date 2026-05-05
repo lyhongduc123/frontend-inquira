@@ -22,7 +22,7 @@ import { Brand } from "@/components/global/brand";
 import { MessageSection } from "./MessageSection";
 import { ProgressEventSheet } from "./ProgressEventSheet";
 import { Box } from "@/components/layout/box";
-import { useProgressStore } from "@/store/progress-store";
+import { ProgressStep, useProgressStore } from "@/store/progress-store";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +79,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
         if (messageElement && scrollContainer) {
           const offsetTop = messageElement.offsetTop;
           scrollContainer.scrollTo({
-            top: offsetTop, 
+            top: offsetTop,
             behavior: "smooth",
           });
         }
@@ -174,9 +174,9 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
 
       const latestUserMessage = messages[latestUserIndex];
       const messageKey =
-        (latestUserMessage.metadata?.client_message_id as string | undefined)
-        || (latestUserMessage.metadata?.query_id as string | undefined)
-        || `${latestUserIndex}-${latestUserMessage.text}`;
+        (latestUserMessage.metadata?.client_message_id as string | undefined) ||
+        (latestUserMessage.metadata?.query_id as string | undefined) ||
+        `${latestUserIndex}-${latestUserMessage.text}`;
 
       if (messageKey === lastAnchoredUserMessageKeyRef.current) {
         return;
@@ -223,11 +223,11 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
 
     const lastMessage = messages[messages.length - 1];
     const waitingForAssistantFirstChunk = Boolean(
-      isStreaming
-      && lastMessage?.role === "assistant"
-      && !lastMessage?.done
-      && !lastMessage?.isError
-      && !lastMessage?.text?.trim(),
+      isStreaming &&
+      lastMessage?.role === "assistant" &&
+      !lastMessage?.done &&
+      !lastMessage?.isError &&
+      !lastMessage?.text?.trim(),
     );
 
     useEffect(() => {
@@ -246,13 +246,16 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       if (!viewport || !content || !latestUserElement) return;
 
       const updateSpacer = () => {
-        const targetSpace = Math.max(180, Math.round(viewport.clientHeight * 1));
+        const targetSpace = Math.max(
+          180,
+          Math.round(viewport.clientHeight * 1),
+        );
         const currentSpacer = waitingSpacerRef.current?.offsetHeight ?? 0;
         const nonSpacerBelow = Math.max(
           0,
-          content.scrollHeight
-          - (latestUserElement.offsetTop + latestUserElement.offsetHeight)
-          - currentSpacer,
+          content.scrollHeight -
+            (latestUserElement.offsetTop + latestUserElement.offsetHeight) -
+            currentSpacer,
         );
         const nextSpacer = Math.max(0, targetSpace - nonSpacerBelow);
 
@@ -273,11 +276,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       return () => {
         resizeObserver.disconnect();
       };
-    }, [
-      waitingForAssistantFirstChunk,
-      getLatestUserMessageIndex,
-      messages,
-    ]);
+    }, [waitingForAssistantFirstChunk, getLatestUserMessageIndex, messages]);
 
     if (!messages || messages.length === 0) {
       return (
@@ -317,41 +316,57 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
             const messageQueryId =
               (m.metadata?.query_id as string | undefined) ||
               (i === messages.length - 2 ? activeQueryId : null);
-            
-            const hasStoredProgress = nextMessage?.progressEvents && nextMessage.progressEvents.length > 0;
-            const progressData = hasStoredProgress ? {
-              steps: nextMessage.progressEvents!,
-              isComplete: true,
-              startedAt:
-                nextMessage.progressEvents![0]?.timestamp
-                || nextMessage.progressEvents![nextMessage.progressEvents!.length - 1]?.timestamp
-                || 0,
-              completedAt: nextMessage.progressEvents![nextMessage.progressEvents!.length - 1]?.timestamp,
-              currentPhase: null,
-            } : undefined;
+
+            const hasStoredProgress =
+              nextMessage?.progressEvents &&
+              nextMessage.progressEvents.length > 0;
+            const progressData = hasStoredProgress
+              ? {
+                  steps:
+                    nextMessage.progressEvents! as unknown as ProgressStep[],
+                  isComplete: true,
+                  startedAt:
+                    nextMessage.progressEvents![0]?.timestamp ||
+                    nextMessage.progressEvents![
+                      nextMessage.progressEvents!.length - 1
+                    ]?.timestamp ||
+                    0,
+                  completedAt:
+                    nextMessage.progressEvents![
+                      nextMessage.progressEvents!.length - 1
+                    ]?.timestamp,
+                  currentPhase: null,
+                }
+              : undefined;
 
             return (
               <Box key={i}>
                 <Box
                   className={cn(
                     "mx-auto max-w-4xl p-4 pb-6 min-w-0 overflow-hidden",
-                    isUserMessage && "pb-0"
+                    isUserMessage && "pb-0",
                   )}
                   ref={(el) => {
                     messageRefs.current[i] = el;
                   }}
                 >
-                  <MessageSection 
-                    isUserMessage={isUserMessage} 
-                    message={m} 
+                  <MessageSection
+                    isUserMessage={isUserMessage}
+                    message={m}
                     isAnalyzing={isAnalyzing && i === messages.length - 1}
                   />
                   {shouldShowProgress && (
                     <VStack className="gap-2 mt-2">
                       <Separator />
-                      <ProgressEventSheet 
-                        queryId={!hasStoredProgress ? messageQueryId : undefined} 
-                        sourceCount={Array.isArray(nextMessage?.paperSnapshots) ? nextMessage.paperSnapshots.length : undefined}
+                      <ProgressEventSheet
+                        queryId={
+                          !hasStoredProgress ? messageQueryId : undefined
+                        }
+                        sourceCount={
+                          Array.isArray(nextMessage?.paperSnapshots)
+                            ? nextMessage.paperSnapshots.length
+                            : undefined
+                        }
                         progressData={progressData}
                       />
                     </VStack>

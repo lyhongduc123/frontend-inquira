@@ -8,13 +8,13 @@ import {
   SidebarManager,
   SidebarManagerProvider,
 } from "@/components/ui/sidebar";
-import { AuthInitializer } from "./test";
 import { useAuthStore } from "@/store/auth-store";
 import { useEffect } from "react";
+import { User } from "@/types/auth.type";
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  initialUser?: any | null;
+  initialUser?: User | null;
 }
 
 export function MainLayout({

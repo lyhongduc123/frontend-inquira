@@ -337,7 +337,6 @@ function parseContent(step: ProgressStep): ReactNode | string {
       );
 
     case EventType.SEARCHING:
-      console.log("Parsing searching step", step);
       if (!step.metadata?.queries) {
         console.warn("Searching step is missing metadata.queries", step);
         return "Searching academic databases...";

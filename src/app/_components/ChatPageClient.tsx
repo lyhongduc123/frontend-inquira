@@ -303,7 +303,7 @@ export function ChatPageClient({
       }}
       style={
         {
-          "--sidebar-width": "36rem",
+          "--sidebar-width": "clamp(20rem, 40vw, 36rem)",
         } as React.CSSProperties
       }
     >

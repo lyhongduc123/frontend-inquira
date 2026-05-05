@@ -37,6 +37,8 @@ import ExportButton from "./_shared/ExportButton";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useScopedPaperSelection } from "@/hooks/use-scoped-paper-selection";
+import { cn } from "@/lib/utils/cn";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface AssistantMessageProps {
   text: string;
@@ -59,10 +61,8 @@ export function AssistantMessage({
   isAnalyzing = false,
 }: AssistantMessageProps) {
   const { openPaper, closeSidebar, content, contentType } = useDetailSidebar();
-  const {
-    selectedScopedPaperIds,
-    toggleScopedPaper,
-  } = useScopedPaperSelection();
+  const { selectedScopedPaperIds, toggleScopedPaper } =
+    useScopedPaperSelection();
 
   const handleOpenPaper = (paper: PaperMetadata) => {
     const isSamePaperOpen =
@@ -160,14 +160,14 @@ const ExportDropdown = ({
       <DropdownMenuContent side="right">
         <DropdownMenuItem
           onClick={handleCopyText}
-          className="dark:focus:bg-accent/10 focus:bg-primary/10 focus:text-primary"
+          className="dark:focus:bg-accent/10 focus:bg-primary/10"
         >
           <ClipboardPasteIcon className="size-4" />
           Copy text
         </DropdownMenuItem>
 
-        <ExportButton variant={"ghost"} sources={papers} asChild>
-          <DropdownMenuItem className="dark:focus:bg-accent/10 focus:bg-primary/10 focus:text-primary">
+        <ExportButton asChild variant={"ghost"} sources={papers}>
+          <DropdownMenuItem className="dark:focus:bg-accent/10 focus:bg-primary/10">
             <ClipboardPasteIcon className="size-4" />
             Export to CSV
           </DropdownMenuItem>
@@ -201,7 +201,7 @@ function MessageBottomBar({
   });
 
   const onShortcut = useEffectEvent((e: KeyboardEvent) => {
-    if (e.key === "c" && (e.altKey)) {
+    if (e.key === "c" && e.altKey) {
       e.preventDefault();
       setIsOpen(!isOpen);
     }
@@ -272,16 +272,34 @@ function MessageBottomBar({
           />
         </HStack>
         <HStack className="gap-2 items-center">
-          <Switch
-            id="show-cited-only"
-            size="sm"
-            checked={showCitedOnly}
-            onClick={toggleCitedOnly}
-            className="cursor-pointer"
-          />
-          <Label htmlFor="show-cited-only" className="cursor-pointer">
-            Cited only
-          </Label>
+          <ToggleGroup
+            type="single"
+            value={showCitedOnly ? "cited" : "all"}
+            onValueChange={(v) => v && toggleCitedOnly()}
+            className="inline-flex items-center gap-1 rounded-md bg-muted p-1"
+          >
+            {["all", "cited"].map((item) => (
+              <ToggleGroupItem
+                key={item}
+                value={item}
+                className={cn(
+                  "h-8",
+                  "data-[spacing=0]:first:rounded-md",
+                  "data-[spacing=0]:last:rounded-md",
+                  "hover:bg-primary/10",
+                  "hover:ring-1",
+                  "hover:ring-primary",
+                  "data-[state=on]:shadow-lg",
+                  "dark:data-[state=on]:bg-primary",
+                  "dark:data-[state=on]:text-primary-foreground",
+                  "dark:text-white",
+                  "dark:hover:text-primary-foreground",
+                )}
+              >
+                {item === "all" ? "All" : "Cited"}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </HStack>
       </HStack>
 

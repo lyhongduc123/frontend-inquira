@@ -64,9 +64,10 @@ export default function ExportButton({
     URL.revokeObjectURL(url);
   };
   return (
-    <Button size="sm" onClick={exportCSV} {...props}>
+    // Forced use html for correctly padding behavior
+    <button onClick={exportCSV} {...props}>
       {props.children}
-    </Button>
+    </button>
   );
 }
 

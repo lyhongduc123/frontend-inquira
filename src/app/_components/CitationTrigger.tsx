@@ -13,17 +13,15 @@ interface CitationTriggerProps {
 export const CitationTrigger = forwardRef<
   HTMLButtonElement,
   CitationTriggerProps
->(function CitationTrigger(
-  { number, onClick, isSelected, paperDetail },
-  ref,
-) {
+>(function CitationTrigger({ number, onClick, isSelected, paperDetail }, ref) {
   const handleOnClick = (e: React.MouseEvent) => {
     e.preventDefault();
     onClick?.();
   };
-  const authorName = paperDetail?.authors && paperDetail.authors.length > 0
-    ? paperDetail.authors[0].name
-    : "";
+  const authorName =
+    paperDetail?.authors && paperDetail.authors.length > 0
+      ? paperDetail.authors[0].name
+      : "";
   const triggerLabel = formatLabel({
     author: authorName,
     title: paperDetail?.title,
@@ -32,6 +30,7 @@ export const CitationTrigger = forwardRef<
 
   return (
     <Button
+      asChild
       ref={ref}
       variant={number ? "secondary" : "destructive"}
       className={cn(
@@ -39,9 +38,8 @@ export const CitationTrigger = forwardRef<
         isSelected &&
           "shadow-md ring-2 ring-primary ring-offset-1 scale-95 bg-primary text-primary-foreground hover:bg-primary/90",
       )}
-      onClick={handleOnClick}
     >
-      {number ? `${number}` : triggerLabel}
+      <span className="select-none" onClick={handleOnClick}>{number ? `${number}` : triggerLabel}</span>
     </Button>
   );
 });

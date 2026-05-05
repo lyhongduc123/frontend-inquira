@@ -10,6 +10,7 @@ import {
   getScopedCitationKey,
 } from "@/lib/scoped-citation-utils";
 import type { ScopedCitationRef } from "@/lib/scoped-citation-utils";
+import rehypeRaw from "rehype-raw";
 
 interface StreamdownRenderProps {
   message: string;
@@ -95,6 +96,7 @@ export function StreamdownRender({
   );
 
   const MissingCitationComponent = React.useCallback(() => {
+    console.warn("Rendering MissingCitation component for a citation without a valid source");
     return <MissingCitation />;
   }, []);
 
@@ -102,12 +104,14 @@ export function StreamdownRender({
     <div className="markdown-content min-w-0 w-full">
       <Streamdown
         mode={"streaming"}
-        shikiTheme={["github-light", "github-dark"]}
+        allowedTags={{
+          citation: ["data*"],
+          scoped: ["data*"],
+        }}
         components={{
-          // @ts-expect-error - Custom citation component not in Streamdown types
-          citation: CitationComponent,
-          "scoped-citation": ScopedCitationComponent,
-          "missing-citation": MissingCitationComponent,
+          citation: CitationComponent as React.ElementType,
+          scoped: ScopedCitationComponent as React.ElementType,
+          missing: MissingCitationComponent,
           
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           table: (props: any) => (
