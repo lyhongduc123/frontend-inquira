@@ -107,6 +107,7 @@ export async function streamTask(
   const dispatch = (eventType: string, rawData: string) => {
     resetHeartbeat();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let parsedData: any;
     try {
       parsedData = JSON.parse(rawData);
@@ -152,7 +153,7 @@ export async function streamTask(
               : typeof parsedData === "string"
                 ? parsedData
                 : "",
-        });
+        } as ReasoningEvent);
         break;
       case StreamEvent.Heartbeat:
       case "heartbeat":
@@ -295,6 +296,7 @@ export async function streamEvent(
   const dispatch = (eventType: string, rawData: string) => {
     resetHeartbeat();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let parsedData: any;
     try {
       parsedData = JSON.parse(rawData);
@@ -340,7 +342,7 @@ export async function streamEvent(
               : typeof parsedData === "string"
                 ? parsedData
                 : "",
-        });
+        } as ReasoningEvent);
         break;
       case StreamEvent.Heartbeat:
       case "heartbeat":
