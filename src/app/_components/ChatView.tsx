@@ -10,7 +10,7 @@ interface ChatViewProps {
   messages: Message[];
   isAuthenticated?: boolean;
   isStreaming: boolean;
-  isAnalyzing?: boolean;
+  isReading?: boolean;
   messageAreaRef: React.RefObject<MessageAreaRef | null>;
   activeQueryIndex?: number;
   prefillMessage?: string | null;
@@ -44,7 +44,7 @@ export function ChatView({
   onClearScopedPapers,
   useHybridPipeline,
   setUseHybridPipeline,
-  isAnalyzing,
+  isReading,
 }: ChatViewProps) {
   return (
     <VStack className="flex-1 gap-0 min-w-0 overflow-y-hidden">
@@ -54,7 +54,7 @@ export function ChatView({
           conversationKey={conversationKey}
           messages={messages}
           isStreaming={isStreaming}
-          isAnalyzing={isAnalyzing}
+          isReading={isReading}
           onActiveQueryIndexChange={onActiveQueryIndexChange}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-t from-background via-background/80 to-transparent" />

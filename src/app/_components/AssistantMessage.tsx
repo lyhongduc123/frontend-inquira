@@ -29,8 +29,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { PaperCard } from "./PaperCard";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { CITED_ONLY_STORAGE_KEY } from "@/core";
 import { HStack } from "@/components/layout/hstack";
 import ExportButton from "./_shared/ExportButton";
@@ -39,6 +37,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useScopedPaperSelection } from "@/hooks/use-scoped-paper-selection";
 import { cn } from "@/lib/utils/cn";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { OpacityShimmer } from "@/components/ui/opacity-shimmer";
 
 interface AssistantMessageProps {
   text: string;
@@ -48,7 +47,7 @@ interface AssistantMessageProps {
   isVisible?: boolean;
   isDone?: boolean;
   isError?: boolean;
-  isAnalyzing?: boolean;
+  isReading?: boolean;
 }
 
 export function AssistantMessage({
@@ -58,8 +57,9 @@ export function AssistantMessage({
   showDivider = false,
   isDone = false,
   isError = false,
-  isAnalyzing = false,
+  isReading = false,
 }: AssistantMessageProps) {
+  const readingStatusText = useShuffleText();
   const { openPaper, closeSidebar, content, contentType } = useDetailSidebar();
   const { selectedScopedPaperIds, toggleScopedPaper } =
     useScopedPaperSelection();
@@ -78,14 +78,14 @@ export function AssistantMessage({
 
   return (
     <Box className="min-w-0">
-      {isAnalyzing && !text ? (
+      {isReading && !text ? (
         <VStack className="space-y-2 animate-pulse pr-12 pb-4">
-          <Box className="h-4 bg-muted rounded-sm w-full" />
-          <Box className="h-4 bg-muted rounded-sm w-[90%]" />
-          <Box className="h-4 bg-muted rounded-sm w-[40%]" />
-          <Box className="mt-2 text-xs text-muted-foreground italic">
-            Analyzing research papers...
-          </Box>
+          <Box className="h-4 bg-accent rounded-sm w-full" />
+          <Box className="h-4 bg-accent rounded-sm w-[90%]" />
+          <Box className="h-4 bg-accent rounded-sm w-[40%]" />
+          <OpacityShimmer className="mt-2 text-xs text-muted-foreground italic">
+            {`${readingStatusText}...`}
+          </OpacityShimmer>
         </VStack>
       ) : (
         <AssistantMessageBody
@@ -129,6 +129,29 @@ export function AssistantMessage({
       {showDivider && <Separator className="my-8" />}
     </Box>
   );
+}
+
+const SHUFFLE_WORDS = [
+  "Reading papers",
+  "Reviewing evidence",
+  "Linking findings",
+  "Synthesizing answer",
+  "Drafting response",
+  "Checking citations",
+];
+
+function useShuffleText(interval = 5500) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((prev) => (prev + 1) % SHUFFLE_WORDS.length);
+    }, interval);
+
+    return () => clearInterval(id);
+  }, [interval]);
+
+  return SHUFFLE_WORDS[index];
 }
 
 interface ExportDropdownProps {

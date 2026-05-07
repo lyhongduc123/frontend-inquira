@@ -36,7 +36,7 @@ interface MessageAreaProps {
   conversationKey?: string;
   messages: Message[];
   isStreaming: boolean;
-  isAnalyzing?: boolean;
+  isReading?: boolean;
   onActiveQueryIndexChange?: (index: number | null) => void;
 }
 
@@ -46,7 +46,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       conversationKey,
       messages,
       isStreaming,
-      isAnalyzing,
+      isReading,
       onActiveQueryIndexChange,
     },
     ref,
@@ -353,7 +353,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
                   <MessageSection
                     isUserMessage={isUserMessage}
                     message={m}
-                    isAnalyzing={isAnalyzing && i === messages.length - 1}
+                    isReading={isReading && i === messages.length - 1}
                   />
                   {shouldShowProgress && (
                     <VStack className="gap-2 mt-2">

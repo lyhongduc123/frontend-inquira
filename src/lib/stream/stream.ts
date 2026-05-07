@@ -1,4 +1,10 @@
-import { StreamEvent, ProgressEvent, MetadataEvent, ChunkEvent, ConversationEvent } from "./event.types";
+import {
+  StreamEvent,
+  ProgressEvent,
+  MetadataEvent,
+  ConversationEvent,
+  ReasoningEvent,
+} from "./event.types";
 import { apiClient } from "@/lib/api/api-client";
 
 export interface StreamCallbacks {
@@ -7,6 +13,7 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void;
   onMetadata?: (event: MetadataEvent) => void;
   onProgress?: (event: ProgressEvent) => void;
+  onReasoning?: (event: ReasoningEvent) => void;
   onHeartbeat?: () => void;
   onConversation?: (event: ConversationEvent) => void;
   onUnknownEvent?: (eventType: string, data: unknown) => void;
@@ -135,7 +142,17 @@ export async function streamTask(
         break;
       case StreamEvent.Reasoning:
       case "reasoning":
-        callbacks.onUnknownEvent?.(eventType, parsedData);
+        callbacks.onReasoning?.({
+          type: "reasoning",
+          content:
+            typeof parsedData === "object" &&
+            parsedData !== null &&
+            "content" in parsedData
+              ? String(parsedData.content || "")
+              : typeof parsedData === "string"
+                ? parsedData
+                : "",
+        });
         break;
       case StreamEvent.Heartbeat:
       case "heartbeat":
@@ -313,7 +330,17 @@ export async function streamEvent(
         break;
       case StreamEvent.Reasoning:
       case "reasoning":
-        callbacks.onUnknownEvent?.(eventType, parsedData);
+        callbacks.onReasoning?.({
+          type: "reasoning",
+          content:
+            typeof parsedData === "object" &&
+            parsedData !== null &&
+            "content" in parsedData
+              ? String(parsedData.content || "")
+              : typeof parsedData === "string"
+                ? parsedData
+                : "",
+        });
         break;
       case StreamEvent.Heartbeat:
       case "heartbeat":

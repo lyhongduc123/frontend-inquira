@@ -18,7 +18,7 @@ interface UseChatOptions {
 
 interface ChatStreamState {
   isStreaming: boolean;
-  isAnalyzing: boolean;
+  isReading: boolean;
   isError: boolean;
   lastFailedQuery: string | null;
   lastClientMessageId: string | null;
@@ -66,7 +66,7 @@ export function useChat(options: UseChatOptions = {}) {
 
   const [streamState, setStreamState] = useState<ChatStreamState>({
     isStreaming: false,
-    isAnalyzing: false,
+    isReading: false,
     isError: false,
     lastFailedQuery: null,
     lastClientMessageId: null,
@@ -158,7 +158,7 @@ export function useChat(options: UseChatOptions = {}) {
 
       addAssistantMessage();
 
-      setStreamState((prev) => ({ ...prev, isStreaming: true, isAnalyzing: true }));
+      setStreamState((prev) => ({ ...prev, isStreaming: true, isReading: false }));
       accumulatedTextRef.current = "";
       abortControllerRef.current = new AbortController();
       useConversationStore.getState().setAbortStream(() => {
@@ -191,7 +191,7 @@ export function useChat(options: UseChatOptions = {}) {
           }
         },
         onMetadata: (event: MetadataEvent) => {
-          setStreamState((prev) => ({ ...prev, isAnalyzing: false }));
+          setStreamState((prev) => ({ ...prev, isReading: false }));
           setLatestMetadataEvent(event);
 
           if (Array.isArray(event.content)) {
@@ -199,19 +199,26 @@ export function useChat(options: UseChatOptions = {}) {
           }
         },
         onProgress: (event: ProgressEvent) => {
-          setStreamState((prev) => ({ ...prev, isAnalyzing: false }));
+          setStreamState((prev) => ({
+            ...prev,
+            isReading: event.type === "reasoning",
+          }));
           if (currentQueryIdRef.current) {
             addProgress(currentQueryIdRef.current, event);
           }
           onProgress?.(event);
         },
+        onReasoning: () => {
+          // Reasoning events now act as a lightweight trigger for reading state.
+          setStreamState((prev) => ({ ...prev, isReading: true }));
+        },
         onChunk: (chunk: string) => {
-          setStreamState((prev) => ({ ...prev, isAnalyzing: false }));
+          setStreamState((prev) => ({ ...prev, isReading: false }));
           accumulatedTextRef.current += chunk;
           updateLastMessage({ text: accumulatedTextRef.current });
         },
         onDone: () => {
-          setStreamState((prev) => ({ ...prev, isAnalyzing: false }));
+          setStreamState((prev) => ({ ...prev, isReading: false }));
           
           if (currentQueryIdRef.current) {
             const queryProgress = useProgressStore
@@ -264,7 +271,7 @@ export function useChat(options: UseChatOptions = {}) {
           onErrorCallback?.();
           setStreamState({
             isStreaming: false,
-            isAnalyzing: false,
+            isReading: false,
             isError: true,
             lastFailedQuery: query,
             lastClientMessageId: messageId,
@@ -387,13 +394,13 @@ export function useChat(options: UseChatOptions = {}) {
         toast.error("Something wrong happened, please try again");
         setStreamState({
           isStreaming: false,
-          isAnalyzing: false,
+          isReading: false,
           isError: true,
           lastFailedQuery: query,
           lastClientMessageId: messageId,
         });
       } finally {
-        setStreamState((prev) => ({ ...prev, isStreaming: false, isAnalyzing: false }));
+        setStreamState((prev) => ({ ...prev, isStreaming: false, isReading: false }));
         abortControllerRef.current = null;
         activeConversationIdRef.current = null;
         currentQueryIdRef.current = null;
@@ -465,7 +472,7 @@ export function useChat(options: UseChatOptions = {}) {
     messages,
     latestMetadataEvent,
     isStreaming: streamState.isStreaming,
-    isAnalyzing: streamState.isAnalyzing,
+    isReading: streamState.isReading,
     isError: streamState.isError,
     sendMessage,
     retry,

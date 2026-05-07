@@ -140,6 +140,7 @@ export function ChatPageClient({
   const {
     messages,
     isStreaming,
+    isReading,
     sendMessage,
     clearMessages,
     pendingInputMessage,
@@ -154,7 +155,7 @@ export function ChatPageClient({
     if (!canRenderConversationRoute && messages.length === 0) return "empty";
     if (!isLoadingMessages && messages.length === 0) return "loading";
     return "active";
-  }, [isLoadingMessages, messages.length, showContent]);
+  }, [canRenderConversationRoute, isLoadingMessages, messages.length, showContent]);
 
   useEffect(() => {
     if (!showContent) return;
@@ -344,6 +345,7 @@ export function ChatPageClient({
               messages={messages}
               onSend={handleSend}
               isStreaming={isStreaming}
+              isReading={isReading}
               onQueryClick={handleQueryClick}
               onActiveQueryIndexChange={handleActiveQueryIndexChange}
               messageAreaRef={messageAreaRef}

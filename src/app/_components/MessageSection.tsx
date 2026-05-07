@@ -8,13 +8,13 @@ interface MessageSectionProps {
   isUserMessage: boolean;
   showDivider?: boolean;
   message: Message;
-  isAnalyzing?: boolean;
+  isReading?: boolean;
 }
 
 function MessageSectionComponent({
   isUserMessage,
   message: m,
-  isAnalyzing,
+  isReading,
 }: MessageSectionProps) {
   const renderUserMessage = () => {
     return <UserMessage text={m.text} />;
@@ -30,7 +30,7 @@ function MessageSectionComponent({
           scopedQuoteRefs={m.scopedQuoteRefs}
           isDone={m.done}
           isError={m.isError}
-          isAnalyzing={isAnalyzing}
+          isReading={isReading}
         />
       </Box>
     );
@@ -47,7 +47,7 @@ export const MessageSection = memo(MessageSectionComponent,
   (prevProps, nextProps) => {
     if (prevProps.message.text !== nextProps.message.text) return false;
     if (prevProps.message.done !== nextProps.message.done) return false;
-    if (prevProps.isAnalyzing !== nextProps.isAnalyzing) return false;
+    if (prevProps.isReading !== nextProps.isReading) return false;
 
     return prevProps.message.id === nextProps.message.id;
   }
