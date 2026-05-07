@@ -1,49 +1,9 @@
 import { NextRequest } from 'next/server'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+import { handleProxy } from '@/lib/api/api-client.server'
 
 /**
  * POST /api/v1/chat/agent
  */
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-
-    const cookies = request.headers.get('cookie')
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(cookies ? { Cookie: cookies } : {}),
-    }
-
-    const authHeader = request.headers.get('Authorization')
-    if (authHeader) {
-      headers.Authorization = authHeader
-    }
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/chat/agent`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      credentials: 'include',
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      return new Response(errorText, {
-        status: response.status,
-        headers: { 'Content-Type': 'text/plain' },
-      })
-    }
-
-    return new Response(response.body, {
-      status: response.status,
-      headers: {
-        'Content-Type': response.headers.get('content-type') || 'application/json',
-      },
-    })
-  } catch (error) {
-    console.error('Error in chat agent:', error)
-    return new Response('Internal server error', { status: 500 })
-  }
+  return handleProxy(request, '/api/v1/chat/agent')
 }
