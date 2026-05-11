@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { SearchFilters } from "@/app/_components/FilterPanel";
+import { SearchFilters } from "@/app/(main)/_components/FilterPanel";
 import { transformFiltersForBackend } from "@/lib/filter-utils";
 import { ChatSendMessagePayload } from "@/types/chat.type";
 import { getCurrentPipelineMode } from "@/store/pipeline-store";

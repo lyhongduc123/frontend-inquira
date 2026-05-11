@@ -19,6 +19,8 @@ export async function handleProxy(
       ...(cookies && { Cookie: cookies }),
       ...(authHeader && { Authorization: authHeader }),
       ...(contentType && { "Content-Type": contentType }),
+
+      Connection: "close",
     };
 
     const method = options?.method || request.method;
@@ -37,8 +39,11 @@ export async function handleProxy(
       method,
       headers,
       body: body && typeof body !== "string" ? JSON.stringify(body) : body,
-      credentials: "include",
     });
+
+    if (res.status === 204) {
+      return new NextResponse(null, { status: 204 });
+    }
 
     let data: unknown = {};
     try {

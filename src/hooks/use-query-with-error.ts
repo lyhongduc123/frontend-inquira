@@ -22,8 +22,7 @@ export function useQueryWithError<
   errorCustomMessage?: string,
 ): UseQueryResult<TData, TError> {
   const query = useQuery(options)
-
-  // Handle errors with toast notification
+  
   useEffect(() => {
     if (query.isError && query.error) {
       handleQueryError(query.error, errorCustomMessage)

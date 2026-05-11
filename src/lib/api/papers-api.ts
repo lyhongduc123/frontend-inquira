@@ -9,7 +9,6 @@ import type {
 import { type PaginatedData, type DeleteResponse, HttpStatus, ApiError } from "@/types/api.type";
 import { ConversationDTO } from "@/types/conversation.type";
 
-
 const PAPERS_BASE = "/api/v1/papers";
 
 export const papersApi = {

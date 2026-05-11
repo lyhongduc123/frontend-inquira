@@ -23,20 +23,17 @@ export async function GET(request: NextRequest) {
     const backendResponse = await fetch(backendCallbackUrl, {
       method: 'GET',
       redirect: 'manual',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
     })
 
+    const isRedirect =
+      backendResponse.status >= 300 && backendResponse.status < 400
     const location = backendResponse.headers.get('location')
-    const fallback = `${request.nextUrl.origin}/auth/callback?success=true`
-    const redirectTarget = location || fallback
+    if (!isRedirect || !location) {
+      throw new Error('OAuth callback did not return a redirect')
+    }
 
-    const response = NextResponse.redirect(redirectTarget, {
-      status: backendResponse.status >= 300 && backendResponse.status < 400
-        ? backendResponse.status
-        : 307,
+    const response = NextResponse.redirect(location, {
+      status: backendResponse.status
     })
 
     const setCookieHeaders = backendResponse.headers.getSetCookie()

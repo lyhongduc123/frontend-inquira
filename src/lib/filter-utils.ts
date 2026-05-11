@@ -2,7 +2,7 @@
  * Utility functions for transforming search filters between frontend and backend formats
  */
 
-import { SearchFilters } from "@/app/_components/FilterPanel";
+import { SearchFilters } from "@/app/(main)/_components/FilterPanel";
 
 /**
  * Transform frontend filter format to backend expected format

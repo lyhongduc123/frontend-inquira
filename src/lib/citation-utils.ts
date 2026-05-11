@@ -1,45 +1,13 @@
 import type { PaperMetadata } from "@/types/paper.type";
-import { extractScopedCitationRefs } from "@/lib/scoped-citation-utils";
 import {
-  CITATIONS_REGEX,
-  LEGACY_FORMAT_REGEX,
-  SCOPED_CITATION_REGEX,
-} from "./markdown-utils";
-
-function getSourceFromCitationToken(
-  token: string,
-  sources?: PaperMetadata[],
-): PaperMetadata | undefined {
-  if (!sources || sources.length === 0) {
-    return undefined
-  }
-
-  const normalized = token.trim()
-  if (!normalized) {
-    return undefined
-  }
-
-  const byPaperId = sources.find((source) => source.paperId === normalized)
-  if (byPaperId) {
-    return byPaperId
-  }
-
-  // Support numeric token as source list index (primarily 0-based).
-  if (/^\d+$/.test(normalized)) {
-    const rawIndex = Number(normalized)
-    if (rawIndex >= 0 && rawIndex < sources.length) {
-      return sources[rawIndex]
-    }
-
-    // Backward-safe fallback for 1-based index inputs.
-    const oneBased = rawIndex - 1
-    if (oneBased >= 0 && oneBased < sources.length) {
-      return sources[oneBased]
-    }
-  }
-
-  return undefined
-}
+  createCitationMap as createCitationNumberMap,
+  extractCitedPaperIds as extractCitedIds,
+  getCitedPapers as getCitedSourcePapers,
+} from "@/lib/citation/core";
+import {
+  formatCitationsToApa,
+  buildReferencesSection as buildApaReferencesSection,
+} from "@/lib/citation/render-apa";
 
 /**
  * Extracts all paper IDs that are cited in the message text
@@ -48,34 +16,7 @@ function getSourceFromCitationToken(
  * - [number](paper_id)
  */
 export function extractCitedPaperIds(text: string): string[] {
-  const citedIds = new Set<string>();
-
-  // Extract scoped markers first: (cite:paper_id|chunk_id|...)
-  const scopedRefs = extractScopedCitationRefs(text);
-  for (const ref of scopedRefs) {
-    citedIds.add(ref.paperId);
-  }
-
-  // Extract plain/grouped cite markers:
-  // - (cite:paper_id)
-  // - (cite:paper_id1, cite:paper_id2)
-  // - mixed with scoped tokens
-  const citeMatches = text.matchAll(/cite:([^,\)\s]+)/g);
-  for (const match of citeMatches) {
-    const token = match[1];
-    const paperId = token.split("|")[0]?.trim();
-    if (paperId) {
-      citedIds.add(paperId);
-    }
-  }
-
-  // Extract from [number](paper_id) format
-  const linkMatches = text.matchAll(/\[\d+\]\(([^)]+)\)/g);
-  for (const match of linkMatches) {
-    citedIds.add(match[1]);
-  }
-
-  return Array.from(citedIds);
+  return extractCitedIds(text);
 }
 
 /**
@@ -86,22 +27,7 @@ export function getCitedPapers(
   text: string,
   sources?: PaperMetadata[],
 ): PaperMetadata[] {
-  if (!sources || sources.length === 0) {
-    return [];
-  }
-
-  const citedIds = new Set<string>()
-  for (const token of extractCitedPaperIds(text)) {
-    const source = getSourceFromCitationToken(token, sources)
-    const paperId = source?.paperId
-    if (paperId) {
-      citedIds.add(paperId)
-    }
-  }
-
-  return sources.filter(
-    (source) => source.paperId && citedIds.has(source.paperId),
-  );
+  return getCitedSourcePapers(text, sources);
 }
 
 /**
@@ -111,66 +37,8 @@ export function getFormattedCitedContent(
   text: string,
   cited_sources?: PaperMetadata[],
 ): string {
-  let formattedText;
-
-  formattedText = text.replace(LEGACY_FORMAT_REGEX, (match, paperId) => {
-    const paper = getSourceFromCitationToken(paperId, cited_sources)
-    if (!paper) return match;
-
-    const firstAuthor = paper.authors?.[0] ?? "Unknown";
-    const lastName = firstAuthor?.name?.split(" ").slice(-1)[0] ?? "Unknown";
-    const year = paper.year ?? "n.d.";
-
-    return `(${lastName}, ${year})`;
-  });
-
-  formattedText = formattedText.replace(
-    SCOPED_CITATION_REGEX,
-    (match, paperIdRaw, chunkIdRaw,) => {
-      const paper = getSourceFromCitationToken(paperIdRaw, cited_sources)
-
-      if (!paper) return match;
-
-      const firstAuthor = paper.authors?.[0] ?? "Unknown";
-      const lastName = firstAuthor?.name?.split(" ").slice(-1)[0] ?? "Unknown";
-      const year = paper.year ?? "n.d.";
-
-      return `(${lastName}, ${year})`; 
-    },
-  );
-
-  formattedText = formattedText.replace(CITATIONS_REGEX, (match, content) => {
-    const paperIds = content.split(',').map((id: string) => id.trim());
-    let final = ""
-    for (const paperId of paperIds) {
-      const token = paperId.startsWith("cite:")
-        ? paperId.slice(5).trim()
-        : paperId.trim()
-      const paper = getSourceFromCitationToken(token, cited_sources)
-      if (!paper) continue;
-      const hasManyAuthor = paper.authors && paper.authors.length >= 3;
-      const firstAuthor = paper.authors?.[0] ?? "Unknown";
-      const lastName = firstAuthor?.name?.split(" ").slice(-1)[0] ?? "Unknown";
-      const year = paper.year ?? "n.d.";
-      if (hasManyAuthor) {
-        final += `(${lastName} et al., ${year})`;
-      } else {
-        const secondAuthor = paper.authors?.[1];
-        if (secondAuthor) {
-          const secondLastName = secondAuthor.name?.split(" ").slice(-1)[0] ?? "Unknown";
-          final += `(${lastName} & ${secondLastName}, ${year})`;
-        } else {
-          final += `(${lastName}, ${year})`;
-        }
-      }
-    }
-
-    return final
-  });
-
-  const final = buildReferencesSection(formattedText, cited_sources);
-
-  return final;
+  const body = formatCitationsToApa(text, cited_sources);
+  return buildReferencesSection(body, cited_sources);
 }
 
 /**
@@ -181,22 +49,7 @@ export function buildReferencesSection(
   text?: string,
   cited_sources?: PaperMetadata[],
 ): string {
-  const referencesSection = "##References:\n\n";
-
-  if (!cited_sources || cited_sources.length === 0) {
-    return referencesSection + "No references cited.";
-  }
-  const builtSection = cited_sources.reduce((accStr, source) => {
-    accStr += source.citationStyles?.apa
-      ? `${source.citationStyles.apa}\n`
-      : `${source.title} (${source.paperId})\n`;
-    return accStr;
-  }, "");
-
-  if (text) {
-    return text + "\n\n" + referencesSection + builtSection;
-  }
-  return referencesSection + builtSection;
+  return buildApaReferencesSection(text, cited_sources);
 }
 
 /**
@@ -207,13 +60,15 @@ export function createCitationMap(
   text: string,
   sources?: PaperMetadata[],
 ): Map<string, number> {
-  const citedPapers = getCitedPapers(text, sources);
+  const citedPapers = getCitedSourcePapers(text, sources);
   const map = new Map<string, number>();
 
+  if (!citedPapers.length) {
+    return createCitationNumberMap(sources);
+  }
+
   citedPapers.forEach((paper, index) => {
-    if (paper.paperId) {
-      map.set(paper.paperId, index + 1);
-    }
+    if (paper.paperId) map.set(paper.paperId, index + 1);
   });
 
   return map;

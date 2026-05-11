@@ -15,6 +15,17 @@ export interface JournalData {
   dataYear: number
 }
 
+export interface ConferenceData {
+  id?: number
+  coreId?: number
+  title?: string
+  acronym?: string
+  source?: string
+  rank?: string
+  isPrimary?: boolean
+  forCodes?: string
+}
+
 /**
  * PaperMetadata - Lightweight paper metadata for frontend API responses
  * Used for:
@@ -35,6 +46,7 @@ export interface PaperMetadata {
   url?: string | null
   pdfUrl?: string | null
   journal?: JournalData | null
+  conference?: ConferenceData | null
   citationCount: number
   influentialCitationCount?: number
   citationStyles?: Record<string, string> | null
@@ -59,6 +71,7 @@ export interface PaperDetail {
   abstract: string
   authors: AuthorMetadataDTO[]
   journal?: JournalData | null
+  conference?: ConferenceData | null
   publicationDate?: string | null
   year?: number | null
   venue?: string | null

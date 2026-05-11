@@ -1,7 +1,7 @@
 "use client";
 
 import { VStack } from "@/components/layout/vstack";
-import { LeftSidebar } from "@/app/_components/LeftSidebar";
+import { LeftSidebar } from "@/app/(main)/_components/LeftSidebar";
 import {
   SidebarProvider,
   SidebarInset,

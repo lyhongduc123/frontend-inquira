@@ -4,11 +4,6 @@ import "./globals.css";
 import "./markdown.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
-import { Toaster } from "@/components/ui/sonner";
-import { MainLayout } from "@/components/layout/main-layout";
-import { cookies } from "next/headers";
-import { ACCESS_TOKEN_COOKIE_KEY } from "@/core";
-import { authApi } from "@/lib/api";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,12 +28,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookie = await cookies();
-  const token = cookie.get(ACCESS_TOKEN_COOKIE_KEY)?.value;
-  const data = token
-    ? await fetch(`${process.env.API_BASE_URL}/api/v1/auth/me`)
-    : null;
-  const initialUser = data?.ok ? await data.json() : null;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -58,10 +47,7 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <MainLayout initialUser={initialUser}>
-              {children}
-              <Toaster richColors />
-            </MainLayout>
+            {children}
           </ThemeProvider>
         </QueryProvider>
       </body>

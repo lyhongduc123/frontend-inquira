@@ -16,10 +16,10 @@ export enum StreamEvent {
 export enum EventType {
   PAPER_METADATA = "papers_metadata",
 
+  THINKING = "thinking",
   REASONING = "reasoning",
   SEARCHING = "searching",
   RANKING = "ranking",
-  PLANNING = "planning",
   SEARCHING_EXTERNAL = "searching_external",
   INGESTING_PAPER = "ingesting_paper",
 
@@ -32,7 +32,7 @@ export interface ErrorEvent {
   error_type?: string;
 }
 
-export interface PlanningProgressMetadata {
+export interface ThinkingProgressMetadata {
   intent?: string;
 }
 
@@ -75,9 +75,9 @@ interface ProgressEventBase<TType extends string, TMetadata = unknown> {
   timestamp?: number;
 }
 
-export type PlanningProgressEvent = ProgressEventBase<
-  EventType.PLANNING,
-  PlanningProgressMetadata
+export type ThinkingProgressEvent = ProgressEventBase<
+  EventType.THINKING,
+  ThinkingProgressMetadata
 >;
 
 export type SearchingProgressEvent = ProgressEventBase<
@@ -109,7 +109,7 @@ export type EndProgressEvent = ProgressEventBase<EventType.END_EVENT, EndProgres
 
 // Union of all typed progress events.
 export type ProgressEvent =
-  | PlanningProgressEvent
+  | ThinkingProgressEvent
   | SearchingProgressEvent
   | RankingProgressEvent
   | SearchingExternalProgressEvent

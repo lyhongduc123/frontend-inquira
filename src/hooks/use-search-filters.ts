@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { SearchFilters } from "@/app/_components/FilterPanel";
+import { SearchFilters } from "@/app/(main)/_components/FilterPanel";
 import { usePipelineStore } from "@/store/pipeline-store";
 
 /**
