@@ -1,5 +1,5 @@
 import type { PaperMetadata } from "@/types/paper.type";
-import { getSourceFromCitationToken } from "./core";
+import { getSourceFromCitationToken, getSourcesFromCitationToken } from "./core";
 import {
   CITATIONS_REGEX,
   LEGACY_FORMAT_REGEX,
@@ -62,12 +62,12 @@ export function formatCitationsToApa(
         ? part.slice(5).trim()
         : part;
 
-      const paper = getSourceFromCitationToken(token, sources);
-      if (!paper) {
+      const papers = getSourcesFromCitationToken(token, sources);
+      if (!papers.length) {
         return match;
       }
 
-      rendered.push(formatInlineApaCitation(paper));
+      rendered.push(...papers.map(formatInlineApaCitation));
     }
 
     return rendered.join("");

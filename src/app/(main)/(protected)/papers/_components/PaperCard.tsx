@@ -17,7 +17,7 @@ interface PaperCardProps {
 }
 
 export function PaperCard({ paper, idx }: PaperCardProps) {
-    console.log("Rendering PaperCard for paper:", paper);
+    // console.log("Rendering PaperCard for paper:", paper);
   const formatAuthors = (authorsArr: AuthorMetadataDTO[]) => {
     if (!authorsArr?.length) return "";
     if (authorsArr.length <= 3) {

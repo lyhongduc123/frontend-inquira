@@ -679,7 +679,7 @@ export function useEventDrivenChat(options: UseEventDrivenChatOptions = {}) {
           throw new Error("Missing task id from submit response");
         }
 
-        console.log(`Task ${taskId} submitted, starting stream...`);
+        // console.log(`Task ${taskId} submitted, starting stream...`);
 
         // Stream events from task
         await streamTaskEvents(taskId, 0);

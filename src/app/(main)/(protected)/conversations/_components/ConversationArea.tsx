@@ -47,8 +47,6 @@ function ConversationRow({ conversation }: { conversation: ConversationDTO }) {
       ? conversation.messageCount / 2
       : Math.ceil(conversation.messageCount / 2);
 
-  console.log("conversation", conversation);
-
   const lastUpdated = conversation.lastUpdated
     ? changeCase.sentenceCase(formatCustomDate(conversation.lastUpdated))
     : "Unknown";
@@ -65,7 +63,7 @@ function ConversationRow({ conversation }: { conversation: ConversationDTO }) {
           <HStack className="items-center gap-2 text-xs">
             <InfoItem
               number={userQueryCount}
-              label={pluralize("message", userQueryCount)}
+              label={"messages"}
             />
             {C_BULLET}
             <InfoItem number={lastUpdated} />

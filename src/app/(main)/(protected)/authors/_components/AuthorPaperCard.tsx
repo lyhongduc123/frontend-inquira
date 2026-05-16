@@ -135,12 +135,12 @@ export function AuthorPaperCard({
 
   const onCardView = (e: React.MouseEvent<HTMLDivElement>) => {
     const selection = window.getSelection();
-    console.log("PaperCard clicked. Current selection:", selection?.toString());
+    // console.log("PaperCard clicked. Current selection:", selection?.toString());
 
     if (selection && selection.toString().length > 0) {
       return;
     }
-    console.log("PaperCard clicked:", paperMetadata);
+    // console.log("PaperCard clicked:", paperMetadata);
     e.stopPropagation();
     onView?.(paperMetadata);
   };

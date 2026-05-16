@@ -269,7 +269,7 @@ export function AuthorPageClient() {
             <>
               {/* Header */}
               <SheetHeader className="border-b px-4 py-3 bg-background">
-                <SheetTitle className="capitalize">Paper Details</SheetTitle>
+                <SheetTitle>Paper</SheetTitle>
               </SheetHeader>
               <Box className="h-full p-4 overflow-auto">
                 <PaperDetailContent paper={selectedPaper.paper} />

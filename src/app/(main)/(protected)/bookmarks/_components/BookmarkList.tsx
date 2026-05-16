@@ -338,7 +338,7 @@ export function BookmarkList({
             <>
               {/* Header */}
               <SheetHeader className="border-b px-4 py-3 bg-background">
-                <SheetTitle className="capitalize">Paper Details</SheetTitle>
+                <SheetTitle>Paper</SheetTitle>
               </SheetHeader>
 
               {/* Content - Reuse PaperDetailContent */}

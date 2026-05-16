@@ -71,9 +71,9 @@ export function PaperPageClient() {
     (referencesData?.next ?? null) !== null ||
     ((referencesData?.total ?? 0) > references.length);
 
-  console.log("PaperDetailsPageContent rendered with paper:", paper);
-  console.log("Citations:", citations);
-  console.log("References:", references);
+  // console.log("PaperDetailsPageContent rendered with paper:", paper);
+  // console.log("Citations:", citations);
+  // console.log("References:", references);
 
   const handleFulltext = () => {
     if (paper?.pdfUrl) {

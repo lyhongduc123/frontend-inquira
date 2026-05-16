@@ -39,7 +39,7 @@ interface PaperDetailContentProps {
 export function PaperDetailContent({ paper }: PaperDetailContentProps) {
   const authors = paper.authors ?? [];
   const mainAuthor = authors[0]?.name ?? "Unknown";
-  console.log("PaperDetailContent rendered with paper:", paper);
+  // console.log("PaperDetailContent rendered with paper:", paper);
 
   return (
     <VStack className="gap-4 min-h-0">
@@ -186,22 +186,17 @@ const AuthorList = (authors: AuthorMetadataDTO[]) => {
   return (
     <VStack className="gap-2">
       {authors.map((author, idx) => (
-        // <Item key={idx} asChild variant={"outline"} className="items-center">
-        //   <Link href={`/authors/${author.authorId || "#"}`} target="_blank">
-        //     <ItemContent>
-        //       <ItemTitle>{author.name}</ItemTitle>
-        //       <ItemDescription>
-        //         {author.hIndex}
-        //         {author.citationCount}
-        //         {author.orcid}
-        //       </ItemDescription>
-        //     </ItemContent>
-        //     <ItemActions>
-        //       <ChevronRight className="size-4" />
-        //     </ItemActions>
-        //   </Link>
-        // </Item>
-        <AuthorItem key={idx} author={author as CoAuthorDTO} />
+        <Item key={idx} asChild variant={"outline"} className="items-center">
+          <Link href={`/authors/${author.authorId || "#"}`} target="_blank">
+            <ItemContent>
+              <ItemTitle>{author.name}</ItemTitle>
+            </ItemContent>
+            <ItemActions>
+              <ChevronRight className="size-4" />
+            </ItemActions>
+          </Link>
+        </Item>
+        // <AuthorItem key={idx} author={author as CoAuthorDTO} />
       ))}
     </VStack>
   );

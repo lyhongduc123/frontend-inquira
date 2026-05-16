@@ -182,7 +182,8 @@ class ApiClient {
     const headers: Record<string, string> = {
       ...(fetchConfig.headers as Record<string, string>),
     };
-
+    const timeStart = Date.now();
+    // console.log(timeStart, "API Request Start:", endpoint);
     let response = await fetch(endpoint, {
       ...fetchConfig,
       headers,
@@ -226,6 +227,9 @@ class ApiClient {
         });
       }
     }
+
+    const timeEnd = Date.now();
+    // console.log(timeEnd, "API Request End:", endpoint, `Duration: ${timeEnd - timeStart} ms`);
 
     return response;
   }

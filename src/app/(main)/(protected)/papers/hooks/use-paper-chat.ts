@@ -96,10 +96,10 @@ export function usePaperChat(options: UsePaperChatOptions) {
                 }
               } else if (eventType === "paper") {
                 // Paper metadata event - could be used for displaying paper info
-                console.log("Paper metadata:", data);
+                // console.log("Paper metadata:", data);
               } else if (eventType === "thought") {
                 // Thought/progress events
-                console.log("Thought:", data);
+                // console.log("Thought:", data);
               }
             },
             onMetadata: (event: MetadataEvent) => {

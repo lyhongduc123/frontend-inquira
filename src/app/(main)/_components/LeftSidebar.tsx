@@ -5,7 +5,6 @@ import { useEffect, useEffectEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { LeftSidebarMenuButton } from "./LeftSidebarMenuButton";
 import { conversationsApi } from "@/lib/api/conversations-api";
 import { ConversationCard, ConversationCardSkeleton } from "./ConversationCard";
 import { useConversationStore } from "@/store/conversation-store";
@@ -32,8 +31,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useConversation } from "@/hooks/use-conversation";
 import { TypographyP } from "@/components/global/typography";
-import { Command } from "@/components/ui/command";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Kbd } from "@/components/ui/kbd";
 import { HStack } from "@/components/layout/hstack";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,9 +56,6 @@ export function LeftSidebar() {
   );
   const pendingConversationDraft = useConversationStore(
     (state) => state.pendingConversationDraft,
-  );
-  const setPendingConversationDraft = useConversationStore(
-    (state) => state.setPendingConversationDraft,
   );
 
   const {
@@ -106,12 +101,12 @@ export function LeftSidebar() {
 
   const onShortcut = useEffectEvent((e: KeyboardEvent) => {
     if (e.altKey && e.key.toLowerCase() === "n") {
-      console.log("New conversation shortcut triggered");
+      // console.log("New conversation shortcut triggered");
       e.preventDefault();
       handleNewConversation();
     }
     if (e.altKey && e.key.toLowerCase() === "b") {
-      console.log("Bookmarks shortcut triggered");
+      // console.log("Bookmarks shortcut triggered");
       e.preventDefault();
       router.push("/bookmarks");
     }
@@ -131,10 +126,12 @@ export function LeftSidebar() {
         deleteConversation(conversationId, {
           onSuccess: async () => {
             toast.success("Conversation deleted successfully");
+
             if (conversationId === currentConversationId) {
               await deleteConversationAction(conversationId);
-              handleNewConversation();
             }
+
+            handleNewConversation();
             resolve();
           },
           onError: (error) => {
@@ -329,7 +326,7 @@ const BookmarkButton = ({
 
 const SidebarUserMenuSkeleton = () => (
   <div className="flex items-center gap-2 px-2 py-1">
-    <Skeleton className="h-8 w-8 rounded-lg flex-shrink-0" />
+    <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
     <div className="flex flex-col gap-1 flex-1 min-w-0">
       <Skeleton className="h-3.5 w-24 rounded" />
       <Skeleton className="h-3 w-32 rounded" />

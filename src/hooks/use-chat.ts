@@ -121,54 +121,55 @@ export function useChat(options: UseChatOptions = {}) {
         model,
         filters,
       } = payload;
+
       let finalConversationId = conversationId;
       let hasHandledFailure = false;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort(ABORT_REASON);
-      }
 
-      if (!isRetry) {
-        resetStreamState();
-      }
+      const abortActiveStream = () => {
+        abortControllerRef.current?.abort(ABORT_REASON);
+      };
 
-      setLatestMetadataEvent(null);
-
-      const messageId =
-        clientMessageId ||
-        `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-      const queryId = `query-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      currentQueryIdRef.current = queryId;
-
-      startQuery(queryId, query, conversationId);
-
-      if (!isRetry) {
-        const currentMessages = useConversationStore.getState().messages;
-        setMessages([
-          ...currentMessages,
-          {
-            role: "user",
-            text: query,
-            metadata: { query_id: queryId, client_message_id: messageId },
-          } as Message,
-        ]);
-      }
-
-      activeConversationIdRef.current = finalConversationId || null;
-
-      addAssistantMessage();
-
-      setStreamState((prev) => ({ ...prev, isStreaming: true, isReading: false }));
-      accumulatedTextRef.current = "";
-      abortControllerRef.current = new AbortController();
-      useConversationStore.getState().setAbortStream(() => {
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort(ABORT_REASON);
+      const handleFailure = (error: unknown) => {
+        if (isAbortError(error) || hasHandledFailure) {
+          return;
         }
-      });
 
-      // Determine the correct flow: Agent uses task queue, Research/Scoped uses direct stream
-      const isEventDriven = pipeline === "agent";
+        hasHandledFailure = true;
+        console.error("Streaming error:", error);
+
+        if (
+          useConversationStore.getState().currentConversationId ===
+          activeConversationIdRef.current
+        ) {
+          updateLastMessage({
+            text: "",
+            done: true,
+            isError: true,
+            metadata: {
+              ...(useConversationStore.getState().messages.at(-1)?.metadata || {}),
+              error_message:
+                error instanceof Error
+                  ? error.message
+                  : "Error: Failed to get response from server.",
+            },
+          });
+        }
+
+        if (currentQueryIdRef.current) {
+          completeQuery(currentQueryIdRef.current);
+        }
+
+        onErrorCallback?.();
+        setPendingInputMessage(query);
+        toast.error("Something wrong happened, please try again");
+        setStreamState({
+          isStreaming: false,
+          isReading: false,
+          isError: true,
+          lastFailedQuery: query,
+          lastClientMessageId: messageId,
+        });
+      };
 
       const commonCallbacks = {
         onConversation: (event: ConversationEvent) => {
@@ -181,8 +182,7 @@ export function useChat(options: UseChatOptions = {}) {
             if (currentQueryIdRef.current) {
               startQuery(currentQueryIdRef.current, query, newId);
             }
-            
-            // Update URL immediately via replaceState to avoid re-mounts
+
             onConversationCreated?.(newId);
           }
 
@@ -209,7 +209,6 @@ export function useChat(options: UseChatOptions = {}) {
           onProgress?.(event);
         },
         onReasoning: () => {
-          // Reasoning events now act as a lightweight trigger for reading state.
           setStreamState((prev) => ({ ...prev, isReading: true }));
         },
         onChunk: (chunk: string) => {
@@ -219,7 +218,7 @@ export function useChat(options: UseChatOptions = {}) {
         },
         onDone: () => {
           setStreamState((prev) => ({ ...prev, isReading: false }));
-          
+
           if (currentQueryIdRef.current) {
             const queryProgress = useProgressStore
               .getState()
@@ -279,126 +278,130 @@ export function useChat(options: UseChatOptions = {}) {
         },
       };
 
-      try {
-        if (isEventDriven) {
-          // flow: POST /agent -> task ID -> streamTask (GET)
-          const submitEndpoint = chatApi.getAgentSubmitUrl();
-          const response = await fetch(submitEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              query,
-              conversationId: finalConversationId || undefined,
-              pipeline,
-              filters,
-              model,
-              clientMessageId: messageId,
-            }),
-            credentials: "include",
-            signal: abortControllerRef.current.signal,
-          });
+      const runAgentFlow = async () => {
+        const submitEndpoint = chatApi.getAgentSubmitUrl();
+        const response = await fetch(submitEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query,
+            conversationId: finalConversationId || undefined,
+            pipeline,
+            filters,
+            model,
+            clientMessageId: messageId,
+          }),
+          credentials: "include",
+          signal: abortControllerRef.current?.signal,
+        });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to submit agent task: ${response.status} ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to submit agent task: ${response.status} ${errorText}`);
+        }
+
+        const submitData = (await response.json()) as
+          | { data?: ChatSubmitResponse }
+          | ChatSubmitResponse;
+        const submitPayload = "data" in submitData && submitData.data
+          ? submitData.data
+          : (submitData as ChatSubmitResponse);
+
+        const taskId = submitPayload.taskId;
+        const submittedConversationId = submitPayload.conversationId;
+
+        if (
+          submittedConversationId &&
+          submittedConversationId !== finalConversationId
+        ) {
+          finalConversationId = submittedConversationId;
+          activeConversationIdRef.current = submittedConversationId;
+
+          if (currentQueryIdRef.current) {
+            startQuery(currentQueryIdRef.current, query, submittedConversationId);
           }
 
-          const submitData = (await response.json()) as
-            | { data?: ChatSubmitResponse }
-            | ChatSubmitResponse;
-          const submitPayload = "data" in submitData && submitData.data
-            ? submitData.data
-            : (submitData as ChatSubmitResponse);
+          onConversationCreated?.(submittedConversationId);
+        }
 
-          const taskId = submitPayload.taskId;
-          const submittedConversationId = submitPayload.conversationId;
+        const streamUrl = chatApi.getStreamEventsUrl(taskId);
+        await streamTask(streamUrl, commonCallbacks, {
+          signal: abortControllerRef.current?.signal,
+          heartbeatTimeout: 0,
+        });
+      };
 
-          if (
-            submittedConversationId
-            && submittedConversationId !== finalConversationId
-          ) {
-            finalConversationId = submittedConversationId;
-            activeConversationIdRef.current = submittedConversationId;
-
-            if (currentQueryIdRef.current) {
-              startQuery(currentQueryIdRef.current, query, submittedConversationId);
-            }
-
-            onConversationCreated?.(submittedConversationId);
-          }
-
-          // Step 2: Stream events for the task
-          const streamUrl = chatApi.getStreamEventsUrl(taskId);
-          await streamTask(streamUrl, commonCallbacks, {
-            signal: abortControllerRef.current.signal,
+      const runDirectFlow = async () => {
+        const streamUrl = chatApi.getStreamUrl();
+        await streamEvent(
+          streamUrl,
+          {
+            query,
+            conversationId: finalConversationId || undefined,
+            pipeline: pipeline as "research",
+            filters,
+            paperIds: Array.isArray(filters?.paperIds)
+              ? (filters.paperIds as string[])
+              : undefined,
+            model: model || undefined,
+            clientMessageId: messageId,
+          },
+          commonCallbacks,
+          {
+            signal: abortControllerRef.current?.signal,
             heartbeatTimeout: 0,
-          });
+          }
+        );
+      };
+
+      if (abortControllerRef.current) {
+        abortActiveStream();
+      }
+
+      if (!isRetry) {
+        resetStreamState();
+      }
+
+      setLatestMetadataEvent(null);
+
+      const messageId =
+        clientMessageId ||
+        `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      const queryId = `query-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      currentQueryIdRef.current = queryId;
+
+      startQuery(queryId, query, conversationId);
+
+      if (!isRetry) {
+        const currentMessages = useConversationStore.getState().messages;
+        setMessages([
+          ...currentMessages,
+          {
+            role: "user",
+            text: query,
+            metadata: { query_id: queryId, client_message_id: messageId },
+          } as Message,
+        ]);
+      }
+
+      activeConversationIdRef.current = finalConversationId || null;
+
+      addAssistantMessage();
+
+      setStreamState((prev) => ({ ...prev, isStreaming: true, isReading: false }));
+      accumulatedTextRef.current = "";
+      abortControllerRef.current = new AbortController();
+      useConversationStore.getState().setAbortStream(abortActiveStream);
+
+      try {
+        if (pipeline === "agent") {
+          await runAgentFlow();
         } else {
-          // Direct Stream flow (Research/Scoped): POST /stream -> streamEvent (POST)
-          const streamUrl = chatApi.getStreamUrl();
-          await streamEvent(
-            streamUrl,
-            {
-              query,
-              conversationId: finalConversationId || undefined,
-              pipeline: pipeline as "research",
-              filters,
-              paperIds: Array.isArray(filters?.paperIds)
-                ? (filters.paperIds as string[])
-                : undefined,
-              model: model || undefined,
-              clientMessageId: messageId,
-            },
-            commonCallbacks,
-            {
-              signal: abortControllerRef.current.signal,
-              heartbeatTimeout: 0,
-            }
-          );
+          await runDirectFlow();
         }
       } catch (error) {
-        if (isAbortError(error)) {
-          return;
-        }
-
-        if (hasHandledFailure) {
-          return;
-        }
-        hasHandledFailure = true;
-
-        console.error("Streaming error:", error);
-        
-        if (
-          useConversationStore.getState().currentConversationId ===
-          activeConversationIdRef.current
-        ) {
-          updateLastMessage({
-            text: "",
-            done: true,
-            isError: true,
-            metadata: {
-              ...(useConversationStore.getState().messages.at(-1)?.metadata || {}),
-              error_message: error instanceof Error
-                ? error.message
-                : "Error: Failed to get response from server.",
-            },
-          });
-        }
-
-        if (currentQueryIdRef.current) {
-          completeQuery(currentQueryIdRef.current);
-        }
-
-        onErrorCallback?.();
-        setPendingInputMessage(query);
-        toast.error("Something wrong happened, please try again");
-        setStreamState({
-          isStreaming: false,
-          isReading: false,
-          isError: true,
-          lastFailedQuery: query,
-          lastClientMessageId: messageId,
-        });
+        handleFailure(error);
       } finally {
         setStreamState((prev) => ({ ...prev, isStreaming: false, isReading: false }));
         abortControllerRef.current = null;

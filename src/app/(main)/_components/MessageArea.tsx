@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   forwardRef,
@@ -25,6 +26,8 @@ import { Box } from "@/components/layout/box";
 import { ProgressStep, useProgressStore } from "@/store/progress-store";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export interface MessageAreaRef {
   scrollToMessage: (index: number) => void;
@@ -54,12 +57,29 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const isAtBottomRef = useRef(true);
     const messageRefs = useRef<(HTMLElement | null)[]>([]);
-    const lastAnchoredUserMessageKeyRef = useRef<string | null>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const waitingSpacerRef = useRef<HTMLDivElement>(null);
     const activeQueryIndexRef = useRef<number | null>(null);
+    const latestUserMessageKeyRef = useRef<string | null>(null);
     const [waitingSpacerHeight, setWaitingSpacerHeight] = useState(0);
     const activeQueryId = useProgressStore((state) => state.activeQueryId);
+
+    const getViewport = useCallback(() => {
+      return scrollAreaRef.current?.querySelector(
+        "[data-radix-scroll-area-viewport]",
+      ) as HTMLElement | null;
+    }, []);
+
+    const getMessageKey = useCallback((message: Message, index: number) => {
+      const metadataKey =
+        typeof message.metadata?.client_message_id === "string"
+          ? message.metadata.client_message_id
+          : typeof message.metadata?.query_id === "string"
+            ? message.metadata.query_id
+            : null;
+
+      return `${message.id ?? metadataKey ?? index}-${message.role}`;
+    }, []);
 
     const getLatestUserMessageIndex = useCallback(() => {
       for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -68,50 +88,37 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       return -1;
     }, [messages]);
 
+    const scrollToMessageIndex = useCallback(
+      (index: number, behavior: ScrollBehavior = "smooth") => {
+        requestAnimationFrame(() => {
+          const messageElement = messageRefs.current[index];
+          const viewport = getViewport();
+
+          if (!messageElement || !viewport) return;
+
+          viewport.scrollTo({
+            top: messageElement.offsetTop,
+            behavior,
+          });
+        });
+      },
+      [getViewport],
+    );
+
     // Expose scrollToMessage function and activeQueryIndex to parent
     useImperativeHandle(ref, () => ({
       scrollToMessage: (index: number) => {
-        const messageElement = messageRefs.current[index];
-        const scrollContainer = scrollAreaRef.current?.querySelector(
-          "[data-radix-scroll-area-viewport]",
-        ) as HTMLElement;
-
-        if (messageElement && scrollContainer) {
-          const offsetTop = messageElement.offsetTop;
-          scrollContainer.scrollTo({
-            top: offsetTop,
-            behavior: "smooth",
-          });
-        }
+        scrollToMessageIndex(index);
       },
       scrollToLatestQuery: () => {
-        const lastUserMessageIndex = messages
-          .map((m, i) => (m.role === "user" ? i : -1))
-          .filter((i) => i !== -1)
-          .pop();
-
-        if (lastUserMessageIndex !== undefined) {
-          const messageElement = messageRefs.current[lastUserMessageIndex];
-          const scrollContainer = scrollAreaRef.current?.querySelector(
-            "[data-radix-scroll-area-viewport]",
-          ) as HTMLElement;
-
-          if (messageElement && scrollContainer) {
-            const offsetTop = messageElement.offsetTop;
-            scrollContainer.scrollTo({
-              top: offsetTop,
-              behavior: "smooth",
-            });
-          }
-        }
+        const lastUserMessageIndex = getLatestUserMessageIndex();
+        if (lastUserMessageIndex >= 0) scrollToMessageIndex(lastUserMessageIndex);
       },
       activeQueryIndex: activeQueryIndexRef.current,
     }));
 
     useEffect(() => {
-      const viewport = scrollAreaRef.current?.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      ) as HTMLElement | null;
+      const viewport = getViewport();
 
       if (!viewport) return;
 
@@ -151,12 +158,10 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       viewport.addEventListener("scroll", onScroll);
       onScroll();
       return () => viewport.removeEventListener("scroll", onScroll);
-    }, [messages, onActiveQueryIndexChange]);
+    }, [messages, onActiveQueryIndexChange, getViewport]);
 
     useEffect(() => {
-      const viewport = scrollAreaRef.current?.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      ) as HTMLElement | null;
+      const viewport = getViewport();
 
       if (!viewport) return;
 
@@ -165,61 +170,39 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
           viewport.scrollTop = viewport.scrollHeight;
         });
       }
-    }, [messages, isStreaming]);
+    }, [messages, isStreaming, getViewport]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
+      latestUserMessageKeyRef.current = null;
+      activeQueryIndexRef.current = null;
+      onActiveQueryIndexChange?.(null);
+    }, [conversationKey, onActiveQueryIndexChange]);
+
+    useLayoutEffect(() => {
       const latestUserIndex = getLatestUserMessageIndex();
-
-      if (latestUserIndex < 0) return;
-
-      const latestUserMessage = messages[latestUserIndex];
-      const messageKey =
-        (latestUserMessage.metadata?.client_message_id as string | undefined) ||
-        (latestUserMessage.metadata?.query_id as string | undefined) ||
-        `${latestUserIndex}-${latestUserMessage.text}`;
-
-      if (messageKey === lastAnchoredUserMessageKeyRef.current) {
+      if (latestUserIndex < 0) {
+        latestUserMessageKeyRef.current = null;
         return;
       }
 
-      const viewport = scrollAreaRef.current?.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      ) as HTMLElement | null;
+      const latestUserMessage = messages[latestUserIndex];
+      const latestUserMessageKey = getMessageKey(
+        latestUserMessage,
+        latestUserIndex,
+      );
 
-      if (!viewport) return;
+      if (latestUserMessageKeyRef.current === latestUserMessageKey) {
+        return;
+      }
 
-      const messageElement = messageRefs.current[latestUserIndex];
-      if (!messageElement) return;
-
-      lastAnchoredUserMessageKeyRef.current = messageKey;
-
-      requestAnimationFrame(() => {
-        const offsetTop = messageElement.offsetTop;
-        viewport.scrollTo({
-          top: Math.max(0, offsetTop),
-          behavior: "smooth",
-        });
-      });
-
-      // Keep query anchored while waiting for the first assistant chunk.
-      isAtBottomRef.current = false;
-    }, [getLatestUserMessageIndex, messages]);
-
-    useEffect(() => {
-      const viewport = scrollAreaRef.current?.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      ) as HTMLElement | null;
-
-      if (!viewport) return;
-
-      lastAnchoredUserMessageKeyRef.current = null;
-      activeQueryIndexRef.current = null;
-      onActiveQueryIndexChange?.(null);
-
-      requestAnimationFrame(() => {
-        viewport.scrollTo({ top: 0, behavior: "auto" });
-      });
-    }, [conversationKey, onActiveQueryIndexChange]);
+      latestUserMessageKeyRef.current = latestUserMessageKey;
+      scrollToMessageIndex(latestUserIndex, "auto");
+    }, [
+      messages,
+      getLatestUserMessageIndex,
+      getMessageKey,
+      scrollToMessageIndex,
+    ]);
 
     const lastMessage = messages[messages.length - 1];
     const waitingForAssistantFirstChunk = Boolean(
@@ -235,9 +218,7 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
         return;
       }
 
-      const viewport = scrollAreaRef.current?.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      ) as HTMLElement | null;
+      const viewport = getViewport();
       const content = contentRef.current;
       const latestUserIndex = getLatestUserMessageIndex();
       const latestUserElement =
@@ -276,7 +257,12 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       return () => {
         resizeObserver.disconnect();
       };
-    }, [waitingForAssistantFirstChunk, getLatestUserMessageIndex, messages]);
+    }, [
+      waitingForAssistantFirstChunk,
+      getLatestUserMessageIndex,
+      messages,
+      getViewport,
+    ]);
 
     if (!messages || messages.length === 0) {
       return (
@@ -312,6 +298,10 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
             const shouldShowProgress =
               isUserMessage && nextMessage?.role === "assistant";
             const shouldShowGradient = nextMessage?.role === "user";
+            const shouldShowMissingAssistantError =
+              isUserMessage &&
+              nextMessage?.role !== "assistant" &&
+              !(isStreaming && i === messages.length - 1);
 
             const messageQueryId =
               (m.metadata?.query_id as string | undefined) ||
@@ -371,6 +361,17 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
                       />
                     </VStack>
                   )}
+                  {shouldShowMissingAssistantError && (
+                    <MessageSection
+                      message={{
+                        text: "",
+                        role: "assistant",
+                        isError: true,
+                      }}
+                      isUserMessage={false}
+                      isReading={false}
+                    />
+                  )}
                 </Box>
                 {shouldShowGradient && (
                   <Box className="relative w-full h-full">
@@ -381,14 +382,6 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
               </Box>
             );
           })}
-          {waitingForAssistantFirstChunk && (
-            <Box
-              ref={waitingSpacerRef}
-              className="mx-auto max-w-4xl w-full"
-              style={{ height: `${waitingSpacerHeight}px` }}
-              aria-hidden="true"
-            />
-          )}
         </Box>
       </ScrollArea>
     );

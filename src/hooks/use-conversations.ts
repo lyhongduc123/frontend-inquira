@@ -76,8 +76,7 @@ export function useConversations(options: UseConversationsOptions = {}) {
   }, 'Failed to load conversations');
 
   const deleteConversationMutation = useMutation({
-    mutationFn: (conversationId: string) =>
-      conversationsApi.delete(conversationId),
+    mutationFn: (conversationId: string) => conversationsApi.delete(conversationId),
     onMutate: async (conversationId) => {
       await queryClient.cancelQueries({ queryKey: conversationKeys.lists() });
       const previousData = queryClient.getQueryData(listKey);
@@ -104,6 +103,7 @@ export function useConversations(options: UseConversationsOptions = {}) {
       }
     },
     onSuccess: () => {
+      queryClient.removeQueries({ queryKey: conversationKeys.details() });
       queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
     },
   });

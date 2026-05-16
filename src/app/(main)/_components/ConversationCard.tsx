@@ -39,12 +39,7 @@ export function ConversationCard({
     if (onDelete) {
       await onDelete(conversation.id);
     }
-  }
-
-  const userMsgcount =
-    conversation.messageCount % 2 === 0
-      ? conversation.messageCount / 2
-      : Math.ceil(conversation.messageCount / 2);
+  };
 
   return (
     <>

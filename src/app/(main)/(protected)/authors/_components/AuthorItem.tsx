@@ -18,7 +18,7 @@ interface AuthorCardProps {
 }
 
 export function AuthorItem({ author }: AuthorCardProps) {
-  console.log("Rendering AuthorItem for:", author);
+  // console.log("Rendering AuthorItem for:", author);
   return (
     <Item
       asChild

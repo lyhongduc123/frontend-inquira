@@ -16,14 +16,14 @@ export const InfoItem = ({ icon, label, number, className, labelClassName = "tru
     <HStack className={cn("items-center gap-1 min-w-0", className)}>
       {icon}
       {number !== undefined && number !== null && (
-        <TypographyP size="xs" className="font-semibold shrink-0">
+        <span className="font-semibold shrink-0 text-xs">
           {number}
-        </TypographyP>
+        </span>
       )}
       {label && (
-        <TypographyP size="xs" className={cn("text-muted-foreground", labelClassName)}>
+        <span className={cn("text-muted-foreground text-xs", labelClassName)}>
           {" " + label}
-        </TypographyP>
+        </span>
       )}
     </HStack>
   );

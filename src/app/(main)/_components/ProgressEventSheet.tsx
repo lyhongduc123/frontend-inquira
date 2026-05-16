@@ -341,9 +341,9 @@ function parseContent(step: ProgressStep): ReactNode | string {
       return (
         <VStack className="flex flex-col gap-1">
           {queries.map((q, idx) => (
-            <div key={idx}>
+            <span key={idx}>
               {q}
-            </div>
+            </span>
           ))}
         </VStack>
       );

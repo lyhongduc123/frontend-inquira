@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
 import { conversationsApi } from "@/lib/api/conversations-api";
+import { useQueryClient } from "@tanstack/react-query";
 import { Message } from "@/types/message.type";
 import { MessageProgressEventDTO } from "@/types/message.type";
 import { useConversationStore } from "@/store/conversation-store";
@@ -7,6 +8,7 @@ import { ConversationDTO } from "@/types/conversation.type";
 import { PaperMetadata } from "@/types/paper.type";
 import { toast } from "sonner";
 import { getErrorMessage, isNotFoundError } from "@/lib/react-query/error-utils";
+import { conversationKeys } from "@/hooks/use-conversations";
 
 function normalizeProgressEvent(raw: unknown): MessageProgressEventDTO {
   const src =
@@ -55,6 +57,7 @@ function normalizeProgressEvent(raw: unknown): MessageProgressEventDTO {
 }
 
 export function useConversation() {
+  const queryClient = useQueryClient();
   const currentConversationId = useConversationStore(
     (state) => state.currentConversationId,
   );
@@ -79,6 +82,9 @@ export function useConversation() {
   );
   const setPendingConversationDraft = useConversationStore(
     (state) => state.setPendingConversationDraft,
+  );
+  const setRecentlyDeletedConversationId = useConversationStore(
+    (state) => state.setRecentlyDeletedConversationId,
   );
 
   const latestCreateRequestRef = useRef<number>(0);
@@ -126,10 +132,6 @@ export function useConversation() {
     async (conversationId: string): Promise<Message[]> => {
       const requestId = ++latestLoadRequestRef.current;
 
-      if (conversationId === currentConversationId) {
-        return [];
-      }
-
       const { abortStream } = useConversationStore.getState();
       if (abortStream) {
         abortStream();
@@ -139,7 +141,25 @@ export function useConversation() {
       setCurrentConversationId(conversationId);
 
       try {
-        const conversation = await conversationsApi.get(conversationId);
+        const cachedConversation = queryClient.getQueryData<ConversationDTO>(
+          conversationKeys.detail(conversationId),
+        );
+
+        // cache lookup
+
+        const conversation =
+          cachedConversation ??
+          (await queryClient.fetchQuery<ConversationDTO>({
+            queryKey: conversationKeys.detail(conversationId),
+            queryFn: () => conversationsApi.get(conversationId),
+            staleTime: Infinity,
+            gcTime: 30 * 60 * 1000,
+          }));
+
+        if (!conversation) {
+          throw new Error(`Conversation ${conversationId} not found in cache or API response`);
+        }
+
         if (requestId !== latestLoadRequestRef.current) {
           return [];
         }
@@ -156,12 +176,18 @@ export function useConversation() {
           scopedQuoteRefs: msg.scopedQuoteRefs || undefined,
         }));
 
+        // messages loaded
+
         setMessages(loadedMessages);
         return loadedMessages;
       } catch (error) {
         console.error("Failed to load conversation messages:", error);
 
-        if (requestId === latestLoadRequestRef.current) {
+        const isRecentlyDeleted =
+          useConversationStore.getState().recentlyDeletedConversationId ===
+          conversationId;
+
+        if (requestId === latestLoadRequestRef.current && !isRecentlyDeleted) {
           const description = isNotFoundError(error)
             ? "This conversation is unavailable or was deleted."
             : getErrorMessage(error);
@@ -182,10 +208,10 @@ export function useConversation() {
       }
     },
     [
-      currentConversationId,
       setCurrentConversationId,
       setIsLoadingMessages,
       setMessages,
+      queryClient,
     ],
   );
 
@@ -198,12 +224,13 @@ export function useConversation() {
   const deleteConversation = useCallback(
     async (conversationId: string) => {
       if (conversationId === currentConversationId) {
+        setRecentlyDeletedConversationId(conversationId);
         resetConversation();
         return true;
       }
       return false;
     },
-    [currentConversationId, resetConversation],
+    [currentConversationId, resetConversation, setRecentlyDeletedConversationId],
   );
 
   const updateConversationTitle = useCallback(

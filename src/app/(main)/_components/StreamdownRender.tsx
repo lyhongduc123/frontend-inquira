@@ -3,7 +3,7 @@
 import React from "react";
 import { Streamdown } from "streamdown";
 import type { PaperMetadata } from "@/types/paper.type";
-import { Citation, MissingCitation } from "./Citation";
+import { Citation, CitationGroup, MissingCitation } from "./Citation";
 import { convertCitationsToElements } from "@/lib/citation/render-html";
 import {
   createScopedCitationRefMap,
@@ -26,7 +26,10 @@ export function StreamdownRender({
 }: StreamdownRenderProps) {
   
   const processedMessage = React.useMemo(() => {
-    return convertCitationsToElements(message, sources, scopedQuoteRefs);
+    const res = convertCitationsToElements(message, sources, scopedQuoteRefs);
+    // console.log("Processed message with citations:", res);
+    // console.log("Sources used for processing:", message);
+    return res;
   }, [message, scopedQuoteRefs, sources]);
 
   const scopedRefMap = React.useMemo(
@@ -96,6 +99,26 @@ export function StreamdownRender({
     [scopedRefMap, sources],
   );
 
+  const CitationGroupComponent = React.useCallback(
+    (props: { [key: string]: string }) => {
+      const ids = (props["data-ids"] ?? "").split(",").filter(Boolean);
+      const numbers = (props["data-numbers"] ?? "")
+        .split(",")
+        .filter(Boolean);
+
+      const citations = ids.map((paperId, index) => ({
+        paperId,
+        number: numbers[index] ?? String(index + 1),
+        source: Array.isArray(sources)
+          ? sources.find((src) => src.paperId === paperId)
+          : undefined,
+      }));
+
+      return <CitationGroup citations={citations} />;
+    },
+    [sources],
+  );
+
   const MissingCitationComponent = React.useCallback(() => {
     console.warn(
       "Rendering MissingCitation component for a citation without a valid source",
@@ -109,11 +132,14 @@ export function StreamdownRender({
         mode={"streaming"}
         allowedTags={{
           citation: ["data*"],
-          scoped: ["data*"],
+          "scoped-citation": ["data*"],
+          "citation-group": ["data*"],
+          missing: ["data*"],
         }}
         components={{
           citation: CitationComponent as React.ElementType,
-          scoped: ScopedCitationComponent as React.ElementType,
+          "scoped-citation": ScopedCitationComponent as React.ElementType,
+          "citation-group": CitationGroupComponent as React.ElementType,
           missing: MissingCitationComponent,
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

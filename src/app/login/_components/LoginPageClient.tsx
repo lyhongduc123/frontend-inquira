@@ -165,7 +165,7 @@ export function LoginPageClient() {
     clearMessages();
   };
 
-  console.log("LoginPageClient rendered with isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
+  // console.log("LoginPageClient rendered with isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
 
   if (isLoading) {
     return (

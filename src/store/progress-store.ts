@@ -39,9 +39,9 @@ interface ProgressState {
 const phaseMap: Record<string, { phase: string; progress: number }> = {
   [EventType.THINKING]: { phase: "thinking", progress: 12 },
   [EventType.SEARCHING]: { phase: "search", progress: 25 },
-  [EventType.SEARCHING_EXTERNAL]: { phase: "search_external", progress: 45 },
+  [EventType.SEARCHING_EXTERNAL]: { phase: "searching_external", progress: 45 },
   [EventType.INGESTING_PAPER]: { phase: "ingest", progress: 60 },
-  [EventType.RANKING]: { phase: "analysis", progress: 50 },
+  [EventType.RANKING]: { phase: "ranking", progress: 50 },
   [EventType.REASONING]: { phase: "generation", progress: 75 },
 };
 

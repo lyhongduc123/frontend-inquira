@@ -13,6 +13,7 @@ interface ConversationState {
   pendingConversationDraft: { id: string; title: string } | null;
   abortStream: (() => void) | null;
   latestMetadataEvent: MetadataEvent | null;
+  recentlyDeletedConversationId: string | null;
 
   // Actions
   setCurrentConversationId: (id: string | null) => void;
@@ -30,6 +31,7 @@ interface ConversationState {
   ) => void;
   setAbortStream: (callback: (() => void) | null) => void;
   setLatestMetadataEvent: (event: MetadataEvent | null) => void;
+  setRecentlyDeletedConversationId: (id: string | null) => void;
   clearConversation: () => void;
 }
 
@@ -45,6 +47,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
   pendingConversationDraft: null,
   abortStream: null,
   latestMetadataEvent: null,
+  recentlyDeletedConversationId: null,
 
   // Actions
   setCurrentConversationId: (id) => set({ currentConversationId: id }),
@@ -71,6 +74,8 @@ export const useConversationStore = create<ConversationState>((set) => ({
   setAbortStream: (callback) => set({ abortStream: callback }),
 
   setLatestMetadataEvent: (event) => set({ latestMetadataEvent: event }),
+
+  setRecentlyDeletedConversationId: (id) => set({ recentlyDeletedConversationId: id }),
 
   clearConversation: () =>
     set((state) => {

@@ -77,22 +77,27 @@ export function ChatPageClient({
   useEffect(() => {
     if (!showContent) return;
 
+    // Route effect triggered
+
     if (routeConversationId) {
+      const recentlyDeletedConversationId = useConversationStore
+        .getState()
+        .recentlyDeletedConversationId;
+      if (recentlyDeletedConversationId === routeConversationId) {
+        useConversationStore.getState().setRecentlyDeletedConversationId(null);
+        latestAppliedRouteConversationIdRef.current = routeConversationId;
+        return;
+      }
+
       if (
         latestAppliedRouteConversationIdRef.current !== routeConversationId ||
         currentConversationId !== routeConversationId
       ) {
+        // Route mismatch detected - checking if load needed
         const isCurrentlyStreaming = useConversationStore
           .getState()
           .messages.some((m) => !m.done);
-        if (
-          isCurrentlyStreaming &&
-          currentConversationId === routeConversationId
-        ) {
-          console.log(
-            "Skipping loadConversation as it matches active stream:",
-            routeConversationId,
-          );
+        if (isCurrentlyStreaming && currentConversationId === routeConversationId) {
           latestAppliedRouteConversationIdRef.current = routeConversationId;
           return;
         }
@@ -101,24 +106,25 @@ export function ChatPageClient({
           useConversationStore.getState().newConversationId ===
           routeConversationId;
         if (isNewConversation) {
-          console.log(
-            "Skipping loadConversation for newly created conversation:",
-            routeConversationId,
-          );
           latestAppliedRouteConversationIdRef.current = routeConversationId;
           return;
         }
 
+        // calling loadConversation
         latestAppliedRouteConversationIdRef.current = routeConversationId;
         void loadConversation(routeConversationId).catch((error) => {
           console.error("Route conversation load failed:", error);
         });
       }
-      console.log("Loaded conversation for route ID:", routeConversationId);
+      // route effect complete
       return;
     }
 
+    // No routeConversationId - clearing refs
     latestAppliedRouteConversationIdRef.current = undefined;
+    if (useConversationStore.getState().recentlyDeletedConversationId) {
+      useConversationStore.getState().setRecentlyDeletedConversationId(null);
+    }
   }, [
     currentConversationId,
     loadConversation,
