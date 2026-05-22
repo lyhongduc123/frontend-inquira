@@ -12,6 +12,7 @@ import type { PaperDetail } from "@/types/paper.type";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CitationStyleDialog } from "@/app/(main)/_components/_shared/CitationStyleDialog";
 import { useState } from "react";
+import { BookmarkButton } from "@/components/global/bookmark-button";
 
 interface PaperActionBarProps {
   paper: PaperDetail;
@@ -39,9 +40,10 @@ export function PaperActionBar({
     setIsCitationDialogOpen(true);
     onCite?.();
   };
+
   return (
     <HStack className="gap-2 flex-wrap">
-      {/* Fulltext Button */} 
+      {/* Fulltext Button */}
       {paper.pdfUrl && (
         <Button onClick={onFulltext} variant="default" size="sm">
           <ExternalLinkIcon />
@@ -58,15 +60,20 @@ export function PaperActionBar({
       )} */}
 
       {/* Bookmark Button */}
-      <Button
+      {/* <Button
         onClick={onBookmark}
         variant={isBookmarked ? "default" : "outline"}
         size="sm"
       >
         <BookmarkIcon className={isBookmarked ? "fill-current" : ""} />
         {isBookmarked ? "Bookmarked" : "Bookmark"}
-      </Button>
-
+      </Button> */}
+      <BookmarkButton
+        paperId={paper.paperId}
+        showLabel
+        variant={isBookmarked ? "default" : "outline"}
+        size="sm"
+      />
       {onAddToChat && (
         <Button onClick={onAddToChat} variant="ghost" size="sm">
           <MessageSquarePlusIcon />

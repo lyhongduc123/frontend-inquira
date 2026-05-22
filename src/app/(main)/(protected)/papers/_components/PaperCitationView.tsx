@@ -7,6 +7,9 @@ import type { CitingPaper } from "@/types/paper.type";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaperCard } from "./PaperCard";
 import { Button } from "@/components/ui/button";
+import { LoadingState } from "@/app/(main)/_components/LoadingState";
+import { Spinner } from "@/components/ui/spinner";
+import { OpacityShimmer } from "@/components/ui/opacity-shimmer";
 
 interface PaperCitationsViewProps {
   citations: CitingPaper[];
@@ -33,13 +36,10 @@ export function PaperCitationsView({
         <CardContent>
           {isLoading ? (
             <VStack className="gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-3 w-full" />
-                </div>
-              ))}
+              <Spinner />
+              <OpacityShimmer>
+                Loading citations...
+              </OpacityShimmer>
             </VStack>
           ) : citations.length === 0 ? (
             <TypographyP className="text-muted-foreground">

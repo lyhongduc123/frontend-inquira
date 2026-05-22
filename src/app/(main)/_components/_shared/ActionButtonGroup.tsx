@@ -12,7 +12,8 @@ import { Quote, Bookmark, } from "lucide-react";
 import { useState } from "react";
 import { AccessLinkButton } from "./AccessLinkButton";
 import { Box } from "@/components/layout/box";
-import { useBookmark, useToggleBookmark } from "@/hooks/use-bookmarks";
+import { useToggleBookmark } from "@/hooks/use-bookmarks";
+import { BookmarkButton } from "@/components/global/bookmark-button";
 
 export const ActionButtonGroup = ({
   paperMetadata,
@@ -20,7 +21,7 @@ export const ActionButtonGroup = ({
   paperMetadata: PaperMetadata;
 }) => {
   const delayDuration = 500; // ms
-  const { pdfUrl, url, citationStyles, paperId } = paperMetadata;
+  const { pdfUrl, url, citationStyles } = paperMetadata;
   const [isCitationModalOpen, setIsCitationModalOpen] = useState(false);
   const { isBookmarked, toggle, isPending } = useToggleBookmark(paperMetadata.paperId);
   
@@ -44,14 +45,14 @@ export const ActionButtonGroup = ({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <TypographyP size="sm" variant={"primary"}>
+            <TypographyP className="text-sm text-secondary dark:text-primary">
               Cite
             </TypographyP>
           </TooltipContent>
         </Tooltip>
         <Tooltip delayDuration={delayDuration}>
           <TooltipTrigger asChild>
-            <Button 
+            {/* <Button 
               variant={isBookmarked ? "default" : "ghost"} 
               size="sm" 
               onClick={onBookmarkClick}
@@ -59,13 +60,14 @@ export const ActionButtonGroup = ({
               className="cursor-pointer"
             >
               <Bookmark 
-                className="h-4 w-4 transition-all" 
+                className="h-4 w-4 transition-all bg-primary" 
                 fill={isBookmarked ? "currentColor" : "none"} 
               />
-            </Button>
+            </Button> */}
+            <BookmarkButton paperId={paperMetadata.paperId} size="sm" showLabel={false} />
           </TooltipTrigger>
           <TooltipContent>
-            <TypographyP size="sm" variant={"primary"}>
+            <TypographyP className="text-sm text-secondary dark:text-primary">
               {isBookmarked ? "Remove Bookmark" : "Bookmark"}
             </TypographyP>
           </TooltipContent>

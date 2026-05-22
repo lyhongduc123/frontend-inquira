@@ -143,6 +143,7 @@ export function PaperCard({
                 isIcon={true}
                 pdfUrl={pdfUrl || undefined}
                 url={url || undefined}
+                doi={externalIds?.doi || ""}
               />
             </Box>
           </HStack>
@@ -177,9 +178,9 @@ export function PaperCard({
                 {displayText}
               </TypographyP>
             ) : (
-              <TypographyP variant="accent" size="xs" className="mt-1 italic">
-                No abstract available.
-              </TypographyP>
+              // <TypographyP variant="accent" size="xs" className="mt-1 italic">
+                null
+              // </TypographyP>
             )}
           </VStack>
           {/* Citation Levels */}

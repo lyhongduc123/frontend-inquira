@@ -11,10 +11,9 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
-import { bookmarksApi } from "@/lib/api/bookmarks-api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { BookDashedIcon, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { Box } from "@/components/layout/box";
 import {
   AlertDialog,
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { SortField, SortState } from "./BookmarkPageClient";
+import { useDeleteBookmark } from "@/hooks/use-bookmarks";
 
 interface BookmarkAreaProps {
   data?: Bookmark[];
@@ -49,7 +49,6 @@ export function BookmarkArea({
   data,
   isLoading,
   isError,
-  isEmpty,
   refetch,
   selectedScopedPaperIds,
   onToggleScopedPaper,
@@ -60,6 +59,7 @@ export function BookmarkArea({
   filters
 }: BookmarkAreaProps) {
   const router = useRouter();
+  const deleteBookmark = useDeleteBookmark();
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -74,8 +74,10 @@ export function BookmarkArea({
     if (!bookmark) return;
 
     try {
-      await bookmarksApi.delete(bookmark.id);
-      toast.success("Bookmark removed successfully");
+      await deleteBookmark.mutateAsync({
+        bookmarkId: bookmark.id,
+        paperId: bookmark.paperId,
+      });
       refetch?.();
     } catch (error) {
       toast.error("Failed to remove bookmark");
@@ -138,8 +140,13 @@ export function BookmarkArea({
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant={"destructive"} onClick={confirmDelete} className="cursor-pointer">
-              Remove
+            <AlertDialogAction
+              variant={"destructive"}
+              onClick={confirmDelete}
+              disabled={deleteBookmark.isPending}
+              className="cursor-pointer"
+            >
+              {deleteBookmark.isPending ? "Removing..." : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

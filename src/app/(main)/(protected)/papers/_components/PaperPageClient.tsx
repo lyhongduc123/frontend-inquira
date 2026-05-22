@@ -29,7 +29,9 @@ import { PaperAbstractSectionSkeleton } from "./PaperAbstractSection";
 import { PaperActionBarSkeleton } from "./PaperActionBar";
 import { PaperMetadataSectionSkeleton } from "./PaperMetadataSection";
 import { saveChatLaunchPayload } from "@/lib/scoped-chat-selection";
-import { PaperDetail, PaperMetadata } from "@/types/paper.type";
+import { PaperMetadata } from "@/types/paper.type";
+import { toast } from "sonner";
+import { useToggleBookmark } from "@/hooks/use-bookmarks";
 
 export function PaperPageClient() {
   const PAGE_SIZE = 20;
@@ -37,10 +39,10 @@ export function PaperPageClient() {
   const paperId = params.id as string;
   const { toggleSidebar } = useSidebar();
 
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const [activeTab, setActiveTab] = useState("abstract");
   const [citationsLimit, setCitationsLimit] = useState(PAGE_SIZE);
   const [referencesLimit, setReferencesLimit] = useState(PAGE_SIZE);
+  const { isBookmarked, toggle, isPending } = useToggleBookmark(paperId);
 
   const { data: paper, isLoading, isError, error } = usePaperDetail(paperId);
 
@@ -66,10 +68,10 @@ export function PaperPageClient() {
   const references = referencesData?.data || [];
   const hasMoreCitations =
     (citationsData?.next ?? null) !== null ||
-    ((citationsData?.total ?? 0) > citations.length);
+    (citationsData?.total ?? 0) > citations.length;
   const hasMoreReferences =
     (referencesData?.next ?? null) !== null ||
-    ((referencesData?.total ?? 0) > references.length);
+    (referencesData?.total ?? 0) > references.length;
 
   // console.log("PaperDetailsPageContent rendered with paper:", paper);
   // console.log("Citations:", citations);
@@ -85,8 +87,9 @@ export function PaperPageClient() {
     toggleSidebar();
   };
 
-  const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked);
+  const handleBookmark = async () => {
+    if (!paper) return;
+    toggle();
   };
 
   const handleLoadMoreCitations = () => {
@@ -238,7 +241,9 @@ function mapPaperDetailToMetadata(paper: {
     title: paper.title,
     abstract: paper.abstract,
     authors: paper.authors,
-    year: paper.publicationDate ? new Date(paper.publicationDate).getFullYear() : null,
+    year: paper.publicationDate
+      ? new Date(paper.publicationDate).getFullYear()
+      : null,
     publicationDate: paper.publicationDate,
     venue: paper.venue,
     url: paper.url,
@@ -254,4 +259,3 @@ function mapPaperDetailToMetadata(paper: {
     keywords: paper.keywords ?? null,
   };
 }
-

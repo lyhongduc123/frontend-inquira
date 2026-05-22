@@ -132,29 +132,15 @@ export function useConversation() {
     async (conversationId: string): Promise<Message[]> => {
       const requestId = ++latestLoadRequestRef.current;
 
-      const { abortStream } = useConversationStore.getState();
-      if (abortStream) {
-        abortStream();
-      }
-
       setIsLoadingMessages(true);
       setCurrentConversationId(conversationId);
 
       try {
-        const cachedConversation = queryClient.getQueryData<ConversationDTO>(
+        const conversation = await conversationsApi.get(conversationId);
+        queryClient.setQueryData(
           conversationKeys.detail(conversationId),
+          conversation,
         );
-
-        // cache lookup
-
-        const conversation =
-          cachedConversation ??
-          (await queryClient.fetchQuery<ConversationDTO>({
-            queryKey: conversationKeys.detail(conversationId),
-            queryFn: () => conversationsApi.get(conversationId),
-            staleTime: Infinity,
-            gcTime: 30 * 60 * 1000,
-          }));
 
         if (!conversation) {
           throw new Error(`Conversation ${conversationId} not found in cache or API response`);

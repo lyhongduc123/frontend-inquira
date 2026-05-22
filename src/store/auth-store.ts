@@ -3,6 +3,7 @@ import { User } from "@/types/auth.type";
 import { authApi } from "@/lib/api/auth-api";
 import { queryClient } from "@/lib/react-query/query-client";
 import { useConversationStore } from "@/store/conversation-store";
+import { useBookmarkStore } from "@/store/bookmark-store";
 
 const USER_CACHE_KEY = "auth:user";
 
@@ -80,6 +81,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     } finally {
       setCachedUser(null);
       useConversationStore.getState().clearConversation();
+      useBookmarkStore.getState().clearBookmarks();
       queryClient.clear();
       set({ user: null, isAuthenticated: false, isLoading: false, hasCheckedAuth: true });
     }

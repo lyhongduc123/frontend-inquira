@@ -41,6 +41,11 @@ export interface BookmarkListParams {
   sortOrder?: "asc" | "desc";
 }
 
+export interface BookmarkCheckResponse {
+  isBookmarked: boolean;
+  bookmarkId: number | null;
+}
+
 export const bookmarksApi = {
   /**
    * Create a new bookmark
@@ -126,8 +131,8 @@ export const bookmarksApi = {
   /**
    * Check if a paper is bookmarked
    */
-  async check(paperId: string): Promise<{ isBookmarked: boolean }> {
-    const response = await apiClient.get<{ isBookmarked: boolean }>(
+  async check(paperId: string): Promise<BookmarkCheckResponse> {
+    const response = await apiClient.get<BookmarkCheckResponse>(
       `/api/v1/bookmarks/check/${paperId}`
     );
     return response;

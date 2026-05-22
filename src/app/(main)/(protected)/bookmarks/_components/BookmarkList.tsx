@@ -9,11 +9,9 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDownIcon,
-  MessageSquarePlus,
-  SortAscIcon,
   Trash2,
 } from "lucide-react";
-import { Bookmark, bookmarksApi } from "@/lib/api";
+import { Bookmark } from "@/lib/api";
 import {
   Sheet,
   SheetContent,
@@ -25,7 +23,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { VStack } from "@/components/layout/vstack";
 import { HStack } from "@/components/layout/hstack";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   PaperDetailContent,
   PaperDetailFooter,
@@ -35,9 +32,9 @@ import { Box } from "@/components/layout/box";
 import { useRouter } from "next/navigation";
 import { saveChatLaunchPayload } from "@/lib/scoped-chat-selection";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TypographyP } from "@/components/global/typography";
-import { cn, formatCustomDate, formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { SortField, SortState } from "./BookmarkPageClient";
+import { useUpdateBookmark } from "@/hooks/use-bookmarks";
 
 interface BookmarkListProps {
   isLoading?: boolean;
@@ -57,7 +54,6 @@ interface BookmarkListProps {
 }
 
 export function BookmarkList({
-  isLoading,
   data = [],
   onRemoveBookmark,
   selectedScopedPaperIds = [],
@@ -65,9 +61,7 @@ export function BookmarkList({
   onSetAllScopedPapers,
 
   sort,
-  filters,
   onSortChange,
-  onFiltersChange,
 }: BookmarkListProps) {
   const router = useRouter();
   const [selectedBookmark, setSelectedBookmark] = useState<Bookmark | null>(
@@ -75,7 +69,7 @@ export function BookmarkList({
   );
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editedNotes, setEditedNotes] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const updateBookmark = useUpdateBookmark();
 
   const selectablePaperIds = data
     .map((bookmark) => bookmark.paper?.paperId)
@@ -120,18 +114,15 @@ export function BookmarkList({
   const handleSaveNotes = async () => {
     if (!selectedBookmark) return;
 
-    setIsSaving(true);
     try {
-      await bookmarksApi.update(selectedBookmark.id, { notes: editedNotes });
-      toast.success("Notes updated successfully");
-      if (selectedBookmark) {
-        setSelectedBookmark({ ...selectedBookmark, notes: editedNotes });
-      }
+      const updatedBookmark = await updateBookmark.mutateAsync({
+        bookmarkId: selectedBookmark.id,
+        data: { notes: editedNotes },
+      });
+      setSelectedBookmark({ ...selectedBookmark, notes: updatedBookmark.notes });
     } catch (error) {
       toast.error("Failed to update notes");
       console.error("Error updating notes:", error);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -322,6 +313,26 @@ export function BookmarkList({
         </div>
       ),
     },
+    {
+      id: "actions",
+      size: 52,
+      minSize: 52,
+      maxSize: 52,
+      header: "",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemoveBookmark(row.original.paperId);
+          }}
+          aria-label="Remove bookmark"
+        >
+          <Trash2 className="size-4 text-destructive" />
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -373,10 +384,10 @@ export function BookmarkList({
                       size="sm"
                       onClick={handleSaveNotes}
                       disabled={
-                        isSaving || editedNotes === selectedBookmark.notes
+                        updateBookmark.isPending || editedNotes === selectedBookmark.notes
                       }
                     >
-                      {isSaving ? "Saving..." : "Save Notes"}
+                      {updateBookmark.isPending ? "Saving..." : "Save Notes"}
                     </Button>
                   </HStack>
                 </VStack>

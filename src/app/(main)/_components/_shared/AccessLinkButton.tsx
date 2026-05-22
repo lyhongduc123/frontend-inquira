@@ -1,7 +1,7 @@
 import { HStack } from "@/components/layout/hstack";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ExternalLink, LockKeyhole, LockKeyholeOpen } from "lucide-react";
+import { CircleHelp, ExternalLink, LockKeyhole, LockKeyholeOpen } from "lucide-react";
 
 interface AccessLinkButtonProps {
   pdfUrl?: string;
@@ -37,6 +37,12 @@ export const AccessLinkButton = ({
       "rounded-full px-2 py-1 bg-primary text-primary-foreground border border-primary/50";
   } else if (doi || url) {
     link = doi ? `https://doi.org/${doi}` : url;
+    label = "Access";
+    icon = <CircleHelp className="size-4" />;
+    className =
+      "rounded-full px-2 py-1 bg-muted text-muted-foreground border border-border";
+  } else if (doi || url) {
+    link = doi ? `https://doi.org/${doi}` : url;
     label = "PDF";
     icon = <LockKeyhole className="size-4" />;
     className =
@@ -47,12 +53,7 @@ export const AccessLinkButton = ({
 
   if (isIcon) {
     return (
-      <HStack
-        className={cn(
-          "items-center gap-1 text-xs",
-          className,
-        )}
-      >
+      <HStack className={cn("items-center gap-1 text-xs", className)}>
         {icon}
         {label}
       </HStack>

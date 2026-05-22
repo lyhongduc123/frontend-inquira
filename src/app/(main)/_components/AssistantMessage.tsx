@@ -39,6 +39,7 @@ import { useScopedPaperSelection } from "@/hooks/use-scoped-paper-selection";
 import { cn } from "@/lib/utils/cn";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { OpacityShimmer } from "@/components/ui/opacity-shimmer";
+import { copyTextWithEvent } from "@/lib/utils/clipboard";
 
 interface AssistantMessageProps {
   text: string;
@@ -168,11 +169,16 @@ const ExportDropdown = ({
 }: ExportDropdownProps) => {
   const handleCopyText = () => {
     const formattedText = getFormattedCitedContent(text, cited_papers);
-    navigator.clipboard.writeText(formattedText);
-    toast.success("Copied to clipboard!", {
-      position: "top-center",
-    });
+    try {
+      copyTextWithEvent(formattedText);
+      toast.success("Copied to clipboard!", {
+        position: "top-center",
+      });
+    } catch (error) {
+      toast.error("Failed to copy to clipboard!");
+    }
   };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -225,7 +231,7 @@ function MessageBottomBar({
   });
 
   const onShortcut = useEffectEvent((e: KeyboardEvent) => {
-    if (e.key === "c" && e.altKey) {
+    if (e.key === "h" && e.altKey) {
       e.preventDefault();
       setIsOpen(!isOpen);
     }
@@ -257,15 +263,19 @@ function MessageBottomBar({
     [sources],
   );
 
+  const citedSources = useMemo(() => {
+    return indexedSources.filter(({ source }) =>
+      citedPaperIds.has(source.paperId),
+    );
+  }, [citedPaperIds, indexedSources]);
+
   const visibleSources = useMemo(() => {
     if (!showCitedOnly) {
       return indexedSources;
     }
 
-    return indexedSources.filter(({ source }) =>
-      citedPaperIds.has(source.paperId),
-    );
-  }, [citedPaperIds, indexedSources, showCitedOnly]);
+    return citedSources;
+  }, [citedSources, indexedSources, showCitedOnly]);
 
   if (!sources || sources.length === 0) {
     return null;
@@ -292,7 +302,7 @@ function MessageBottomBar({
           <ExportDropdown
             text={text}
             papers={sources}
-            cited_papers={visibleSources.map((source) => source.source)}
+            cited_papers={citedSources.map(({ source }) => source)}
           />
         </HStack>
         <HStack className="gap-2 items-center">

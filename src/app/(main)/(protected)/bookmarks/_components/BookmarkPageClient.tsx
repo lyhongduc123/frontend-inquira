@@ -7,7 +7,6 @@ import { VStack } from "@/components/layout/vstack";
 import { useBookmarks } from "@/hooks/use-bookmarks";
 import { ChatInput } from "@/app/(main)/_components/_shared/ChatInput";
 import { HStack } from "@/components/layout/hstack";
-import { TypographyP } from "@/components/global/typography";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { saveChatLaunchPayload } from "@/lib/scoped-chat-selection";
@@ -16,7 +15,6 @@ import { Box } from "@/components/layout/box";
 import { Checkbox } from "@/components/ui/checkbox";
 import pluralize from "pluralize";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface BookmarkFiltersState {

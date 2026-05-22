@@ -9,7 +9,6 @@ import {
   Sparkles,
   Search,
   ListOrdered,
-  Compass,
   Database,
   Globe,
 } from "lucide-react";
@@ -110,16 +109,17 @@ export function ProgressEventSheet({
       >
         <>
           <HStack className="items-center gap-2 min-w-0">
-            {/* <ListTodo size={14} className="text-secondary shrink-0" /> */}
-            {pipelineType === "research" && (
+            {(pipelineType === "research" || pipelineType === "database" || pipelineType === "scoped") && (
               <Icon icon="fluent-color:search-sparkle-16" />
             )}
             {pipelineType === "agent" && <Icon icon="fluent-color:bot-24" />}
-            <TypographyP size="xs" weight="medium" className="truncate">
-              {pluralize("step", stepsCount, true)}
-            </TypographyP>
+            {stepsCount > 0 && (
+              <TypographyP size="xs" weight="medium" className="truncate">
+                {pluralize("step", stepsCount, true)}
+              </TypographyP>
+            )}
           </HStack>
-          {C_BULLET}
+          {stepsCount > 0 && C_BULLET}
           <HStack className="items-center gap-1 min-w-0">
             <OpacityShimmer
               className="text-xs"
@@ -147,11 +147,11 @@ export function ProgressEventSheet({
                 {changeCase.capitalCase(currentLabel)}
               </TypographyP>
             </HStack>
-            <TypographyP size="sm" variant="muted" className="leading-relaxed">
-              <OpacityShimmer>
+            {/* <TypographyP size="sm" variant="muted" className="leading-relaxed"> */}
+              <OpacityShimmer className="text-sm text-muted-foreground leading-relaxed" isActive>
                 {latestStep ? parseContent(latestStep) : null}
               </OpacityShimmer>
-            </TypographyP>
+            {/* </TypographyP> */}
           </VStack>
         )}
 

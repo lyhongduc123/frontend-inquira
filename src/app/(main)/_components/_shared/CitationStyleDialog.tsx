@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Box } from "@/components/layout/box";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, copyTextWithEvent } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const CitationStyleDialog = ({
   citationStyles,
@@ -25,9 +26,30 @@ export const CitationStyleDialog = ({
 }) => {
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
 
-  const handleCopy = (format: string, citation: string) => {
-    navigator.clipboard.writeText(citation);
-    setCopiedFormat(format);
+  const handleCopy = async (format: string, citation: string) => {
+    try {
+      // Switch to this instead of navigator.clipboard.writeText take 5s for?
+      copyTextWithEvent(citation);
+      setCopiedFormat(format);
+      toast.success("Copied citation");
+
+      setTimeout(() => {
+        setCopiedFormat(null);
+      }, 1500);
+    } catch (fallbackError) {
+      try {
+        await navigator.clipboard.writeText(citation);
+        setCopiedFormat(format);
+        toast.success("Copied citation");
+
+        setTimeout(() => {
+          setCopiedFormat(null);
+        }, 1500);
+      } catch (clipboardError) {
+        toast.error("Failed to copy citation");
+        console.error({ fallbackError, clipboardError });
+      }
+    }
   };
 
   if (!citationStyles) {
@@ -35,8 +57,8 @@ export const CitationStyleDialog = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogPortal>
           <DialogContent>
-            <DialogTitle className="text-lg font-semibold">
-              Citation Formats
+            <DialogTitle className="text-md font-semibold">
+              Citation formats
             </DialogTitle>
             <TypographyP size="sm" className="whitespace-pre-wrap">
               No citation formats available for this paper.
@@ -55,9 +77,9 @@ export const CitationStyleDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
-        <DialogContent className="min-w-lg">
-          <DialogTitle className="text-lg font-semibold">
-            Citation Formats
+        <DialogContent className="min-w-lg w-3xl">
+          <DialogTitle className="text-md font-semibold">
+            Citation formats
           </DialogTitle>
           <Tabs
             defaultValue={Object.keys(citationStyles)[0]}
@@ -77,7 +99,7 @@ export const CitationStyleDialog = ({
                     size="sm"
                     variant="outline"
                     className="absolute top-4 right-4"
-                    onClick={() => handleCopy(style, citation as string)}
+                    onClick={(e) => handleCopy(style, citation as string)}
                   >
                     {copiedFormat === style ? (
                       <>
@@ -91,7 +113,10 @@ export const CitationStyleDialog = ({
                   </Button>
                   <TypographyP
                     size="sm"
-                    className={cn(style === "bibtex" ? "whitespace-pre-wrap" : "", "pr-12")}
+                    className={cn(
+                      style === "bibtex" ? "whitespace-pre-wrap" : "",
+                      "pr-12",
+                    )}
                   >
                     {citation}
                   </TypographyP>

@@ -3,9 +3,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { MainLayout } from "@/components/layout/main-layout";
 import { cookies } from "next/headers";
 import { ACCESS_TOKEN_COOKIE_KEY } from "@/core";
-import { authApi } from "@/lib/api";
-
-
 
 export const metadata: Metadata = {
   title: "Inquira",
@@ -25,13 +22,18 @@ export default async function RootLayout({
   let initialUser = null;
   if (token) {
     try {
-      const res = await fetch(`${process.env.API_BASE_URL}/api/v1/auth/me`);
+      const res = await fetch(`${process.env.API_BASE_URL}/api/v1/auth/me`, {
+        headers: {
+          Cookie: `${ACCESS_TOKEN_COOKIE_KEY}=${token}`,
+        },
+        cache: "no-store",
+      });
 
-      if (!res.ok && res.status !== 401) {
+      if (res.ok) {
+        initialUser = await res.json();
+      } else if (res.status !== 401) {
         throw new Error("Failed to fetch user data (bad response)");
       }
-
-      initialUser = await res.json();
     } catch (err) {
       throw new Error("Auth service unavailable");
     }

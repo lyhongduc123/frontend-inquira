@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ReferencedPaper } from "@/types/paper.type";
 import { PaperCard } from "./PaperCard";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { OpacityShimmer } from "@/components/ui/opacity-shimmer";
 
 interface PaperReferenceViewProps {
   references: ReferencedPaper[];
@@ -33,13 +35,17 @@ export function PaperReferenceView({
         <CardContent>
           {isLoading ? (
             <VStack className="gap-4">
-              {[1, 2, 3].map((i) => (
+              {/* {[1, 2, 3].map((i) => (
                 <div key={i} className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                   <Skeleton className="h-3 w-full" />
                 </div>
-              ))}
+              ))} */}
+              <Spinner />
+              <OpacityShimmer>
+                Loading references...
+              </OpacityShimmer>
             </VStack>
           ) : references.length === 0 ? (
             <TypographyP className="text-muted-foreground">

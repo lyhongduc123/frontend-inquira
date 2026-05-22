@@ -5,45 +5,28 @@ import { useConversation } from "./use-conversation";
 import { useConversationStore } from "@/store/conversation-store";
 import { chatApi } from "@/lib/api/chat-api";
 import { useProgressStore } from "@/store/progress-store";
-import { MetadataEvent, ProgressEvent, ConversationEvent } from "@/lib/stream/event.types";
+import { ConversationEvent, ProgressEvent } from "@/lib/stream/event.types";
 import { ChatSubmitResponse } from "@/types/task.type";
 import { toast } from "sonner";
+import {
+  appendAssistantMessage,
+  appendUserMessage,
+  updateActiveAssistantMessage,
+} from "./chat/chat-message-actions";
+import {
+  clearStoredAgentTask,
+  storeAgentTask,
+} from "./chat/agent-task-storage";
+import { ABORT_REASON, isAbortError } from "./chat/chat-errors";
+import { ChatStreamState } from "./chat/chat-types";
+import { createStreamCallbacks } from "./chat/create-stream-callbacks";
+import { useAgentTaskResume } from "./chat/use-agent-task-resume";
 
 interface UseChatOptions {
   apiEndpoint?: string;
   onConversationCreated?: (conversationId: string) => void;
   onProgress?: (event: ProgressEvent) => void;
   onError?: () => void;
-}
-
-interface ChatStreamState {
-  isStreaming: boolean;
-  isReading: boolean;
-  isError: boolean;
-  lastFailedQuery: string | null;
-  lastClientMessageId: string | null;
-}
-
-const ABORT_REASON = "stream_cancelled";
-
-function isAbortError(error: unknown): boolean {
-  if (!error) {
-    return false;
-  }
-
-  if (error instanceof DOMException && error.name === "AbortError") {
-    return true;
-  }
-
-  if (error instanceof Error) {
-    return (
-      error.name === "AbortError" ||
-      error.message.toLowerCase().includes("aborted") ||
-      error.message.toLowerCase().includes("stream_cancelled")
-    );
-  }
-
-  return false;
 }
 
 export function useChat(options: UseChatOptions = {}) {
@@ -54,6 +37,12 @@ export function useChat(options: UseChatOptions = {}) {
   } = options;
   useConversation();
 
+  const currentConversationId = useConversationStore(
+    (state) => state.currentConversationId,
+  );
+  const isLoadingMessages = useConversationStore(
+    (state) => state.isLoadingMessages,
+  );
   const messages = useConversationStore((state) => state.messages);
   const latestMetadataEvent = useConversationStore(
     (state) => state.latestMetadataEvent,
@@ -76,7 +65,9 @@ export function useChat(options: UseChatOptions = {}) {
   const accumulatedTextRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeConversationIdRef = useRef<string | null>(null);
+  const activeAgentTaskIdRef = useRef<string | null>(null);
   const currentQueryIdRef = useRef<string | null>(null);
+  const restoredAgentTaskIdRef = useRef<string | null>(null);
 
   const resetStreamState = useCallback(() => {
     setStreamState((prev) => ({
@@ -88,24 +79,16 @@ export function useChat(options: UseChatOptions = {}) {
   }, []);
 
   const addAssistantMessage = useCallback(() => {
-    const currentMessages = useConversationStore.getState().messages;
-    setMessages([
-      ...currentMessages,
-      { role: "assistant", text: "" } as Message,
-    ]);
+    appendAssistantMessage(setMessages);
   }, [setMessages]);
 
   const updateLastMessage = useCallback(
     (updates: Partial<Message>) => {
-      const currentConvId =
-        useConversationStore.getState().currentConversationId;
-      if (currentConvId !== activeConversationIdRef.current) {
-        return;
-      }
-
-      const currentMessages = useConversationStore.getState().messages;
-      const last = currentMessages[currentMessages.length - 1];
-      setMessages([...currentMessages.slice(0, -1), { ...last, ...updates }]);
+      updateActiveAssistantMessage(
+        activeConversationIdRef.current,
+        updates,
+        setMessages,
+      );
     },
     [setMessages],
   );
@@ -122,19 +105,39 @@ export function useChat(options: UseChatOptions = {}) {
         filters,
       } = payload;
 
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort(ABORT_REASON);
+      }
+      activeAgentTaskIdRef.current = null;
+      restoredAgentTaskIdRef.current = null;
+
+      if (!isRetry) {
+        resetStreamState();
+      }
+
+      if (pipeline !== "agent") {
+        clearStoredAgentTask();
+      }
+
+      setLatestMetadataEvent(null);
+
       let finalConversationId = conversationId;
-      let hasHandledFailure = false;
+      const failureHandledRef = { current: false };
+      const messageId =
+        clientMessageId ||
+        `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const queryId = `query-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       const abortActiveStream = () => {
         abortControllerRef.current?.abort(ABORT_REASON);
       };
 
-      const handleFailure = (error: unknown) => {
-        if (isAbortError(error) || hasHandledFailure) {
+      const markFailed = (error: unknown) => {
+        if (isAbortError(error) || failureHandledRef.current) {
           return;
         }
 
-        hasHandledFailure = true;
+        failureHandledRef.current = true;
         console.error("Streaming error:", error);
 
         if (
@@ -171,86 +174,44 @@ export function useChat(options: UseChatOptions = {}) {
         });
       };
 
-      const commonCallbacks = {
-        onConversation: (event: ConversationEvent) => {
-          const newId = event.conversation_id;
-          const newTitle = event.title;
+      const handleConversationEvent = (event: ConversationEvent) => {
+        const newId = event.conversation_id;
+        const newTitle = event.title;
 
-          if (newId && newId !== finalConversationId) {
-            finalConversationId = newId;
-            activeConversationIdRef.current = newId;
-            if (currentQueryIdRef.current) {
-              startQuery(currentQueryIdRef.current, query, newId);
-            }
-
-            onConversationCreated?.(newId);
-          }
-
-          if (newTitle) {
-            useConversationStore.getState().setCurrentConversationTitle(newTitle);
-          }
-        },
-        onMetadata: (event: MetadataEvent) => {
-          setStreamState((prev) => ({ ...prev, isReading: false }));
-          setLatestMetadataEvent(event);
-
-          if (Array.isArray(event.content)) {
-            updateLastMessage({ paperSnapshots: event.content });
-          }
-        },
-        onProgress: (event: ProgressEvent) => {
-          setStreamState((prev) => ({
-            ...prev,
-            isReading: event.type === "reasoning",
-          }));
+        if (newId && newId !== finalConversationId) {
+          finalConversationId = newId;
+          activeConversationIdRef.current = newId;
           if (currentQueryIdRef.current) {
-            addProgress(currentQueryIdRef.current, event);
+            startQuery(currentQueryIdRef.current, query, newId);
           }
-          onProgress?.(event);
-        },
-        onReasoning: () => {
-          setStreamState((prev) => ({ ...prev, isReading: true }));
-        },
-        onChunk: (chunk: string) => {
-          setStreamState((prev) => ({ ...prev, isReading: false }));
-          accumulatedTextRef.current += chunk;
-          updateLastMessage({ text: accumulatedTextRef.current });
-        },
+
+          onConversationCreated?.(newId);
+        }
+
+        if (newTitle) {
+          useConversationStore.getState().setCurrentConversationTitle(newTitle);
+        }
+      };
+
+      const callbacks = createStreamCallbacks({
+        query,
+        messageId,
+        accumulatedTextRef,
+        getQueryId: () => currentQueryIdRef.current,
+        setStreamState,
+        setLatestMetadataEvent,
+        updateLastMessage,
+        addProgress,
+        completeQuery,
+        onProgress,
+        onError: onErrorCallback,
+        onConversation: handleConversationEvent,
         onDone: () => {
-          setStreamState((prev) => ({ ...prev, isReading: false }));
-
-          if (currentQueryIdRef.current) {
-            const queryProgress = useProgressStore
-              .getState()
-              .getQueryProgress(currentQueryIdRef.current);
-            if (queryProgress && queryProgress.steps.length > 0) {
-              updateLastMessage({
-                text: accumulatedTextRef.current,
-                done: true,
-                progressEvents: queryProgress.steps,
-              });
-            } else {
-              updateLastMessage({
-                text: accumulatedTextRef.current,
-                done: true,
-              });
-            }
-            completeQuery(currentQueryIdRef.current);
-          } else {
-            updateLastMessage({
-              text: accumulatedTextRef.current,
-              done: true,
-            });
-          }
+          clearStoredAgentTask(activeAgentTaskIdRef.current || undefined);
         },
-        onError: (error: Error) => {
-          if (isAbortError(error) || hasHandledFailure) {
-            return;
-          }
-
-          hasHandledFailure = true;
+        onStreamError: (error) => {
+          clearStoredAgentTask(activeAgentTaskIdRef.current || undefined);
           console.error("Stream error:", error);
-
           updateLastMessage({
             text: "",
             done: true,
@@ -260,23 +221,11 @@ export function useChat(options: UseChatOptions = {}) {
               error_message: error.message,
             },
           });
-
-          if (currentQueryIdRef.current) {
-            completeQuery(currentQueryIdRef.current);
-          }
-
           setPendingInputMessage(query);
           toast.error("Something wrong happened, please try again");
-          onErrorCallback?.();
-          setStreamState({
-            isStreaming: false,
-            isReading: false,
-            isError: true,
-            lastFailedQuery: query,
-            lastClientMessageId: messageId,
-          });
         },
-      };
+        failureHandledRef,
+      });
 
       const runAgentFlow = async () => {
         const submitEndpoint = chatApi.getAgentSubmitUrl();
@@ -324,17 +273,24 @@ export function useChat(options: UseChatOptions = {}) {
           onConversationCreated?.(submittedConversationId);
         }
 
-        const streamUrl = chatApi.getStreamEventsUrl(taskId);
-        await streamTask(streamUrl, commonCallbacks, {
+        storeAgentTask({
+          taskId,
+          conversationId: finalConversationId || submittedConversationId,
+          query,
+          clientMessageId: messageId,
+          createdAt: Date.now(),
+        });
+        activeAgentTaskIdRef.current = taskId;
+
+        await streamTask(chatApi.getStreamEventsUrl(taskId), callbacks, {
           signal: abortControllerRef.current?.signal,
           heartbeatTimeout: 0,
         });
       };
 
       const runDirectFlow = async () => {
-        const streamUrl = chatApi.getStreamUrl();
         await streamEvent(
-          streamUrl,
+          chatApi.getStreamUrl(),
           {
             query,
             conversationId: finalConversationId || undefined,
@@ -346,47 +302,22 @@ export function useChat(options: UseChatOptions = {}) {
             model: model || undefined,
             clientMessageId: messageId,
           },
-          commonCallbacks,
+          callbacks,
           {
             signal: abortControllerRef.current?.signal,
             heartbeatTimeout: 0,
-          }
+          },
         );
       };
 
-      if (abortControllerRef.current) {
-        abortActiveStream();
-      }
-
-      if (!isRetry) {
-        resetStreamState();
-      }
-
-      setLatestMetadataEvent(null);
-
-      const messageId =
-        clientMessageId ||
-        `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-      const queryId = `query-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       currentQueryIdRef.current = queryId;
-
       startQuery(queryId, query, conversationId);
 
       if (!isRetry) {
-        const currentMessages = useConversationStore.getState().messages;
-        setMessages([
-          ...currentMessages,
-          {
-            role: "user",
-            text: query,
-            metadata: { query_id: queryId, client_message_id: messageId },
-          } as Message,
-        ]);
+        appendUserMessage(query, queryId, messageId, setMessages);
       }
 
       activeConversationIdRef.current = finalConversationId || null;
-
       addAssistantMessage();
 
       setStreamState((prev) => ({ ...prev, isStreaming: true, isReading: false }));
@@ -401,11 +332,12 @@ export function useChat(options: UseChatOptions = {}) {
           await runDirectFlow();
         }
       } catch (error) {
-        handleFailure(error);
+        markFailed(error);
       } finally {
         setStreamState((prev) => ({ ...prev, isStreaming: false, isReading: false }));
         abortControllerRef.current = null;
         activeConversationIdRef.current = null;
+        activeAgentTaskIdRef.current = null;
         currentQueryIdRef.current = null;
         useConversationStore.getState().setAbortStream(null);
       }
@@ -425,22 +357,39 @@ export function useChat(options: UseChatOptions = {}) {
     ],
   );
 
+  useAgentTaskResume({
+    currentConversationId,
+    isLoadingMessages,
+    isStreaming: streamState.isStreaming,
+    accumulatedTextRef,
+    abortControllerRef,
+    activeConversationIdRef,
+    activeAgentTaskIdRef,
+    currentQueryIdRef,
+    restoredAgentTaskIdRef,
+    setStreamState,
+    setMessages,
+    setLatestMetadataEvent,
+    updateLastMessage,
+    startQuery,
+    addProgress,
+    completeQuery,
+    onProgress,
+    onError: onErrorCallback,
+  });
+
   const retry = useCallback(() => {
     if (streamState.lastFailedQuery && streamState.lastClientMessageId) {
-      // Remove only the error assistant message (last message)
       const currentMessages = useConversationStore.getState().messages;
       const lastMsg = currentMessages[currentMessages.length - 1];
 
-      // Only remove if last message is an assistant error message
       if (lastMsg && lastMsg.role === "assistant") {
         setMessages(currentMessages.slice(0, -1));
       }
 
-      // Get current conversation ID
       const conversationId =
         useConversationStore.getState().currentConversationId;
 
-      // Resend the message with the existing conversation ID and client message ID
       sendMessage({
         query: streamState.lastFailedQuery,
         conversationId: conversationId || undefined,
@@ -457,6 +406,7 @@ export function useChat(options: UseChatOptions = {}) {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    clearStoredAgentTask();
     resetStreamState();
   }, [setMessages, resetStreamState]);
 

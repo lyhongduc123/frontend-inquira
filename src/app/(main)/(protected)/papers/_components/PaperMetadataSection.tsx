@@ -81,7 +81,7 @@ export function PaperMetadataSection({ paper }: PaperMetadataSectionProps) {
         <BadgeSection paper={paper} />
 
         <HStack className="w-full justify-between">
-          <HStack className="gap-2 items-center">
+          <HStack className="gap-2 items-center min-w-fit">
             <VStack className="gap-2 items-start">
               <TypographyH3>{paper.citationCount}</TypographyH3>
               <TypographyP size="sm" variant="muted">
@@ -157,7 +157,7 @@ const PaperJournalSection = ({
   if (!journal && !venue && !conference) return null;
   if (journal) {
     return (
-      <VStack className="gap-2 items-start">
+      <VStack className="gap-2 items-start max-w-[60%]">
         <HStack className="gap-2 items-center">
           <TypographyH3>{journal?.title || venue}</TypographyH3>
           <HoverCard>

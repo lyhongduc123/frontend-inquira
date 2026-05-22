@@ -3,8 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Bookmark, BookmarkCheck, Loader2 } from "lucide-react";
-import { useCheckBookmark, useCreateBookmark, useDeleteBookmark } from "@/hooks/use-bookmarks";
+import {
+  useCheckBookmark,
+  useCreateBookmark,
+  useDeleteBookmark,
+} from "@/hooks/use-bookmarks";
 import { useAuthStore } from "@/store/auth-store";
+import { useBookmarkStore } from "@/store/bookmark-store";
 import {
   Dialog,
   DialogContent,
@@ -15,33 +20,47 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils/cn";
 
 interface BookmarkButtonProps {
   paperId: string;
   variant?: "default" | "ghost" | "outline";
   size?: "default" | "sm" | "lg" | "icon";
+  showLabel?: boolean;
+  className?: string;
 }
 
-export function BookmarkButton({ paperId, variant = "ghost", size = "default" }: BookmarkButtonProps) {
+export function BookmarkButton({
+  paperId,
+  variant,
+  size = "default",
+  showLabel = false,
+  className,
+}: BookmarkButtonProps) {
   const { isAuthenticated } = useAuthStore();
   const { data: checkData, isLoading: isChecking } = useCheckBookmark(paperId);
+  const cachedBookmarkId = useBookmarkStore((state) =>
+    state.getBookmarkId(paperId),
+  );
   const createBookmark = useCreateBookmark();
   const deleteBookmark = useDeleteBookmark();
   const [showNotesDialog, setShowNotesDialog] = useState(false);
   const [notes, setNotes] = useState("");
 
-  const isBookmarked = checkData?.isBookmarked || false;
+  const bookmarkId = checkData?.bookmarkId ?? cachedBookmarkId;
+  const isBookmarked = Boolean(
+    checkData?.isBookmarked || cachedBookmarkId !== undefined,
+  );
 
   const handleClick = () => {
     if (!isAuthenticated) {
-      // Could show a login prompt here
       return;
     }
 
     if (isBookmarked) {
-      // Find and delete the bookmark (we'd need to track the bookmark ID)
-      // For now, we'll just show this is bookmarked
-      // In a full implementation, you'd need to store the bookmark ID when checking
+      if (bookmarkId) {
+        deleteBookmark.mutate({ bookmarkId, paperId });
+      }
     } else {
       setShowNotesDialog(true);
     }
@@ -55,7 +74,7 @@ export function BookmarkButton({ paperId, variant = "ghost", size = "default" }:
           setShowNotesDialog(false);
           setNotes("");
         },
-      }
+      },
     );
   };
 
@@ -68,22 +87,25 @@ export function BookmarkButton({ paperId, variant = "ghost", size = "default" }:
   return (
     <>
       <Button
-        variant={variant}
+        variant={variant || isBookmarked ? "default" : "ghost"}
         size={size}
         onClick={handleClick}
         disabled={isChecking || isPending}
+        className={cn("cursor-pointer", className)}
       >
         {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isBookmarked ? (
-          <>
-            <BookmarkCheck className="h-4 w-4" />
-            {size !== "icon" && <span className="ml-2">Bookmarked</span>}
-          </>
         ) : (
           <>
-            <Bookmark className="h-4 w-4" />
-            {size !== "icon" && <span className="ml-2">Bookmark</span>}
+            <Bookmark
+              className="h-4 w-4 transition-all"
+              fill={isBookmarked ? "currentColor" : "none"}
+            />
+            {showLabel && (
+              <span>
+                {isBookmarked ? "Bookmarked" : "Bookmark"}
+              </span>
+            )}
           </>
         )}
       </Button>
@@ -112,8 +134,13 @@ export function BookmarkButton({ paperId, variant = "ghost", size = "default" }:
             <Button variant="outline" onClick={() => setShowNotesDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateBookmark} disabled={createBookmark.isPending}>
-              {createBookmark.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button
+              onClick={handleCreateBookmark}
+              disabled={createBookmark.isPending}
+            >
+              {createBookmark.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Save Bookmark
             </Button>
           </DialogFooter>
