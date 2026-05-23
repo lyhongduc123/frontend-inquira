@@ -24,6 +24,7 @@ import { InfoIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { HStack } from "@/components/layout/hstack";
+import { Box } from "@/components/layout/box";
 
 interface CitationChartCardProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,6 +62,17 @@ export function CitationChartCard({
       label: "Citations",
     },
   } satisfies ChartConfig;
+
+  const chartData =
+    source === "internal" ? citationMetrics : openAlexCitationMetrics;
+
+  const shouldShowLabels = chartData.length <= 8;
+
+  const formatCitationCount = (value: number) =>
+    Intl.NumberFormat("en", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value);
   return (
     <AuthorMetricCard title="YEARLY CITATIONS">
       <AuthorMetricCardContent>
@@ -70,26 +82,37 @@ export function CitationChartCard({
         >
           <BarChart
             accessibilityLayer
-            data={
-              source === "internal" ? citationMetrics : openAlexCitationMetrics
-            }
+            data={chartData}
+            margin={{
+              top: shouldShowLabels ? 28 : 12,
+              right: 12,
+              left: 12,
+              bottom: 8,
+            }}
           >
             <CartesianGrid vertical={false} />
-            <XAxis dataKey={"year"} tickLine={false} />
+
+            <XAxis dataKey="year" tickLine={false} axisLine={false} />
+
             <Bar
               dataKey="cited_by_count"
               fill="var(--color-primary)"
               radius={[4, 4, 0, 0]}
+              barSize={28}
             >
-              <LabelList
-                dataKey="cited_by_count"
-                position="top"
-                offset={12}
-                className="fill-foreground"
-                fontSize={11}
-                fontWeight={600}
-              />
+              {shouldShowLabels && (
+                <LabelList
+                  dataKey="cited_by_count"
+                  position="top"
+                  offset={8}
+                  className="fill-foreground"
+                  fontSize={11}
+                  fontWeight={600}
+                  formatter={(value) => formatCitationCount(Number(value) || 0)}
+                />
+              )}
             </Bar>
+
             <ChartTooltip
               content={<ChartTooltipContent hideIndicator hideLabel />}
             />

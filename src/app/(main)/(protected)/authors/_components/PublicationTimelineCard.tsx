@@ -63,7 +63,9 @@ export function PublicationChartCard({
   }));
   const openAlexChartData = openAlexYears.map((year) => ({
     year,
-    publication_count: openalexCountsByYear ? openalexCountsByYear[year].papers || 0 : 0,
+    publication_count: openalexCountsByYear
+      ? openalexCountsByYear[year].papers || 0
+      : 0,
   }));
 
   const chartConfig = {
@@ -75,6 +77,9 @@ export function PublicationChartCard({
     },
   } satisfies ChartConfig;
 
+  const rchartData = source === "internal" ? chartData : openAlexChartData;
+
+  const shouldShowLabels = rchartData.length <= 8;
   return (
     <AuthorMetricCard title="YEARLY PUBLICATIONS">
       <AuthorMetricCardContent>
@@ -82,7 +87,10 @@ export function PublicationChartCard({
           className="w-full h-64 min-h-[200px]"
           config={chartConfig}
         >
-          <BarChart accessibilityLayer data={source === "internal" ? chartData : openAlexChartData}>
+          <BarChart
+            accessibilityLayer
+            data={source === "internal" ? chartData : openAlexChartData}
+          >
             <CartesianGrid vertical={false} opacity={1} />
             <XAxis dataKey={"year"} tickLine={true} />
             <Bar
@@ -90,14 +98,16 @@ export function PublicationChartCard({
               fill="var(--color-primary)"
               radius={[4, 4, 0, 0]}
             >
-              <LabelList
-                dataKey="publication_count"
-                position="top"
-                offset={8}
-                className="fill-white"
-                fontSize={11}
-                fontWeight={600}
-              />
+              {shouldShowLabels && (
+                <LabelList
+                  dataKey="publication_count"
+                  position="top"
+                  offset={8}
+                  className="fill-black dark:fill-white"
+                  fontSize={11}
+                  fontWeight={600}
+                />
+              )}
             </Bar>
             <ChartTooltip
               content={<ChartTooltipContent hideIndicator hideLabel />}

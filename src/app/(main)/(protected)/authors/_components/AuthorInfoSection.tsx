@@ -283,7 +283,7 @@ const ConflictBadge = ({ isConflict }: { isConflict?: boolean }) => {
           Data Conflict
         </Badge>
       </HoverCardTrigger>
-      <HoverCardContent className="bg-destructive text-sm text-card-foreground">
+      <HoverCardContent className="text-sm text-card-foreground">
         <TypographyH4 className="text-sm text-destructive mb-2">
           Data conflict detected
         </TypographyH4>
