@@ -21,64 +21,54 @@ export function useSearchFilters() {
   const filters = useMemo((): SearchFilters => {
     const f: SearchFilters = {};
 
-    const authorName = searchParams.get("author_name") || searchParams.get("author");
+    const authorName =
+      searchParams.get("authorName") ||
+      searchParams.get("author_name") ||
+      searchParams.get("author");
     if (authorName) {
-      f.author_name = authorName;
-      f.author = authorName;
+      f.authorName = authorName;
     }
 
-    const yearMin = searchParams.get("year_min");
-    if (yearMin) f.year_min = parseInt(yearMin, 10);
+    const yearMin = searchParams.get("yearMin") || searchParams.get("year_min");
+    if (yearMin) f.yearMin = parseInt(yearMin, 10);
 
-    const yearMax = searchParams.get("year_max");
-    if (yearMax) f.year_max = parseInt(yearMax, 10);
+    const yearMax = searchParams.get("yearMax") || searchParams.get("year_max");
+    if (yearMax) f.yearMax = parseInt(yearMax, 10);
 
     const venue = searchParams.get("venue");
     if (venue) f.venue = venue;
 
-    const minCitations = searchParams.get("min_citation_count") || searchParams.get("min_citations");
+    const minCitations =
+      searchParams.get("minCitationCount") ||
+      searchParams.get("min_citation_count") ||
+      searchParams.get("min_citations");
     if (minCitations) {
-      const parsed = parseInt(minCitations, 10);
-      f.min_citation_count = parsed;
-      f.min_citations = parsed;
+      f.minCitationCount = parseInt(minCitations, 10);
     }
 
-    const maxCitations = searchParams.get("max_citation_count") || searchParams.get("max_citations");
+    const maxCitations =
+      searchParams.get("maxCitationCount") ||
+      searchParams.get("max_citation_count") ||
+      searchParams.get("max_citations");
     if (maxCitations) {
-      const parsed = parseInt(maxCitations, 10);
-      f.max_citation_count = parsed;
-      f.max_citations = parsed;
+      f.maxCitationCount = parseInt(maxCitations, 10);
     }
 
-    const journalQuartile = searchParams.get("journal_quartile") || searchParams.get("journal_rank");
+    const journalQuartile =
+      searchParams.get("journalQuartile") ||
+      searchParams.get("journal_quartile") ||
+      searchParams.get("journal_rank");
     if (journalQuartile && ["Q1", "Q2", "Q3", "Q4"].includes(journalQuartile)) {
-      f.journal_quartile = journalQuartile as "Q1" | "Q2" | "Q3" | "Q4";
+      f.journalQuartile = journalQuartile as "Q1" | "Q2" | "Q3" | "Q4";
     }
 
     const fields =
-      searchParams.get("field_of_study")?.split(",").filter(Boolean)
+      searchParams.get("fieldOfStudy")?.split(",").filter(Boolean)
+      || searchParams.get("field_of_study")?.split(",").filter(Boolean)
       || searchParams.get("fields_of_study")?.split(",").filter(Boolean)
       || searchParams.get("category")?.split(",").filter(Boolean);
     if (fields && fields.length > 0) {
-      f.field_of_study = fields;
-      f.category = fields;
-    }
-
-    const openAccess = searchParams.get("open_access");
-    if (openAccess === "true") f.openAccessOnly = true;
-
-    const excludePreprints = searchParams.get("exclude_preprints");
-    if (excludePreprints === "true") f.excludePreprints = true;
-
-    const topJournals = searchParams.get("top_journals");
-    if (topJournals === "true") f.topJournalsOnly = true;
-
-    // Handle legacy yearRange for UI compatibility if needed
-    if (f.year_min !== undefined || f.year_max !== undefined) {
-      f.yearRange = {
-        min: f.year_min,
-        max: f.year_max,
-      };
+      f.fieldOfStudy = fields;
     }
 
     return f;
@@ -106,29 +96,40 @@ export function useSearchFilters() {
         }
       };
 
-      updateParam("author_name", newFilters.author_name ?? newFilters.author);
-      
-      // Prefer yearRange if it exists, otherwise use flat fields
-      const yearMin = newFilters.yearRange?.min ?? newFilters.year_min;
-      const yearMax = newFilters.yearRange?.max ?? newFilters.year_max;
-      updateParam("year_min", yearMin);
-      updateParam("year_max", yearMax);
+      updateParam("authorName", newFilters.authorName);
+      updateParam("yearMin", newFilters.yearMin);
+      updateParam("yearMax", newFilters.yearMax);
 
       updateParam("venue", newFilters.venue);
-      updateParam("min_citation_count", newFilters.min_citation_count ?? newFilters.min_citations);
-      updateParam("max_citation_count", newFilters.max_citation_count ?? newFilters.max_citations);
-      updateParam("journal_quartile", newFilters.journal_quartile);
+      updateParam("minCitationCount", newFilters.minCitationCount);
+      updateParam("maxCitationCount", newFilters.maxCitationCount);
+      updateParam("journalQuartile", newFilters.journalQuartile);
       
-      const selectedFields = newFilters.field_of_study ?? newFilters.category;
+      const selectedFields = newFilters.fieldOfStudy;
       if (selectedFields && selectedFields.length > 0) {
-        params.set("field_of_study", selectedFields.join(","));
+        params.set("fieldOfStudy", selectedFields.join(","));
       } else {
-        params.delete("field_of_study");
+        params.delete("fieldOfStudy");
       }
 
-      updateParam("open_access", newFilters.openAccessOnly);
-      updateParam("exclude_preprints", newFilters.excludePreprints);
-      updateParam("top_journals", newFilters.topJournalsOnly);
+      [
+        "author",
+        "author_name",
+        "year_min",
+        "year_max",
+        "min_citation_count",
+        "max_citation_count",
+        "min_citations",
+        "max_citations",
+        "journal_quartile",
+        "journal_rank",
+        "field_of_study",
+        "fields_of_study",
+        "category",
+        "open_access",
+        "exclude_preprints",
+        "top_journals",
+      ].forEach((key) => params.delete(key));
 
       if (params.has("mode")) {
         params.delete("mode");

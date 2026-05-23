@@ -33,7 +33,7 @@ import { Filter, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { FilterPanel, type SearchFilters } from "./FilterPanel";
+import { FilterPanel } from "./FilterPanel";
 import { Box } from "@/components/layout/box";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -92,10 +92,12 @@ export function ChatInputMain({
 
   // Check if any filters are active
   const activeFilterCount = [
-    filters.openAccessOnly,
-    filters.excludePreprints,
-    filters.topJournalsOnly,
-    filters.yearRange?.min || filters.yearRange?.max,
+    filters.authorName,
+    filters.venue,
+    filters.yearMin ?? filters.yearMax,
+    filters.minCitationCount ?? filters.maxCitationCount,
+    filters.journalQuartile,
+    filters.fieldOfStudy && filters.fieldOfStudy.length > 0,
   ].filter(Boolean).length;
 
   const handlePipelineChange = (newPipeline: "research" | "agent") => {

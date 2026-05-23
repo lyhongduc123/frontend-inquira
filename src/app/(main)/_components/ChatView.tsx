@@ -2,7 +2,6 @@ import { Message } from "@/types/message.type";
 import { MessageArea, MessageAreaRef } from "./MessageArea";
 import { ChatInputMain } from "./ChatInputMain";
 import { VStack } from "@/components/layout/vstack";
-import { SearchFilters } from "./FilterPanel";
 import { PaperMetadata } from "@/types/paper.type";
 
 interface ChatViewProps {

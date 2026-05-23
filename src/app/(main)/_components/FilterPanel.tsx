@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetFooter,
@@ -16,6 +15,7 @@ import { HStack } from "@/components/layout/hstack";
 import { Box } from "@/components/layout/box";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -33,81 +33,52 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useSearchFilters } from "@/hooks/use-search-filters";
+import { ChatSubmitFilters } from "@/types/task.type";
 
-export interface SearchFilters {
-  author_name?: string;
-  year_min?: number;
-  year_max?: number;
-  venue?: string;
-  min_citation_count?: number;
-  max_citation_count?: number;
-  journal_quartile?: "Q1" | "Q2" | "Q3" | "Q4";
-  field_of_study?: string[];
-  // Legacy fields for UI compatibility (can be removed later)
-  author?: string;
-  min_citations?: number;
-  max_citations?: number;
-  yearRange?: {
-    min?: number;
-    max?: number;
-  };
-  category?: string[];
-  openAccessOnly?: boolean;
-  excludePreprints?: boolean;
-  topJournalsOnly?: boolean;
-}
+export type SearchFilters = Omit<ChatSubmitFilters, "journalQuartile"> & {
+  journalQuartile?: "Q1" | "Q2" | "Q3" | "Q4";
+};
 
 export function FilterPanel({ open, onOpenChange }: FilterPanelProps) {
   const { filters, setParams } = useSearchFilters();
   const [localFilters, setLocalFilters] = useState<SearchFilters>(filters);
 
   const hasActiveFilters = Object.values(localFilters).some((value) => {
-    if (typeof value === "object" && value !== null) {
-      return Object.values(value).some((v) => v !== undefined);
+    if (Array.isArray(value)) {
+      return value.length > 0;
     }
-    return value !== undefined && value !== false;
+    return value !== undefined && value !== "";
   });
+
+  function updateFilter<K extends keyof SearchFilters>(
+    key: K,
+    value: SearchFilters[K] | undefined,
+  ) {
+    setLocalFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  }
 
   function updateYearRange(yearRange: { min?: number; max?: number }) {
     setLocalFilters((prev) => ({
       ...prev,
-      yearRange,
+      yearMin: yearRange.min,
+      yearMax: yearRange.max,
     }));
   }
 
   function updateCategory(value: string[]) {
     setLocalFilters((prev) => ({
       ...prev,
-      category: value.length > 0 ? value : undefined,
-      field_of_study: value.length > 0 ? value : undefined,
+      fieldOfStudy: value.length > 0 ? value : undefined,
     }));
   }
 
   function updateJournalQuartile(value: "Q1" | "Q2" | "Q3" | "Q4" | undefined) {
     setLocalFilters((prev) => ({
       ...prev,
-      journal_quartile: value,
-    }));
-  }
-
-  function updateOpenAccess(value: boolean | undefined) {
-    setLocalFilters((prev) => ({
-      ...prev,
-      openAccessOnly: value,
-    }));
-  }
-
-  function updateExcludePreprints(value: boolean | undefined) {
-    setLocalFilters((prev) => ({
-      ...prev,
-      excludePreprints: value,
-    }));
-  }
-
-  function updateTopJournals(value: boolean | undefined) {
-    setLocalFilters((prev) => ({
-      ...prev,
-      topJournalsOnly: value,
+      journalQuartile: value,
     }));
   }
 
@@ -127,8 +98,15 @@ export function FilterPanel({ open, onOpenChange }: FilterPanelProps) {
     onOpenChange(false);
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      setLocalFilters(filters);
+    }
+    onOpenChange(nextOpen);
+  }
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
         className="w-full sm:max-w-md flex h-full flex-col gap-1"
@@ -142,30 +120,37 @@ export function FilterPanel({ open, onOpenChange }: FilterPanelProps) {
             <HStack className="items-start gap-4">
               <Box className="flex-1">
                 <YearFilter
-                  yearRange={localFilters.yearRange}
+                  yearRange={{
+                    min: localFilters.yearMin,
+                    max: localFilters.yearMax,
+                  }}
                   onYearRangeChange={updateYearRange}
                 />
               </Box>
-              {/* <Separator
-                orientation="vertical"
-                className="h-auto self-stretch"
-              />
-              <Box className="flex-1"></Box> */}
             </HStack>
 
             <Separator />
 
-            <PaperTypeFilter
-              openAccessOnly={localFilters.openAccessOnly}
-              excludePreprints={localFilters.excludePreprints}
-              journalQuartile={localFilters.journal_quartile}
-              onOpenAccessChange={updateOpenAccess}
-              onExcludePreprintsChange={updateExcludePreprints}
+            <CitationFilter
+              minCitationCount={localFilters.minCitationCount}
+              maxCitationCount={localFilters.maxCitationCount}
+              onMinCitationCountChange={(value) =>
+                updateFilter("minCitationCount", value)
+              }
+              onMaxCitationCountChange={(value) =>
+                updateFilter("maxCitationCount", value)
+              }
+            />
+
+            <Separator />
+
+            <JournalFilter
+              journalQuartile={localFilters.journalQuartile}
               onJournalQuartileChange={updateJournalQuartile}
             />
 
             <CategoryFilter
-              category={localFilters.category}
+              category={localFilters.fieldOfStudy}
               onCategoryChange={updateCategory}
             />
           </VStack>
@@ -239,6 +224,12 @@ const CATEGORY_OPTIONS = [
   "Linguistics",
 ] as const;
 
+const parseNumberInput = (value: string) => {
+  if (value.trim() === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 const YearFilter = ({
   yearRange,
   onYearRangeChange,
@@ -247,18 +238,9 @@ const YearFilter = ({
   onYearRangeChange: (range: { min?: number; max?: number }) => void;
 }) => {
   const hasYearFilter = yearRange?.min || yearRange?.max;
-  const isSingleYear = yearRange?.min === yearRange?.max && yearRange?.min;
-  const [activeTab, setActiveTab] = useState<string>(
-    isSingleYear ? "single" : "range",
-  );
 
   function handleClear() {
     onYearRangeChange({});
-  }
-
-  function handleSingleYearChange(value: string) {
-    const year = value ? parseInt(value) : undefined;
-    onYearRangeChange({ min: year, max: year });
   }
 
   return (
@@ -348,6 +330,81 @@ const YearFilter = ({
   );
 };
 
+const CitationFilter = ({
+  minCitationCount,
+  maxCitationCount,
+  onMinCitationCountChange,
+  onMaxCitationCountChange,
+}: {
+  minCitationCount?: number;
+  maxCitationCount?: number;
+  onMinCitationCountChange: (value: number | undefined) => void;
+  onMaxCitationCountChange: (value: number | undefined) => void;
+}) => {
+  const hasCitationFilter =
+    minCitationCount !== undefined || maxCitationCount !== undefined;
+
+  function handleClear() {
+    onMinCitationCountChange(undefined);
+    onMaxCitationCountChange(undefined);
+  }
+
+  return (
+    <VStack className="gap-4">
+      <HStack className="flex items-center justify-between">
+        <Label>Citations</Label>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-auto p-1 text-xs"
+          onClick={handleClear}
+          style={{ visibility: hasCitationFilter ? "visible" : "hidden" }}
+        >
+          Clear
+        </Button>
+      </HStack>
+      <HStack className="gap-2">
+        <VStack className="gap-1.5">
+          <Label
+            htmlFor="citations-min"
+            className="text-xs text-muted-foreground"
+          >
+            Minimum
+          </Label>
+          <Input
+            id="citations-min"
+            type="number"
+            min={0}
+            value={minCitationCount ?? ""}
+            onChange={(event) =>
+              onMinCitationCountChange(parseNumberInput(event.target.value))
+            }
+            className="w-28"
+          />
+        </VStack>
+        <VStack className="gap-1.5">
+          <Label
+            htmlFor="citations-max"
+            className="text-xs text-muted-foreground"
+          >
+            Maximum
+          </Label>
+          <Input
+            id="citations-max"
+            type="number"
+            min={0}
+            value={maxCitationCount ?? ""}
+            onChange={(event) =>
+              onMaxCitationCountChange(parseNumberInput(event.target.value))
+            }
+            className="w-28"
+          />
+        </VStack>
+      </HStack>
+    </VStack>
+  );
+};
+
 const CategoryFilter = ({
   category,
   onCategoryChange,
@@ -412,55 +469,18 @@ const CategoryFilter = ({
   );
 };
 
-const PaperTypeFilter = ({
-  openAccessOnly,
-  excludePreprints,
+const JournalFilter = ({
   journalQuartile,
-  onOpenAccessChange,
-  onExcludePreprintsChange,
   onJournalQuartileChange,
 }: {
-  openAccessOnly?: boolean;
-  excludePreprints?: boolean;
   journalQuartile?: "Q1" | "Q2" | "Q3" | "Q4";
-  onOpenAccessChange: (value: boolean | undefined) => void;
-  onExcludePreprintsChange: (value: boolean | undefined) => void;
   onJournalQuartileChange: (
     value: "Q1" | "Q2" | "Q3" | "Q4" | undefined,
   ) => void;
 }) => {
   return (
     <VStack className="gap-3">
-      <Label>Paper Type</Label>
-
-      <HStack className="items-center gap-3">
-        <Checkbox
-          id="open-access"
-          checked={openAccessOnly || false}
-          onCheckedChange={(checked) =>
-            onOpenAccessChange(checked ? true : undefined)
-          }
-        />
-        <Label htmlFor="open-access" className="cursor-pointer font-normal">
-          Open Access Only
-        </Label>
-      </HStack>
-
-      <HStack className="items-center gap-3">
-        <Checkbox
-          id="exclude-preprints"
-          checked={excludePreprints || false}
-          onCheckedChange={(checked) =>
-            onExcludePreprintsChange(checked ? true : undefined)
-          }
-        />
-        <Label
-          htmlFor="exclude-preprints"
-          className="cursor-pointer font-normal"
-        >
-          Exclude Preprints
-        </Label>
-      </HStack>
+      <Label>Publication Quality</Label>
 
       <VStack className="gap-1.5">
         <Label
@@ -504,31 +524,35 @@ const FilterSummary = ({
 }) => {
   const activeFilters: string[] = [];
 
-  if (filters.yearRange?.min || filters.yearRange?.max) {
-    const min = filters.yearRange.min || "--";
-    const max = filters.yearRange.max || "--";
+  if (filters.authorName) {
+    activeFilters.push(`Author: ${filters.authorName}`);
+  }
+
+  if (filters.venue) {
+    activeFilters.push(`Venue: ${filters.venue}`);
+  }
+
+  if (filters.yearMin || filters.yearMax) {
+    const min = filters.yearMin || "--";
+    const max = filters.yearMax || "--";
     activeFilters.push(`Year: ${min}-${max}`);
   }
 
-  const selectedFields = filters.field_of_study || filters.category;
-  if (selectedFields && selectedFields.length > 0) {
-    activeFilters.push(`Fields: ${selectedFields.length} selected`);
+  if (
+    filters.minCitationCount !== undefined ||
+    filters.maxCitationCount !== undefined
+  ) {
+    const min = filters.minCitationCount ?? "--";
+    const max = filters.maxCitationCount ?? "--";
+    activeFilters.push(`Citations: ${min}-${max}`);
   }
 
-  if (filters.journal_quartile) {
-    activeFilters.push(`Journal: ${filters.journal_quartile}`);
+  if (filters.fieldOfStudy && filters.fieldOfStudy.length > 0) {
+    activeFilters.push(`Fields: ${filters.fieldOfStudy.length} selected`);
   }
 
-  if (filters.openAccessOnly) {
-    activeFilters.push("Open Access");
-  }
-
-  if (filters.excludePreprints) {
-    activeFilters.push("No Preprints");
-  }
-
-  if (filters.topJournalsOnly) {
-    activeFilters.push("Top Journals (Q1)");
+  if (filters.journalQuartile) {
+    activeFilters.push(`Journal: ${filters.journalQuartile}`);
   }
 
   return (

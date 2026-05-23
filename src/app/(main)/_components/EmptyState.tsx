@@ -1,7 +1,6 @@
 import { ChatInputMain } from "./ChatInputMain";
 import { TypographyH1, TypographyP } from "@/components/global/typography";
 import { VStack } from "@/components/layout/vstack";
-import { SearchFilters } from "./FilterPanel";
 import { PaperMetadata } from "@/types/paper.type";
 
 interface EmptyStateProps {

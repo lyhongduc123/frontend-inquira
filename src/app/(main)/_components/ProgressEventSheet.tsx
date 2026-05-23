@@ -339,13 +339,13 @@ function parseContent(step: ProgressStep): ReactNode | string {
         ? (step.metadata.queries as string[]).filter(Boolean)
         : [];
       return (
-        <VStack className="flex flex-col gap-1">
+        <span className="flex flex-col gap-1">
           {queries.map((q, idx) => (
             <span key={idx}>
               {q}
             </span>
           ))}
-        </VStack>
+        </span>
       );
 
     case EventType.RANKING:
@@ -363,7 +363,7 @@ function parseContent(step: ProgressStep): ReactNode | string {
         : [];
       if (triedQueries.length > 0) {
         return (
-          <VStack>
+          <span className="flex flex-col gap-1">
             {step.content || "Searching external providers..."}
             {triedQueries.map((q, idx) => (
               <span key={idx}>
@@ -371,7 +371,7 @@ function parseContent(step: ProgressStep): ReactNode | string {
                 {idx < triedQueries.length - 1 && <br />}
               </span>
             ))}
-          </VStack>
+          </span>
         );
       }
 
