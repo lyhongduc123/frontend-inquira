@@ -1,12 +1,5 @@
 import { Box } from "@/components/layout/box";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
@@ -30,20 +23,29 @@ import { InfoIcon } from "lucide-react";
 import { useState } from "react";
 import { HStack } from "@/components/layout/hstack";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { VStack } from "@/components/layout/vstack";
 
 interface PublicationTimelineProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  countsByYear: Record<any, any>;
+  countsByYear?: Record<any, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   openalexCountsByYear?: Record<any, any>;
+  isLoading?: boolean;
 }
 
 export function PublicationChartCard({
   countsByYear,
   openalexCountsByYear,
+  isLoading,
 }: PublicationTimelineProps) {
   const [source, setSource] = useState<"internal" | "openalex">("internal");
-  const years = Object.keys(countsByYear)
+
+  if (isLoading) {
+    return <ChartCardSkeleton title="YEARLY PUBLICATIONS" />;
+  }
+
+  const years = Object.keys(countsByYear || {})
     .map(Number)
     .sort((a, b) => a - b);
 
@@ -59,7 +61,7 @@ export function PublicationChartCard({
 
   const chartData = years.map((year) => ({
     year,
-    publication_count: countsByYear[year]?.papers || 0,
+    publication_count: countsByYear?.[year]?.papers || 0,
   }));
   const openAlexChartData = openAlexYears.map((year) => ({
     year,
@@ -137,6 +139,22 @@ export function PublicationChartCard({
           </Alert>
         )}
       </AuthorMetricCardFooter>
+    </AuthorMetricCard>
+  );
+}
+
+function ChartCardSkeleton({ title }: { title: string }) {
+  return (
+    <AuthorMetricCard title={title}>
+      <AuthorMetricCardContent>
+        <VStack className="gap-4">
+          <Skeleton className="h-64 w-full rounded-md" />
+          <HStack className="gap-2">
+            <Skeleton className="h-9 w-20 rounded-md" />
+            <Skeleton className="h-9 w-24 rounded-md" />
+          </HStack>
+        </VStack>
+      </AuthorMetricCardContent>
     </AuthorMetricCard>
   );
 }

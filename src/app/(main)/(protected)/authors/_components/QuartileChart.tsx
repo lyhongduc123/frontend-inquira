@@ -4,12 +4,22 @@ import { HStack } from "@/components/layout/hstack";
 import { Label } from "@/components/ui/label";
 import { TypographyP } from "@/components/global/typography";
 import { AuthorMetricCard, AuthorMetricCardContent } from "./AuthorMetricCard";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface QuartileChartProps {
-  quartileBreakdown: QuartileBreakdownDTO;
+  quartileBreakdown?: QuartileBreakdownDTO;
+  isLoading?: boolean;
 }
 
-export function QuartileChart({ quartileBreakdown }: QuartileChartProps) {
+export function QuartileChart({ quartileBreakdown, isLoading }: QuartileChartProps) {
+  if (isLoading) {
+    return <QuartileChartSkeleton />;
+  }
+
+  if (!quartileBreakdown) {
+    return null;
+  }
+
   const total = Object.values(quartileBreakdown).reduce(
     (sum, val) => sum + val,
     0,
@@ -70,6 +80,29 @@ export function QuartileChart({ quartileBreakdown }: QuartileChartProps) {
                 </HStack>
               ) : null;
             })}
+          </VStack>
+        </VStack>
+      </AuthorMetricCardContent>
+    </AuthorMetricCard>
+  );
+}
+
+function QuartileChartSkeleton() {
+  return (
+    <AuthorMetricCard title="QUARTILE BREAKDOWN">
+      <AuthorMetricCardContent>
+        <VStack className="gap-6">
+          <Skeleton className="h-12 w-full rounded-lg" />
+          <VStack className="gap-2">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <HStack key={idx} className="items-center justify-between gap-3">
+                <HStack className="items-center gap-2">
+                  <Skeleton className="h-3 w-3 rounded-sm" />
+                  <Skeleton className="h-4 w-16 rounded-md" />
+                </HStack>
+                <Skeleton className="h-4 w-20 rounded-md" />
+              </HStack>
+            ))}
           </VStack>
         </VStack>
       </AuthorMetricCardContent>

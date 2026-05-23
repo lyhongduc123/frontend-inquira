@@ -12,32 +12,36 @@ import {
 import {
   Bar,
   XAxis,
-  YAxis,
   BarChart,
   CartesianGrid,
   LabelList,
 } from "recharts";
-import { CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { VStack } from "@/components/layout/vstack";
 import { InfoIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { HStack } from "@/components/layout/hstack";
-import { Box } from "@/components/layout/box";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CitationChartCardProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   countsByYear?: Record<string, Record<string, any>> | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   openalexCountsByYear?: Record<string, Record<string, any>> | null;
+  isLoading?: boolean;
 }
 
 export function CitationChartCard({
   countsByYear,
   openalexCountsByYear,
+  isLoading,
 }: CitationChartCardProps) {
   const [source, setSource] = useState<"internal" | "openalex">("internal");
+
+  if (isLoading) {
+    return <ChartCardSkeleton title="YEARLY CITATIONS" />;
+  }
 
   const citationMetrics = Object.entries(countsByYear || {})
     .map(([year, data]) => ({
@@ -144,6 +148,22 @@ export function CitationChartCard({
           </Alert>
         )}
       </AuthorMetricCardFooter>
+    </AuthorMetricCard>
+  );
+}
+
+function ChartCardSkeleton({ title }: { title: string }) {
+  return (
+    <AuthorMetricCard title={title}>
+      <AuthorMetricCardContent>
+        <VStack className="gap-4">
+          <Skeleton className="h-[250px] w-full rounded-md" />
+          <HStack className="gap-2">
+            <Skeleton className="h-9 w-20 rounded-md" />
+            <Skeleton className="h-9 w-24 rounded-md" />
+          </HStack>
+        </VStack>
+      </AuthorMetricCardContent>
     </AuthorMetricCard>
   );
 }

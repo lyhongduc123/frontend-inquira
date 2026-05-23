@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import pluralize from "pluralize";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 interface BookmarkFiltersState {
   isOpenAccess?: boolean;
@@ -58,6 +59,7 @@ export function BookmarkPageClient() {
   const {
     data: bookmarks,
     isLoading,
+    isFetching,
     isError,
     refetch,
   } = useBookmarks(listParams);
@@ -186,13 +188,15 @@ export function BookmarkPageClient() {
             />
             Open Access
           </Label>
-          <Label htmlFor="filter-has-notes"
+          <Label
+            htmlFor="filter-has-notes"
             className={cn(
               "text-sm items-center p-2 border rounded cursor-pointer",
               filters.hasNotes
                 ? "border-primary bg-primary/10"
                 : "hover:bg-muted",
-            )}>
+            )}
+          >
             <Checkbox
               id="filter-has-notes"
               aria-label="Has Notes"
@@ -209,6 +213,12 @@ export function BookmarkPageClient() {
             <Badge variant="default" className="ml-auto ">
               {pluralize("result", bookmarks?.total || 0, true)}
             </Badge>
+            {isFetching && visibleBookmarks.length > 0 && (
+              <HStack className="items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Refreshing bookmarks...
+              </HStack>
+            )}
           </HStack>
         </HStack>
         <BookmarkArea

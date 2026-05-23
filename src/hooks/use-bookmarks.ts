@@ -3,7 +3,7 @@
  */
 
 import { useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { bookmarksApi, type CreateBookmarkRequest, type UpdateBookmarkRequest } from "@/lib/api";
 import type { BookmarkCheckResponse, BookmarkListParams } from "@/lib/api/bookmarks-api";
 import { defaultRetry, defaultRetryDelay, handleMutationError, handleMutationSuccess } from "@/lib/react-query/react-query-utils";
@@ -53,6 +53,7 @@ export function useBookmarks(params: BookmarkListParams = {}) {
     retryDelay: defaultRetryDelay,
     staleTime: 0,
     refetchOnMount: "always",
+    placeholderData: keepPreviousData,
   }, 'Failed to load bookmarks');
 
   useEffect(() => {

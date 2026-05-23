@@ -13,7 +13,7 @@ interface InfoItemProps {
 export const InfoItem = ({ icon, label, number, className, labelClassName = "truncate" }: InfoItemProps) => {
   if (!icon && !label && !number) return null;
   return (
-    <HStack className={cn("items-center gap-1 min-w-0", className)}>
+    <span className={cn("flex items-center gap-1 min-w-0", className)}>
       {icon}
       {number !== undefined && number !== null && (
         <span className="font-semibold shrink-0 text-xs">
@@ -25,6 +25,6 @@ export const InfoItem = ({ icon, label, number, className, labelClassName = "tru
           {" " + label}
         </span>
       )}
-    </HStack>
+    </span>
   );
 };

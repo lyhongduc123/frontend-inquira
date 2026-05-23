@@ -1,37 +1,24 @@
 import { AuthorDetailWithPapersDTO } from "@/types/author.type";
 import { HStack } from "@/components/layout/hstack";
 import { VStack } from "@/components/layout/vstack";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   TypographyH2,
-  TypographyH3,
-  TypographyH4,
   TypographyP,
 } from "@/components/global/typography";
-import { Award, BookOpen, Quote, TrendingUp } from "lucide-react";
 import { Box } from "@/components/layout/box";
-import { Item } from "@/components/ui/item";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  LabelList,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { AuthorMetricCard } from "./AuthorMetricCard";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AuthorMetricsCardsProps {
   author?: AuthorDetailWithPapersDTO;
+  isLoading?: boolean;
 }
 
-export function AuthorMetricsSection({ author }: AuthorMetricsCardsProps) {
+export function AuthorMetricsSection({ author, isLoading }: AuthorMetricsCardsProps) {
+  if (isLoading) {
+    return <AuthorMetricsSectionSkeleton />;
+  }
+
   const metrics = [
     {
       title: "h-index",
@@ -77,6 +64,25 @@ export function AuthorMetricsSection({ author }: AuthorMetricsCardsProps) {
                   </TypographyP>
                 </VStack>
               </HStack>
+            </CardContent>
+          ))}
+        </Card>
+      </VStack>
+    </Box>
+  );
+}
+
+function AuthorMetricsSectionSkeleton() {
+  return (
+    <Box>
+      <VStack className="gap-6">
+        <Card className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <CardContent key={idx}>
+              <VStack className="gap-2">
+                <Skeleton className="h-8 w-20 rounded-md" />
+                <Skeleton className="h-4 w-28 rounded-md" />
+              </VStack>
             </CardContent>
           ))}
         </Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import { BookmarkIcon, MessageSquarePlus, SearchIcon } from "lucide-react";
-import { useEffect, useEffectEvent } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ export function LeftSidebar() {
   const { open: isOpen } = useSidebar();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
+  const newConversationFetchRef = useRef<string | null>(null);
 
   const {
     currentConversationId,
@@ -69,22 +70,31 @@ export function LeftSidebar() {
   });
 
   useEffect(() => {
-    if (newConversationId) {
-      const fetchNewConversation = async () => {
-        try {
-          const conversationDetail =
-            await conversationsApi.get(newConversationId);
-
-          addConversationOptimistically(conversationDetail);
-        } catch (error) {
-          console.error("Failed to fetch new conversation:", error);
-          await refetch();
-        } finally {
-          setTimeout(() => setNewConversationId(null), 500);
-        }
-      };
-      fetchNewConversation();
+    if (!newConversationId) {
+      newConversationFetchRef.current = null;
+      return;
     }
+
+    if (newConversationFetchRef.current === newConversationId) {
+      return;
+    }
+
+    newConversationFetchRef.current = newConversationId;
+
+    const fetchNewConversation = async () => {
+      try {
+        const conversationDetail =
+          await conversationsApi.get(newConversationId);
+
+        addConversationOptimistically(conversationDetail);
+      } catch (error) {
+        console.error("Failed to fetch new conversation:", error);
+        await refetch();
+      } finally {
+        setTimeout(() => setNewConversationId(null), 500);
+      }
+    };
+    fetchNewConversation();
   }, [
     newConversationId,
     setNewConversationId,
@@ -176,7 +186,7 @@ export function LeftSidebar() {
           <SidebarGroup className="w-full min-w-0 gap-1">
             <HStack>
               <SidebarGroupLabel className="select-none">
-                Your conversations
+                Recent conversations
               </SidebarGroupLabel>
               <Button
                 asChild
@@ -295,7 +305,7 @@ const NewChatButton = ({
     <SidebarMenuButton
       onClick={onClick}
       tooltip={!isOpen ? "New Chat" : undefined}
-      className={cn("w-full truncate")}
+      className={cn("w-full truncate cursor-pointer")}
     >
       <MessageSquarePlus />
       {isOpen && <span>New Chat</span>}
@@ -315,7 +325,7 @@ const BookmarkButton = ({
     <SidebarMenuButton
       onClick={onClick}
       tooltip={!isOpen ? "Bookmarks" : undefined}
-      className={cn("w-full truncate")}
+      className={cn("w-full truncate cursor-pointer")}
     >
       <BookmarkIcon />
       {isOpen && <span>Bookmarks</span>}

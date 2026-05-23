@@ -9,6 +9,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDownIcon,
+  Loader2,
   Trash2,
 } from "lucide-react";
 import { Bookmark } from "@/lib/api";
@@ -35,9 +36,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { formatDateTime } from "@/lib/utils";
 import { SortField, SortState } from "./BookmarkPageClient";
 import { useUpdateBookmark } from "@/hooks/use-bookmarks";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface BookmarkListProps {
   isLoading?: boolean;
+  isFetching?: boolean;
   data?: Bookmark[];
   onRemoveBookmark: (paperId: string) => void;
   selectedScopedPaperIds?: string[];
@@ -54,6 +57,8 @@ interface BookmarkListProps {
 }
 
 export function BookmarkList({
+  isLoading,
+  isFetching,
   data = [],
   onRemoveBookmark,
   selectedScopedPaperIds = [],
@@ -286,7 +291,7 @@ export function BookmarkList({
         <Badge
           variant={row.original.paper?.isOpenAccess ? "default" : "secondary"}
         >
-          {row.original.paper?.isOpenAccess ? "Open" : "Closed"}
+          {row.original.paper?.isOpenAccess && row.original.paper.pdfUrl ? "Open" : "Closed"}
         </Badge>
       ),
     },
@@ -334,6 +339,10 @@ export function BookmarkList({
       ),
     },
   ];
+
+  if (isLoading && data.length === 0) {
+    return <BookmarkListSkeleton />;
+  }
 
   return (
     <>
@@ -405,5 +414,54 @@ export function BookmarkList({
         </SheetContent>
       </Sheet>
     </>
+  );
+}
+
+function BookmarkListSkeleton() {
+  return (
+    <Box className="space-y-4">
+      <Box className="rounded-2xl border">
+        <VStack className="gap-0">
+          <HStack className="items-center gap-4 border-b px-4 py-3">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-4 w-6 rounded" />
+            <Skeleton className="h-4 flex-1 rounded" />
+            <Skeleton className="h-4 w-20 rounded" />
+            <Skeleton className="h-4 w-14 rounded" />
+            <Skeleton className="h-4 w-24 rounded" />
+            <Skeleton className="h-4 w-16 rounded" />
+            <Skeleton className="h-4 w-24 rounded" />
+          </HStack>
+
+          {Array.from({ length: 8 }).map((_, index) => (
+            <HStack
+              key={index}
+              className="items-center gap-4 border-b px-4 py-4 last:border-b-0"
+            >
+              <Skeleton className="h-4 w-4 rounded" />
+              <Skeleton className="h-4 w-6 rounded" />
+              <VStack className="min-w-0 flex-1 gap-2">
+                <Skeleton className="h-4 w-4/5 rounded" />
+                <Skeleton className="h-3 w-2/5 rounded" />
+              </VStack>
+              <Skeleton className="h-4 w-16 rounded" />
+              <Skeleton className="h-4 w-12 rounded" />
+              <Skeleton className="h-4 w-28 rounded" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-4 w-24 rounded" />
+              <Skeleton className="h-8 w-8 rounded-md" />
+            </HStack>
+          ))}
+        </VStack>
+      </Box>
+
+      <HStack className="items-center justify-between">
+        <Skeleton className="h-4 w-32 rounded" />
+        <HStack className="gap-2">
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-16 rounded-md" />
+        </HStack>
+      </HStack>
+    </Box>
   );
 }

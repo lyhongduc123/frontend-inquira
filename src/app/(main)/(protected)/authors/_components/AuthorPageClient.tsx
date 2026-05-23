@@ -77,6 +77,14 @@ export function AuthorPageClient() {
       transitionedFromEnrichingToCompleted &&
       lastNotifiedTerminalKeyRef.current !== terminalKey
     ) {
+      queueMicrotask(() => setCurrentOffset(0));
+      void queryClient.invalidateQueries({
+        queryKey: ["author", authorId, "details"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["author", authorId, "papers"],
+      });
+
       toast.success("Author enrichment completed", {
         id: `author-enrichment-${authorId}`,
         description: "Latest author data has been loaded.",
@@ -102,6 +110,7 @@ export function AuthorPageClient() {
     author?.enrichmentStatus?.message,
     author?.enrichmentStatus?.status,
     author?.enrichmentStatus?.taskId,
+    queryClient,
   ]);
 
   const handleOnPaperView = (paper: PaperMetadata) => {
@@ -164,7 +173,7 @@ export function AuthorPageClient() {
     queryClient,
   ]);
 
-  const totalPapersInDb = currentPageResponse?.total ?? 0;
+  const totalPapersInDb = currentPageResponse?.total || 0;
   const isLoadingMore = isCurrentPageLoading && currentOffset > 0;
   const isFirstPageLoading = isCurrentPageLoading && currentOffset === 0;
 
@@ -237,6 +246,7 @@ export function AuthorPageClient() {
 
             <TabsContent value="collaborations" className="mt-6">
               <CoAuthorsTabs
+                authorId={authorId}
                 coAuthors={author?.coAuthors}
                 isLoading={isLoading}
               />
@@ -245,20 +255,37 @@ export function AuthorPageClient() {
         </VStack>
 
         <VStack className="gap-6 w-full max-w-96 shrink top-6">
-          <AuthorMetricsSection author={author || undefined} />
-          {author?.quartileBreakdown && (
-            <QuartileChart quartileBreakdown={author.quartileBreakdown} />
-          )}
-          {author?.countsByYear && (
+          <AuthorMetricsSection
+            author={author || undefined}
+            isLoading={isLoading}
+          />
+          {isLoading ? (
             <>
-              <CitationChartCard
-                countsByYear={author.countsByYear}
-                openalexCountsByYear={author.openalexCountsByYear ?? undefined}
-              />
-              <PublicationChartCard
-                countsByYear={author.countsByYear}
-                openalexCountsByYear={author.openalexCountsByYear ?? undefined}
-              />{" "}
+              <QuartileChart isLoading />
+              <CitationChartCard isLoading />
+              <PublicationChartCard isLoading />
+            </>
+          ) : (
+            <>
+              {author?.quartileBreakdown && (
+                <QuartileChart quartileBreakdown={author.quartileBreakdown} />
+              )}
+              {author?.countsByYear && (
+                <>
+                  <CitationChartCard
+                    countsByYear={author.countsByYear}
+                    openalexCountsByYear={
+                      author.openalexCountsByYear ?? undefined
+                    }
+                  />
+                  <PublicationChartCard
+                    countsByYear={author.countsByYear}
+                    openalexCountsByYear={
+                      author.openalexCountsByYear ?? undefined
+                    }
+                  />
+                </>
+              )}
             </>
           )}
         </VStack>

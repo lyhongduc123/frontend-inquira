@@ -12,13 +12,6 @@ import { Button } from "@/components/ui/button";
 import { HStack } from "@/components/layout/hstack";
 import { Separator } from "@/components/ui/separator";
 import { ArrowDown, ArrowUp, Loader2 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 type PaperSortBy = "year" | "citation";
@@ -86,6 +79,10 @@ export function PapersTabs({
           onView={handleOnView}
         />
       ))}
+      {isLoadingMore &&
+        Array.from({ length: 3 }).map((_, idx) => (
+          <AuthorPaperCard key={`loading-more-${idx}`} isLoading />
+        ))}
       {hasMorePapers && (
         <HStack className="flex items-center gap-4 w-full">
           <Separator className="flex-1" />
@@ -110,6 +107,7 @@ export function PapersTabs({
 const PapersTabsLoading = () => {
   return (
     <VStack className="gap-4 min-w-0">
+      <PaperSortControls sortBy="year" sortOrder="desc" />
       {Array.from({ length: 5 }).map((_, idx) => (
         <AuthorPaperCard key={idx} isLoading />
       ))}

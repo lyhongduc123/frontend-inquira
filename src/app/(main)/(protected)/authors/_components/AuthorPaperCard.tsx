@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { AccessLinkButton } from "../../../_components/_shared/AccessLinkButton";
 import { ActionButtonGroup } from "../../../_components/_shared/ActionButtonGroup";
 import { InfoItem } from "../../../_components/_shared/InfoItem";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AuthorPaperCardProps {
   idx?: number;
@@ -32,13 +33,14 @@ export function AuthorPaperCard({
   onView,
   isLoading,
 }: AuthorPaperCardProps) {
+  if (isLoading) {
+    return <PaperCardSkeleton />;
+  }
+
   if (!paperMetadata) {
     return null;
   }
 
-  if (isLoading) {
-    return <PaperCardSkeleton />;
-  }
   const {
     title,
     url,
@@ -327,13 +329,33 @@ const SignalBadge = ({
 
 const PaperCardSkeleton = () => {
   return (
-    <Card className="animate-pulse">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 min-w-0">
-        <div className="h-4 w-16 rounded bg-muted" />
-        <CardTitle className="flex-1 text-sm font-medium min-w-0">
-          <div className="h-4 w-full rounded bg-muted" />
+    <Card className="relative gap-2 px-4 py-3 min-w-0">
+      <Skeleton className="absolute left-2 size-6 rounded-full" />
+      <CardHeader className="relative flex flex-row items-center justify-between space-y-0 min-w-0">
+        <CardTitle className="flex-1 min-w-0 pl-6">
+          <Skeleton className="h-4 w-4/5 rounded" />
         </CardTitle>
       </CardHeader>
+      <CardContent>
+        <VStack className="gap-3 pl-6">
+          <HStack className="items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-4 w-2/3 rounded" />
+          </HStack>
+          {/* <VStack className="gap-2">
+            <Skeleton className="h-3 w-full rounded" />
+            <Skeleton className="h-3 w-5/6 rounded" />
+          </VStack> */}
+          <HStack className="items-center justify-between gap-2 pt-2">
+            <HStack className="gap-3 items-center">
+              <Skeleton className="h-4 w-14 rounded-md" />
+              <Skeleton className="h-4 w-20 rounded-md" />
+              <Skeleton className="h-4 w-28 rounded-md" />
+            </HStack>
+            {/* <Skeleton className="h-8 w-24 rounded-md" /> */}
+          </HStack>
+        </VStack>
+      </CardContent>
     </Card>
   );
 };
