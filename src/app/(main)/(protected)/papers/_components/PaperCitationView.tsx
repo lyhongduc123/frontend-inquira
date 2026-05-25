@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/app/(main)/_components/LoadingState";
 import { Spinner } from "@/components/ui/spinner";
 import { OpacityShimmer } from "@/components/ui/opacity-shimmer";
+import { HStack } from "@/components/layout/hstack";
 
 interface PaperCitationsViewProps {
   citations: CitingPaper[];
@@ -35,12 +36,12 @@ export function PaperCitationsView({
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <VStack className="gap-4">
+            <HStack className="gap-4">
               <Spinner />
               <OpacityShimmer>
                 Loading citations...
               </OpacityShimmer>
-            </VStack>
+            </HStack>
           ) : citations.length === 0 ? (
             <TypographyP className="text-muted-foreground">
               No citations indexed found for this paper.

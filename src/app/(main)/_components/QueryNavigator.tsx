@@ -38,6 +38,7 @@ import { useQueryNavigatorStore } from "@/store/query-navigator-store";
 import { useConversationStore } from "@/store/conversation-store";
 import { messagesApi } from "@/lib/api/messages-api";
 import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
 
 interface QueryNavigatorProps {
   messages: Message[];
@@ -186,13 +187,18 @@ function QueryNavigatorComponent({
       <Dialog>
         <DialogTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8">
+            <span className="max-w-lg block overflow-hidden text-ellipsis whitespace-nowrap text-sm">
             {displayQuery?.text}
+            </span>
             <ChevronDownIcon className="size-4" />
           </Button>
         </DialogTrigger>
 
         <DialogContent className="max-h-[80vh] h-[70vh] flex flex-col">
-          <DialogTitle></DialogTitle>
+          <DialogTitle>
+            Navigator
+          </DialogTitle>
+          <Separator />
 
           <VStack className="flex-1 min-h-0 w-full gap-1 overflow-auto pr-2">
             {userQueries.map((query) => (

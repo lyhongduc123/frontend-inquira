@@ -25,7 +25,7 @@ function renderMaybeRich(
   if (typeof text !== "string") return text;
 
   if (!needsRichRender(text)) {
-    return <span className={className}>{text}</span>;
+    return text;
   }
 
   return (

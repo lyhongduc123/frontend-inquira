@@ -9,6 +9,7 @@ import { PaperCard } from "./PaperCard";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { OpacityShimmer } from "@/components/ui/opacity-shimmer";
+import { HStack } from "@/components/layout/hstack";
 
 interface PaperReferenceViewProps {
   references: ReferencedPaper[];
@@ -30,11 +31,11 @@ export function PaperReferenceView({
       {/* Papers that cite this paper */}
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Referenced papers ({references.length})</CardTitle>
+          <CardTitle>Referenced papers</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <VStack className="gap-4">
+            <HStack className="gap-4">
               {/* {[1, 2, 3].map((i) => (
                 <div key={i} className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
@@ -46,10 +47,10 @@ export function PaperReferenceView({
               <OpacityShimmer>
                 Loading references...
               </OpacityShimmer>
-            </VStack>
+            </HStack>
           ) : references.length === 0 ? (
             <TypographyP className="text-muted-foreground">
-              No references found indexed for this paper.
+              No references indexed found for this paper.
             </TypographyP>
           ) : (
             <VStack className="gap-4">

@@ -213,56 +213,56 @@ export const MessageArea = forwardRef<MessageAreaRef, MessageAreaProps>(
       !lastMessage?.text?.trim(),
     );
 
-    useEffect(() => {
-      if (!waitingForAssistantFirstChunk) {
-        return;
-      }
+    // useEffect(() => {
+    //   if (!waitingForAssistantFirstChunk) {
+    //     return;
+    //   }
 
-      const viewport = getViewport();
-      const content = contentRef.current;
-      const latestUserIndex = getLatestUserMessageIndex();
-      const latestUserElement =
-        latestUserIndex >= 0 ? messageRefs.current[latestUserIndex] : null;
+    //   const viewport = getViewport();
+    //   const content = contentRef.current;
+    //   const latestUserIndex = getLatestUserMessageIndex();
+    //   const latestUserElement =
+    //     latestUserIndex >= 0 ? messageRefs.current[latestUserIndex] : null;
 
-      if (!viewport || !content || !latestUserElement) return;
+    //   if (!viewport || !content || !latestUserElement) return;
 
-      const updateSpacer = () => {
-        const targetSpace = Math.max(
-          180,
-          Math.round(viewport.clientHeight * 1),
-        );
-        const currentSpacer = waitingSpacerRef.current?.offsetHeight ?? 0;
-        const nonSpacerBelow = Math.max(
-          0,
-          content.scrollHeight -
-            (latestUserElement.offsetTop + latestUserElement.offsetHeight) -
-            currentSpacer,
-        );
-        const nextSpacer = Math.max(0, targetSpace - nonSpacerBelow);
+    //   const updateSpacer = () => {
+    //     const targetSpace = Math.max(
+    //       180,
+    //       Math.round(viewport.clientHeight * 1),
+    //     );
+    //     const currentSpacer = waitingSpacerRef.current?.offsetHeight ?? 0;
+    //     const nonSpacerBelow = Math.max(
+    //       0,
+    //       content.scrollHeight -
+    //         (latestUserElement.offsetTop + latestUserElement.offsetHeight) -
+    //         currentSpacer,
+    //     );
+    //     const nextSpacer = Math.max(0, targetSpace - nonSpacerBelow);
 
-        setWaitingSpacerHeight((prev) =>
-          Math.abs(prev - nextSpacer) > 1 ? nextSpacer : prev,
-        );
-      };
+    //     setWaitingSpacerHeight((prev) =>
+    //       Math.abs(prev - nextSpacer) > 1 ? nextSpacer : prev,
+    //     );
+    //   };
 
-      updateSpacer();
+    //   updateSpacer();
 
-      const resizeObserver = new ResizeObserver(() => {
-        updateSpacer();
-      });
+    //   const resizeObserver = new ResizeObserver(() => {
+    //     updateSpacer();
+    //   });
 
-      resizeObserver.observe(viewport);
-      resizeObserver.observe(content);
+    //   resizeObserver.observe(viewport);
+    //   resizeObserver.observe(content);
 
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }, [
-      waitingForAssistantFirstChunk,
-      getLatestUserMessageIndex,
-      messages,
-      getViewport,
-    ]);
+    //   return () => {
+    //     resizeObserver.disconnect();
+    //   };
+    // }, [
+    //   waitingForAssistantFirstChunk,
+    //   getLatestUserMessageIndex,
+    //   messages,
+    //   getViewport,
+    // ]);
 
     if (!messages || messages.length === 0) {
       return (

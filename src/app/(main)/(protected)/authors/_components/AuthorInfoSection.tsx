@@ -190,7 +190,7 @@ export function AuthorInfoSection({
                       <span className="text-special font-semibold">
                         Openalex
                       </span>{" "}
-                      to build the author profile. The author data is refreshed{" "}
+                      to build the author profile. The mainly presented information come from these sources and we prefer showing Semantic Scholar. The author data is refreshed{" "}
                       <span className="underline">every 30 days</span> when a
                       user visits the author page.
                     </HoverCardContent>
@@ -214,7 +214,12 @@ export function AuthorInfoSection({
                 icon={<HomeIcon className="size-3.5" />}
               />
               <AuthorLink
-                href={author?.url || ""}
+                href={author?.openalexId ? `https://openalex.org/authors/${author.openalexId}` : ""}
+                text="OpenAlex"
+                icon={<ExternalLink className="size-3.5" />}
+              />
+              <AuthorLink
+                href={author?.url || `https://www.semanticscholar.org/authors/${author?.id || ""}` }
                 text="Semantic Scholar"
                 icon={<ExternalLink className="size-3.5" />}
               />

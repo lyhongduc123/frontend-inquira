@@ -75,6 +75,18 @@ export function PaperMetadataSection({ paper }: PaperMetadataSectionProps) {
               Semantic Scholar
             </HStack>
           </a>
+          {typeof paper.externalIds?.openalex === "string" && (
+            <a
+              href={`https://openalex.org/works/${paper.externalIds.openalex}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <HStack className="gap-1.5 items-center border-b-2 border-muted-foreground">
+                <ArrowUpRight className="size-4 text-muted-foreground" />
+                OpenAlex
+              </HStack>
+            </a>
+          )}
         </HStack>
 
         {/* Badges */}
@@ -103,11 +115,11 @@ export function PaperMetadataSection({ paper }: PaperMetadataSectionProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <TypographyP className="underline">
+                      <TypographyP className="underline text-black dark:text-white">
                         Influential Citations
                       </TypographyP>
                     </a>
-                    <Separator />
+                    {/* <Separator /> */}
                     <TypographyP size="sm" className="text-muted-foreground">
                       Citations that significantly impact the citing paper,
                       determined by using machine learning analyzing citation
@@ -160,6 +172,20 @@ const PaperJournalSection = ({
       <VStack className="gap-2 items-start max-w-[60%]">
         <HStack className="gap-2 items-center">
           <TypographyH3>{journal?.title || venue}</TypographyH3>
+        </HStack>
+        <HStack className="gap-2 items-center">
+          {journal?.sjrBestQuartile ? (
+            <>
+              <TypographyP size="sm" variant="muted">
+                SJR Quartile:
+              </TypographyP>
+              <JournalBadge quartile={journal?.sjrBestQuartile} />
+            </>
+          ) : (
+            <TypographyP size="sm" variant="muted">
+              No journal data available
+            </TypographyP>
+          )}
           <HoverCard>
             <HoverCardTrigger>
               <InfoIcon className="size-4 text-muted-foreground" />
@@ -193,20 +219,6 @@ const PaperJournalSection = ({
             </HoverCardContent>
           </HoverCard>
         </HStack>
-        <HStack className="gap-2 items-center">
-          {journal?.sjrBestQuartile ? (
-            <>
-              <TypographyP size="sm" variant="muted">
-                SJR Quartile:
-              </TypographyP>
-              <JournalBadge quartile={journal?.sjrBestQuartile} />
-            </>
-          ) : (
-            <TypographyP size="sm" variant="muted">
-              No journal data available
-            </TypographyP>
-          )}
-        </HStack>
       </VStack>
     );
   }
@@ -216,6 +228,9 @@ const PaperJournalSection = ({
       <VStack className="gap-2 items-start">
         <HStack className="gap-2 items-center">
           <TypographyH3>{conference?.acronym || venue}</TypographyH3>
+        </HStack>
+        <HStack className="gap-2 items-center">
+          <ConferenceBadge rank={conference?.rank || "Unranked"} />
           <HoverCard>
             <HoverCardTrigger>
               <InfoIcon className="size-4 text-muted-foreground" />
@@ -242,9 +257,6 @@ const PaperJournalSection = ({
             </HoverCardContent>
           </HoverCard>
         </HStack>
-        <HStack className="gap-2 items-center">
-          <ConferenceBadge rank={conference?.rank || "Unranked"} />
-        </HStack>
       </VStack>
     );
   }
@@ -253,6 +265,9 @@ const PaperJournalSection = ({
     <VStack className="gap-2 items-start">
       <HStack className="gap-2 items-center">
         <TypographyH3>{venue}</TypographyH3>
+      </HStack>
+      <TypographyP size="sm" variant="muted">
+        No data available
         <HoverCard>
           <HoverCardTrigger>
             <InfoIcon className="size-4 text-muted-foreground" />
@@ -269,9 +284,6 @@ const PaperJournalSection = ({
             </VStack>
           </HoverCardContent>
         </HoverCard>
-      </HStack>
-      <TypographyP size="sm" variant="muted">
-        No data available
       </TypographyP>
     </VStack>
   );
@@ -371,7 +383,33 @@ const BadgeSection = ({ paper }: { paper: PaperDetail }) => {
       {paper.isRetracted && <Badge variant="destructive">Retracted</Badge>}
 
       {paper.fwci !== null && paper.fwci !== undefined && (
-        <Badge variant="default">FWCI: {paper.fwci.toFixed(2)}</Badge>
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Badge variant="default">FWCI: {paper.fwci.toFixed(2)}</Badge>
+          </HoverCardTrigger>
+          <HoverCardContent>
+            <TypographyP className="text-md font-semibold text-black dark:text-white">
+              FWCI: {paper.fwci.toFixed(2)}
+            </TypographyP>
+            <TypographyP className="text-sm text-muted-foreground">
+              Field-Weighted Citation Impact is a metric that measures the
+              citation impact of a paper within its specific field.
+            </TypographyP>
+            <TypographyP size="sm">
+              Data by{" "}
+              {
+                <a
+                  href={`https://openalex.org/works/${paper.externalIds?.openalex}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent underline underline-offset-2"
+                >
+                  OpenAlex
+                </a>
+              }
+            </TypographyP>
+          </HoverCardContent>
+        </HoverCard>
       )}
 
       {paper.isProcessed && <Badge variant="secondary">Processed</Badge>}
