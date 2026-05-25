@@ -35,7 +35,7 @@ export function PaperReferenceView({
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <HStack className="gap-4">
+            <HStack className="items-center gap-2">
               {/* {[1, 2, 3].map((i) => (
                 <div key={i} className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
@@ -43,7 +43,7 @@ export function PaperReferenceView({
                   <Skeleton className="h-3 w-full" />
                 </div>
               ))} */}
-              <Spinner />
+              <Spinner className="size-4" />
               <OpacityShimmer>
                 Loading references...
               </OpacityShimmer>

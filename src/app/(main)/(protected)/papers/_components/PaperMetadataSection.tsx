@@ -266,8 +266,10 @@ const PaperJournalSection = ({
       <HStack className="gap-2 items-center">
         <TypographyH3>{venue}</TypographyH3>
       </HStack>
+      <HStack className="gap-2 items-center">
       <TypographyP size="sm" variant="muted">
         No data available
+      </TypographyP>
         <HoverCard>
           <HoverCardTrigger>
             <InfoIcon className="size-4 text-muted-foreground" />
@@ -284,7 +286,7 @@ const PaperJournalSection = ({
             </VStack>
           </HoverCardContent>
         </HoverCard>
-      </TypographyP>
+      </HStack>
     </VStack>
   );
 };

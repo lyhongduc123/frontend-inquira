@@ -36,8 +36,8 @@ export function PaperCitationsView({
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <HStack className="gap-4">
-              <Spinner />
+            <HStack className="items-center gap-2">
+              <Spinner className="size-4" />
               <OpacityShimmer>
                 Loading citations...
               </OpacityShimmer>
